@@ -7,7 +7,7 @@
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
     "cosmiconfig": "^9.0.0",
-    "cross-spawn": "^7.0.3",
+    "cross-spawn": "^7.0.5",
     "shadcn-ui": "0.8.0",
     "tsconfig-paths": "^4.2.0",
     "zod": "^3.23.8"
@@ -16,7 +16,7 @@
     "@assistant-ui/tsconfig": "workspace:*",
     "@types/cross-spawn": "^6.0.6",
     "@types/node": "^20.14.11",
-    "tsup": "8.2.1"
+    "tsup": "8.3.5"
   },
   "files": [
     "dist",
