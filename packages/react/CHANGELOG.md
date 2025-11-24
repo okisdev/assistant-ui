@@ -1,5 +1,12 @@
 # @assistant-ui/react
 
+## 0.11.42
+
+### Patch Changes
+
+- c3ac004: fix: export `ComposerAttachmentDropzone` as `ComposerPrimitive.AttachmentDropzone`
+  fix: prevent drag state flicker in `ComposerAttachmentDropzone`
+
 ## 0.11.41
 
 ### Patch Changes
