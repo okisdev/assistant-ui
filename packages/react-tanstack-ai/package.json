@@ -1,0 +1,63 @@
+{
+  "name": "@assistant-ui/react-tanstack-ai",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsx scripts/build.mts"
+  },
+  "dependencies": {
+    "@tanstack/ai-react": "^0.0.2",
+    "@tanstack/ai-client": "^0.0.2",
+    "assistant-stream": "^0.2.43",
+    "zod": "^4.1.13"
+  },
+  "peerDependencies": {
+    "@assistant-ui/react": "^0.11.48",
+    "@types/react": "*",
+    "assistant-cloud": "*",
+    "react": "^18 || ^19 || ^19.0.0-rc"
+  },
+  "peerDependenciesMeta": {
+    "@types/react": {
+      "optional": true
+    },
+    "assistant-cloud": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@assistant-ui/react": "workspace:*",
+    "@assistant-ui/x-buildutils": "workspace:*",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "react": "19.2.1",
+    "tsx": "^4.21.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "homepage": "https://www.assistant-ui.com/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/assistant-ui/assistant-ui/tree/main/packages/react-tanstack-ai"
+  },
+  "bugs": {
+    "url": "https://github.com/assistant-ui/assistant-ui/issues"
+  }
+}
