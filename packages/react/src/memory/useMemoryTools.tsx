@@ -45,7 +45,10 @@ export const useMemoryTools = (
         ),
     }),
     execute: async ({ content, category }) => {
-      const memory = store.addMemory({ content, category });
+      const memory = store.addMemory({
+        content,
+        ...(category !== undefined && { category }),
+      });
       return {
         success: true,
         memoryId: memory.id,
