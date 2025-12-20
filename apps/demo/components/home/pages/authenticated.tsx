@@ -3,11 +3,11 @@
 import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { HomeLayout } from "@/components/home/app-layout";
+import { AppLayout } from "@/components/shared/app-layout";
 
 export function HomeAuthenticatedPage() {
   return (
-    <HomeLayout>
+    <AppLayout>
       <div className="flex flex-1 flex-col items-center justify-center px-4">
         <div className="flex w-full max-w-2xl flex-col items-center gap-8">
           <h1 className="text-center font-medium text-3xl tracking-tight">
@@ -28,6 +28,6 @@ export function HomeAuthenticatedPage() {
           </div>
         </div>
       </div>
-    </HomeLayout>
+    </AppLayout>
   );
 }

@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { geistSans, geistMono } from "@/styles/font";
 import "@/styles/globals.css";
 import { cn } from "@/lib/utils";
-import { NextIntlClientProvider } from "next-intl";
-import { TRPCReactProvider } from "@/utils/trpc/client";
+import RootProvider from "@/app/provider";
 
 export const metadata: Metadata = {
   title: "assistant-ui demo",
@@ -20,9 +19,7 @@ export default function RootLayout({
       <body
         className={cn(geistSans.className, geistMono.variable, "antialiased")}
       >
-        <NextIntlClientProvider>
-          <TRPCReactProvider>{children}</TRPCReactProvider>
-        </NextIntlClientProvider>
+        <RootProvider>{children}</RootProvider>
       </body>
     </html>
   );

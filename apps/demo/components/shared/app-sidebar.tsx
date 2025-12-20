@@ -9,6 +9,7 @@ import {
   LogOut,
   ChevronsUpDown,
   Sparkles,
+  User,
 } from "lucide-react";
 
 import { authClient } from "@/lib/auth.client";
@@ -33,7 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export function HomeSidebar() {
+export function AppSidebar() {
   const router = useRouter();
   const { data: session } = authClient.useSession();
 
@@ -137,6 +138,12 @@ export function HomeSidebar() {
                 align="end"
                 sideOffset={4}
               >
+                <DropdownMenuItem asChild>
+                  <Link href="/account" className="cursor-pointer">
+                    <User className="mr-2 size-4" />
+                    Account
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/settings" className="cursor-pointer">
                     <Settings className="mr-2 size-4" />
