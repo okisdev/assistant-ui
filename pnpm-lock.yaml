@@ -29,9 +29,24 @@ importers:
 
   apps/demo:
     dependencies:
+      '@ai-sdk/openai':
+        specifier: ^2.0.84
+        version: 2.0.84(zod@4.2.1)
+      '@assistant-ui/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      '@assistant-ui/react-ai-sdk':
+        specifier: workspace:*
+        version: link:../../packages/react-ai-sdk
+      '@assistant-ui/react-markdown':
+        specifier: workspace:*
+        version: link:../../packages/react-markdown
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.69.0(react@19.2.3))
+      '@radix-ui/react-slot':
+        specifier: ^1.2.4
+        version: 1.2.4(@types/react@19.2.7)(react@19.2.3)
       '@t3-oss/env-core':
         specifier: ^0.13.10
         version: 0.13.10(typescript@5.9.3)(zod@4.2.1)
@@ -47,6 +62,9 @@ importers:
       '@trpc/server':
         specifier: ^11.8.0
         version: 11.8.0(typescript@5.9.3)
+      ai:
+        specifier: ^5.0.112
+        version: 5.0.112(zod@4.2.1)
       better-auth:
         specifier: ^1.4.7
         version: 1.4.7(@tanstack/react-start@1.141.1(crossws@0.4.1(srvx@0.9.8))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@7.2.7(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(drizzle-kit@0.31.8)(drizzle-orm@0.45.1(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(@upstash/redis@1.35.7)(kysely@0.28.9)(pg@8.16.3))(next@16.1.0(@opentelemetry/api@1.9.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(pg@8.16.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.0.15)
@@ -107,6 +125,9 @@ importers:
       recharts:
         specifier: 2.15.4
         version: 2.15.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      remark-gfm:
+        specifier: ^4.0.1
+        version: 4.0.1
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -122,6 +143,9 @@ importers:
       zod:
         specifier: ^4.2.1
         version: 4.2.1
+      zustand:
+        specifier: ^5.0.9
+        version: 5.0.9(@types/react@19.2.7)(react@19.2.3)(use-sync-external-store@1.6.0(react@19.2.3))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.1.18
