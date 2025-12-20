@@ -4,6 +4,8 @@ packages:
   - apps/*
 
 onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - '@swc/core'
   - '@tailwindcss/oxide@4.1.17'
   - esbuild@0.25.12
   - esbuild@0.27.1
