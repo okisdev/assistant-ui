@@ -38,31 +38,44 @@ export const Thread: FC<ThreadProps> = ({ welcomeMessage }) => {
   useAutoGenerateTitle();
 
   return (
-    <ThreadPrimitive.Root className="flex h-full flex-col">
+    <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col">
+      <AssistantIf condition={({ thread }) => !thread.isEmpty}>
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-linear-to-b from-background via-60% via-background/80 to-transparent dark:via-50%" />
+      </AssistantIf>
+
       <ThreadPrimitive.Viewport
         turnAnchor="top"
-        className="relative flex flex-1 flex-col items-center overflow-y-auto overflow-x-hidden px-4"
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto scroll-smooth px-4"
       >
-        <div className="flex min-h-full w-full max-w-2xl flex-1 flex-col">
-          <AssistantIf condition={({ thread }) => thread.isEmpty}>
-            <ThreadWelcome message={welcomeMessage} />
-          </AssistantIf>
+        <AssistantIf condition={({ thread }) => thread.isEmpty}>
+          <ThreadWelcome message={welcomeMessage} />
+        </AssistantIf>
 
-          <AssistantIf condition={({ thread }) => !thread.isEmpty}>
-            <ThreadPrimitive.Messages
-              components={{
-                UserMessage,
-                EditComposer,
-                AssistantMessage,
-              }}
-            />
+        <AssistantIf condition={({ thread }) => !thread.isEmpty}>
+          <div className="h-8 shrink-0" />
+        </AssistantIf>
 
-            <ThreadPrimitive.ViewportFooter className="sticky bottom-0 mt-auto w-full bg-background pt-2 pb-4">
-              <ThreadScrollToBottom />
-              <Composer />
-            </ThreadPrimitive.ViewportFooter>
-          </AssistantIf>
+        <div className="mx-auto w-full max-w-2xl">
+          <ThreadPrimitive.Messages
+            components={{
+              UserMessage,
+              EditComposer,
+              AssistantMessage,
+            }}
+          />
         </div>
+
+        <ThreadPrimitive.ViewportFooter className="sticky bottom-0 mx-auto mt-auto w-full max-w-2xl bg-background pt-2 pb-4">
+          <AssistantIf condition={({ thread }) => !thread.isEmpty}>
+            <div className="-top-12 pointer-events-none absolute inset-x-0 h-12 bg-linear-to-t from-background to-transparent" />
+          </AssistantIf>
+          <ThreadScrollToBottom />
+          <AssistantIf condition={({ thread }) => !thread.isEmpty}>
+            <div className="fade-in slide-in-from-bottom-4 animate-in duration-300">
+              <Composer />
+            </div>
+          </AssistantIf>
+        </ThreadPrimitive.ViewportFooter>
       </ThreadPrimitive.Viewport>
     </ThreadPrimitive.Root>
   );
@@ -88,11 +101,11 @@ type ThreadWelcomeProps = {
 
 const ThreadWelcome: FC<ThreadWelcomeProps> = ({ message }) => {
   return (
-    <div className="flex w-full flex-1 flex-col items-center justify-center gap-8 pb-12">
-      <h1 className="text-center font-medium text-3xl tracking-tight">
+    <div className="fade-in mx-auto flex min-h-full w-full max-w-2xl animate-in flex-col items-center justify-center gap-8 pb-20 duration-300">
+      <h1 className="fade-in slide-in-from-bottom-2 animate-in text-center font-medium text-3xl tracking-tight duration-500">
         {message || "What can I help you with?"}
       </h1>
-      <div className="w-full">
+      <div className="fade-in slide-in-from-bottom-4 w-full animate-in fill-mode-both delay-150 duration-500">
         <Composer />
       </div>
     </div>
@@ -148,7 +161,10 @@ const AssistantMessage: FC = () => {
   });
 
   return (
-    <MessagePrimitive.Root className="py-4" data-role="assistant">
+    <MessagePrimitive.Root
+      className="fade-in slide-in-from-bottom-2 animate-in py-4 duration-300"
+      data-role="assistant"
+    >
       {isLoading ? (
         <div className="flex items-center gap-2 text-muted-foreground">
           <LoaderIcon className="size-4 animate-spin" />
@@ -209,7 +225,10 @@ const AssistantActionBar: FC = () => {
 
 const UserMessage: FC = () => {
   return (
-    <MessagePrimitive.Root className="flex justify-end py-4" data-role="user">
+    <MessagePrimitive.Root
+      className="fade-in slide-in-from-bottom-2 flex animate-in justify-end py-4 duration-300"
+      data-role="user"
+    >
       <div className="relative max-w-[85%]">
         <div className="rounded-2xl bg-muted px-4 py-2.5 text-foreground">
           <MessagePrimitive.Parts />

@@ -13,7 +13,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const { state } = useSidebar();
 
   return (
-    <SidebarInset>
+    <SidebarInset className="h-svh min-h-svh w-[calc(100dvw-var(--sidebar-width))] overflow-hidden">
       <header className="flex h-12 shrink-0 items-center px-4">
         <SidebarTrigger
           className={cn(
@@ -24,7 +24,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
           )}
         />
       </header>
-      <main className="flex flex-1 flex-col">{children}</main>
+      <main className="flex min-h-0 flex-1 flex-col">{children}</main>
     </SidebarInset>
   );
 }

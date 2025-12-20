@@ -48,7 +48,18 @@ export const SidebarThreadList: FC = () => {
           <AssistantIf condition={({ threads }) => threads.isLoading}>
             <ThreadListSkeleton />
           </AssistantIf>
-          <AssistantIf condition={({ threads }) => !threads.isLoading}>
+          <AssistantIf
+            condition={({ threads }) =>
+              !threads.isLoading && threads.threadIds.length === 0
+            }
+          >
+            <ThreadListEmpty />
+          </AssistantIf>
+          <AssistantIf
+            condition={({ threads }) =>
+              !threads.isLoading && threads.threadIds.length > 0
+            }
+          >
             <SidebarMenu>
               <ThreadListPrimitive.Items
                 components={{ ThreadListItem: SidebarThreadListItem }}
@@ -72,6 +83,14 @@ const ThreadListSkeleton: FC = () => {
         </SidebarMenuItem>
       ))}
     </SidebarMenu>
+  );
+};
+
+const ThreadListEmpty: FC = () => {
+  return (
+    <div className="px-2 py-4 text-center text-muted-foreground text-sm">
+      No conversations yet
+    </div>
   );
 };
 

@@ -1,4 +1,11 @@
-import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  index,
+  jsonb,
+} from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -72,4 +79,43 @@ export const verification = pgTable(
       .notNull(),
   },
   (table) => [index("verification_identifier_idx").on(table.identifier)],
+);
+
+export const chat = pgTable(
+  "chat",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    remoteId: text("remote_id"),
+    title: text("title"),
+    status: text("status").notNull().default("regular"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [index("chat_userId_idx").on(table.userId)],
+);
+
+export const message = pgTable(
+  "message",
+  {
+    id: text("id").primaryKey(),
+    chatId: text("chat_id")
+      .notNull()
+      .references(() => chat.id, { onDelete: "cascade" }),
+    parentId: text("parent_id"),
+    role: text("role").notNull(),
+    content: jsonb("content").notNull(),
+    status: jsonb("status"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("message_chatId_idx").on(table.chatId),
+    index("message_parentId_idx").on(table.parentId),
+  ],
 );
