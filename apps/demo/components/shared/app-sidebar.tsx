@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   MessagesSquare,
   Plus,
-  Settings,
   LogOut,
   ChevronsUpDown,
   Sparkles,
@@ -24,6 +23,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -58,12 +58,17 @@ export function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="default" asChild>
-              <Link href="/" className="flex items-center gap-2">
-                <MessagesSquare className="size-4" />
-                <span className="truncate font-medium">assistant-ui demo</span>
-              </Link>
-            </SidebarMenuButton>
+            <div className="flex w-full items-center justify-between">
+              <SidebarMenuButton size="default" asChild className="flex-1">
+                <Link href="/" className="flex items-center gap-2">
+                  <MessagesSquare className="size-4" />
+                  <span className="truncate font-medium">
+                    assistant-ui demo
+                  </span>
+                </Link>
+              </SidebarMenuButton>
+              <SidebarTrigger className="w-8 shrink-0 opacity-100 transition-all duration-200 group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0" />
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
@@ -74,7 +79,7 @@ export function AppSidebar() {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <Link href="/chat">
+                  <Link href="/">
                     <Plus />
                     <span>New Chat</span>
                   </Link>
@@ -142,12 +147,6 @@ export function AppSidebar() {
                   <Link href="/account" className="cursor-pointer">
                     <User className="mr-2 size-4" />
                     Account
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings" className="cursor-pointer">
-                    <Settings className="mr-2 size-4" />
-                    Settings
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

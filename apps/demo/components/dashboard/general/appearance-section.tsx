@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 
 import { cn } from "@/lib/utils";
@@ -81,7 +80,7 @@ function ThemeOption({
   );
 }
 
-function ThemeSkeleton() {
+function _ThemeSkeleton() {
   return (
     <div className="flex gap-4">
       {["system", "light", "dark"].map((key) => (
@@ -95,12 +94,7 @@ function ThemeSkeleton() {
 }
 
 export function AppearanceSection() {
-  const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const themeOptions: { value: ThemeValue; label: string }[] = [
     { value: "system", label: "System" },
@@ -112,21 +106,17 @@ export function AppearanceSection() {
     <div className="flex flex-col gap-4">
       <h1 className="font-medium text-xl tracking-tight">Appearance</h1>
 
-      {mounted ? (
-        <div className="flex gap-4">
-          {themeOptions.map((option) => (
-            <ThemeOption
-              key={option.value}
-              value={option.value}
-              label={option.label}
-              selected={theme === option.value}
-              onSelect={() => setTheme(option.value)}
-            />
-          ))}
-        </div>
-      ) : (
-        <ThemeSkeleton />
-      )}
+      <div className="flex gap-4">
+        {themeOptions.map((option) => (
+          <ThemeOption
+            key={option.value}
+            value={option.value}
+            label={option.label}
+            selected={theme === option.value}
+            onSelect={() => setTheme(option.value)}
+          />
+        ))}
+      </div>
     </div>
   );
 }

@@ -2,16 +2,27 @@
 
 import { ArrowRight } from "lucide-react";
 
+import { authClient } from "@/lib/auth.client";
+import { api } from "@/utils/trpc/client";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/shared/app-layout";
 
 export function HomeAuthenticatedPage() {
+  const { data: session } = authClient.useSession();
+  const { data: profile } = api.user.getProfile.useQuery(undefined, {
+    enabled: !!session?.user,
+  });
+
+  const displayName = profile?.nickname || profile?.name;
+
   return (
     <AppLayout>
       <div className="flex flex-1 flex-col items-center justify-center px-4">
         <div className="flex w-full max-w-2xl flex-col items-center gap-8">
           <h1 className="text-center font-medium text-3xl tracking-tight">
-            What can I help you with?
+            {displayName
+              ? `What can I help you with, ${displayName}?`
+              : "What can I help you with?"}
           </h1>
 
           <div className="w-full rounded-2xl bg-muted/50 p-4">

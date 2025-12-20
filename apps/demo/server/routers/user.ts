@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 
-import { user } from "@/database/schema";
+import { user, account } from "@/database/schema";
 import { workTypeOptions } from "@/lib/constants";
 import { protectedProcedure, createTRPCRouter } from "../trpc";
 
@@ -44,6 +44,60 @@ export const userRouter = createTRPCRouter({
           workType: input.workType,
         })
         .where(eq(user.id, ctx.session.user.id));
+
+      return { success: true };
+    }),
+
+  getConnectedAccounts: protectedProcedure.query(async ({ ctx }) => {
+    const accounts = await ctx.db
+      .select({
+        id: account.id,
+        providerId: account.providerId,
+        accountId: account.accountId,
+        createdAt: account.createdAt,
+      })
+      .from(account)
+      .where(
+        and(
+          eq(account.userId, ctx.session.user.id),
+          ne(account.providerId, "credential"),
+        ),
+      );
+
+    return accounts;
+  }),
+
+  unlinkAccount: protectedProcedure
+    .input(z.object({ providerId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // Check if user has other login methods before unlinking
+      const userAccounts = await ctx.db
+        .select({ providerId: account.providerId })
+        .from(account)
+        .where(eq(account.userId, ctx.session.user.id));
+
+      const hasCredential = userAccounts.some(
+        (a) => a.providerId === "credential",
+      );
+      const oauthAccounts = userAccounts.filter(
+        (a) => a.providerId !== "credential",
+      );
+
+      // Prevent unlinking if it's the only login method
+      if (!hasCredential && oauthAccounts.length <= 1) {
+        throw new Error(
+          "Cannot unlink the only login method. Add a password or another provider first.",
+        );
+      }
+
+      await ctx.db
+        .delete(account)
+        .where(
+          and(
+            eq(account.userId, ctx.session.user.id),
+            eq(account.providerId, input.providerId),
+          ),
+        );
 
       return { success: true };
     }),
