@@ -1,5 +1,6 @@
 import { NextIntlClientProvider } from "next-intl";
 import { TRPCReactProvider } from "@/utils/trpc/client";
+import { ThemeProvider } from "next-themes";
 
 export default function RootProvider({
   children,
@@ -8,7 +9,16 @@ export default function RootProvider({
 }>) {
   return (
     <NextIntlClientProvider>
-      <TRPCReactProvider>{children}</TRPCReactProvider>
+      <TRPCReactProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          disableTransitionOnChange
+          value={{ light: "light", dark: "dark" }}
+        >
+          {children}
+        </ThemeProvider>
+      </TRPCReactProvider>
     </NextIntlClientProvider>
   );
 }

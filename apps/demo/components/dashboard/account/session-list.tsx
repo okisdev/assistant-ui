@@ -7,11 +7,12 @@ import {
   Smartphone,
   Globe,
   Trash2,
-  RefreshCw,
   LogOut,
   Loader2,
+  MoreVertical,
 } from "lucide-react";
 import { toast } from "sonner";
+import type { Session } from "better-auth";
 
 import { authClient } from "@/lib/auth.client";
 import { Button } from "@/components/ui/button";
@@ -27,50 +28,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
-type Session = {
-  id: string;
-  token: string;
-  createdAt: Date;
-  updatedAt: Date;
-  expiresAt: Date;
-  ipAddress?: string | null;
-  userAgent?: string | null;
-};
-
-type DeviceType = "desktop" | "mobile" | "tablet";
-
-function parseUserAgent(userAgent: string | null | undefined): {
-  browser: string;
-  os: string;
-  device: DeviceType;
-} {
-  if (!userAgent) {
-    return { browser: "Unknown", os: "Unknown", device: "desktop" };
-  }
-
-  const ua = userAgent.toLowerCase();
-
-  let browser = "Unknown";
-  if (ua.includes("firefox")) browser = "Firefox";
-  else if (ua.includes("edg")) browser = "Edge";
-  else if (ua.includes("chrome")) browser = "Chrome";
-  else if (ua.includes("safari")) browser = "Safari";
-  else if (ua.includes("opera") || ua.includes("opr")) browser = "Opera";
-
-  let os = "Unknown";
-  if (ua.includes("windows")) os = "Windows";
-  else if (ua.includes("mac")) os = "macOS";
-  else if (ua.includes("linux")) os = "Linux";
-  else if (ua.includes("android")) os = "Android";
-  else if (ua.includes("iphone") || ua.includes("ipad")) os = "iOS";
-
-  let device: DeviceType = "desktop";
-  if (ua.includes("mobile")) device = "mobile";
-  else if (ua.includes("tablet") || ua.includes("ipad")) device = "tablet";
-
-  return { browser, os, device };
-}
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { type DeviceType, parseUserAgent } from "@/lib/user-agent";
 
 function DeviceIcon({ device }: { device: DeviceType }) {
   switch (device) {
@@ -84,7 +48,7 @@ function DeviceIcon({ device }: { device: DeviceType }) {
 
 function SessionSkeleton() {
   return (
-    <div className="flex items-center gap-4 py-4">
+    <div className="flex items-center gap-4 rounded-lg bg-muted/30 px-4 py-3">
       <div className="size-10 animate-pulse rounded-full bg-muted" />
       <div className="flex-1 space-y-2">
         <div className="h-4 w-40 animate-pulse rounded bg-muted" />
@@ -108,7 +72,7 @@ function SessionItem({
   const { browser, os, device } = parseUserAgent(session.userAgent);
 
   return (
-    <div className="flex items-center gap-4 py-4">
+    <div className="flex items-center gap-4 rounded-lg bg-muted/30 px-4 py-3">
       <div className="flex size-10 items-center justify-center rounded-full bg-muted/50">
         <DeviceIcon device={device} />
       </div>
@@ -238,34 +202,35 @@ export function SessionList() {
   const otherSessions = sessions.filter((s) => s.token !== currentSessionToken);
 
   return (
-    <>
-      <div className="mb-6 flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={fetchSessions}
-          disabled={isLoading}
-        >
-          <RefreshCw className={`size-4 ${isLoading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h1 className="font-medium text-xl tracking-tight">Active Sessions</h1>
+
         {otherSessions.length > 0 && (
           <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={isRevokingAll}
-                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-              >
-                {isRevokingAll ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <LogOut className="size-4" />
-                )}
-                Sign out all other
-              </Button>
-            </AlertDialogTrigger>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-muted-foreground data-[state=open]:bg-muted"
+                >
+                  {isRevokingAll ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <MoreVertical className="size-4" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem className="text-destructive focus:text-destructive">
+                    <LogOut className="size-4" />
+                    Sign out all other
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>
@@ -287,7 +252,7 @@ export function SessionList() {
         )}
       </div>
 
-      <div className="divide-y">
+      <div className="flex flex-col gap-2">
         {isLoading ? (
           <>
             <SessionSkeleton />
@@ -310,6 +275,6 @@ export function SessionList() {
           ))
         )}
       </div>
-    </>
+    </div>
   );
 }
