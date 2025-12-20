@@ -12,4 +12,24 @@ export const auth = betterAuth({
     enabled: true,
     autoSignIn: true,
   },
+  rateLimit: {
+    enabled: true,
+    window: 60,
+    max: 100,
+    storage: "memory",
+    customRules: {
+      "/auth/*": {
+        window: 60,
+        max: 5,
+      },
+      "/forgot-password": {
+        window: 60,
+        max: 3,
+      },
+      "/reset-password": {
+        window: 60,
+        max: 5,
+      },
+    },
+  },
 });

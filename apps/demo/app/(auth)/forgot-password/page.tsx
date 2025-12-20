@@ -36,6 +36,10 @@ export default function ForgotPasswordPage() {
       });
 
       if (result.error) {
+        if (result.error.status === 429) {
+          setError("Too many attempts. Please try again later.");
+          return;
+        }
         setError(result.error.message ?? "Failed to send reset email");
         return;
       }
