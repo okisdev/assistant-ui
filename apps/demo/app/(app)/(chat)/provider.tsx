@@ -12,7 +12,6 @@ import {
 } from "@assistant-ui/react";
 import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
 import { createAssistantStream } from "assistant-stream";
-import { authClient } from "@/lib/auth.client";
 import { api } from "@/utils/trpc/client";
 import {
   DualStorageHistoryAdapter,
@@ -78,13 +77,10 @@ function HistoryProvider({ children }: { children?: ReactNode }) {
   );
 }
 
-function useDatabaseThreadListAdapter(): RemoteThreadListAdapter | null {
-  const { data: session } = authClient.useSession();
+function useDatabaseThreadListAdapter(): RemoteThreadListAdapter {
   const utils = api.useUtils();
 
   return useMemo(() => {
-    if (!session?.user?.id) return null;
-
     const adapter: RemoteThreadListAdapter = {
       async list() {
         const chats = await utils.chat.list.fetch();
@@ -215,7 +211,7 @@ function useDatabaseThreadListAdapter(): RemoteThreadListAdapter | null {
     };
 
     return adapter;
-  }, [session?.user?.id, utils]);
+  }, [utils]);
 }
 
 function RuntimeProviderInner({
@@ -239,14 +235,6 @@ function RuntimeProviderInner({
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const adapter = useDatabaseThreadListAdapter();
-
-  if (!adapter) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
-      </div>
-    );
-  }
 
   return (
     <RuntimeProviderInner adapter={adapter}>{children}</RuntimeProviderInner>

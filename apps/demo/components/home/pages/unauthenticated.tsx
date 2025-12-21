@@ -1,10 +1,16 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/home/components/header";
+import { AuthDialog } from "@/components/auth/auth-dialog";
 
 export function HomeUnauthenticatedPage() {
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <Header />
@@ -21,8 +27,13 @@ export function HomeUnauthenticatedPage() {
                 type="text"
                 placeholder="Ask anything..."
                 className="flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
+                onFocus={() => setAuthDialogOpen(true)}
               />
-              <Button size="icon" className="shrink-0 rounded-full">
+              <Button
+                size="icon"
+                className="shrink-0 rounded-full"
+                onClick={() => setAuthDialogOpen(true)}
+              >
                 <ArrowRight className="size-4" />
               </Button>
             </div>
@@ -44,6 +55,8 @@ export function HomeUnauthenticatedPage() {
       <footer className="px-6 py-4 text-center text-muted-foreground text-xs">
         Built with assistant-ui — the UX of ChatGPT in your own app.
       </footer>
+
+      <AuthDialog open={authDialogOpen} onOpenChange={setAuthDialogOpen} />
     </div>
   );
 }

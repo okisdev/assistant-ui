@@ -2,7 +2,6 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
-import { AppLayout } from "@/components/shared/app-layout";
 import { DashboardNav } from "@/components/dashboard/nav";
 import { DashboardHeader } from "@/components/dashboard/header";
 
@@ -20,7 +19,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <AppLayout>
+    <div className="flex min-h-svh flex-col">
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4">
         <DashboardHeader />
         <div className="flex flex-1">
@@ -30,6 +29,6 @@ export default async function DashboardLayout({
           <main className="flex flex-1 flex-col">{children}</main>
         </div>
       </div>
-    </AppLayout>
+    </div>
   );
 }

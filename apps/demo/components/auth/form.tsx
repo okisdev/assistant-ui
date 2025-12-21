@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import Link from "next/link";
 
 import { authClient } from "@/lib/auth.client";
 import { api } from "@/utils/trpc/client";
@@ -25,7 +25,7 @@ import { GitHub } from "@/components/icons/github";
 import { Google } from "@/components/icons/google";
 
 const emailSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
+  email: z.email("Please enter a valid email address"),
 });
 
 const credentialsSchema = z.object({
@@ -37,7 +37,11 @@ const credentialsSchema = z.object({
 type EmailFormValues = z.infer<typeof emailSchema>;
 type CredentialsFormValues = z.infer<typeof credentialsSchema>;
 
-export function AuthForm() {
+interface AuthFormContentProps {
+  onSuccess?: () => void;
+}
+
+export function AuthForm({ onSuccess }: AuthFormContentProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<string | null>(null);
@@ -110,7 +114,6 @@ export function AuthForm() {
 
     try {
       if (isNewUser) {
-        // Register new user
         const result = await authClient.signUp.email({
           name: values.name ?? "",
           email: values.email,
@@ -126,19 +129,16 @@ export function AuthForm() {
           return;
         }
       } else {
-        // Try to sign in
         const result = await authClient.signIn.email({
           email: values.email,
           password: values.password,
         });
 
         if (result.error) {
-          // Handle rate limit
           if (result.error.status === 429) {
             setError("Too many attempts. Please try again later.");
             return;
           }
-          // If user not found, switch to register mode
           if (
             result.error.code === "USER_NOT_FOUND" ||
             result.error.message?.toLowerCase().includes("user not found")
@@ -152,6 +152,7 @@ export function AuthForm() {
         }
       }
 
+      onSuccess?.();
       router.push("/");
       router.refresh();
     } catch {
@@ -162,179 +163,140 @@ export function AuthForm() {
   };
 
   return (
-    <div className="flex min-h-svh items-center justify-center px-4">
-      <div className="w-full max-w-sm space-y-8">
-        <div className="space-y-2 text-center">
-          <h1 className="font-semibold text-2xl tracking-tight">
-            {isNewUser ? "Create your account" : "Continue the conversation"}
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            {isNewUser
-              ? "Build AI-powered chat experiences"
-              : "Your assistant is waiting"}
-          </p>
-        </div>
+    <div className="space-y-8">
+      <div className="space-y-2 text-center">
+        <h1 className="font-semibold text-xl tracking-tight">
+          {isNewUser ? "Create your account" : "Continue the conversation"}
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          {isNewUser
+            ? "Build AI-powered chat experiences"
+            : "Your assistant is waiting"}
+        </p>
+      </div>
 
-        {step === "initial" ? (
-          <>
-            <div className="grid gap-3">
-              <Button
-                variant="outline"
-                className="w-full"
-                disabled={!!isLoading}
-                onClick={() => handleSocialLogin("github")}
-              >
-                {isLoading === "github" ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <GitHub className="size-4" />
-                )}
-                Continue with GitHub
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full"
-                disabled={!!isLoading}
-                onClick={() => handleSocialLogin("google")}
-              >
-                {isLoading === "google" ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <Google className="size-4" />
-                )}
-                Continue with Google
-              </Button>
+      {step === "initial" ? (
+        <>
+          <div className="grid gap-3">
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={!!isLoading}
+              onClick={() => handleSocialLogin("github")}
+            >
+              {isLoading === "github" ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <GitHub className="size-4" />
+              )}
+              Continue with GitHub
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={!!isLoading}
+              onClick={() => handleSocialLogin("google")}
+            >
+              {isLoading === "google" ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <Google className="size-4" />
+              )}
+              Continue with Google
+            </Button>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <Separator />
             </div>
+            <div className="relative flex justify-center">
+              <span className="bg-background px-3 text-muted-foreground text-xs">
+                or
+              </span>
+            </div>
+          </div>
 
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <Separator />
-              </div>
-              <div className="relative flex justify-center">
-                <span className="bg-background px-3 text-muted-foreground text-xs">
-                  or
+          <Form {...emailForm}>
+            <form
+              onSubmit={emailForm.handleSubmit(handleEmailContinue)}
+              className="space-y-4"
+            >
+              <FormField
+                control={emailForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="you@example.com"
+                        autoComplete="email"
+                        disabled={!!isLoading}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {error && (
+                <p className="text-center text-destructive text-sm">{error}</p>
+              )}
+
+              <Button
+                type="submit"
+                variant="secondary"
+                className="w-full"
+                disabled={!!isLoading}
+              >
+                {isLoading === "email" && <Loader2 className="animate-spin" />}
+                Continue with email
+              </Button>
+            </form>
+          </Form>
+        </>
+      ) : (
+        <>
+          <div className="space-y-4">
+            <button
+              type="button"
+              onClick={handleBack}
+              className="inline-flex items-center gap-1.5 text-muted-foreground text-sm hover:text-foreground"
+            >
+              <ArrowLeft className="size-4" />
+              Back
+            </button>
+
+            <div className="rounded-lg border bg-muted/50 px-4 py-3">
+              <p className="text-sm">
+                <span className="text-muted-foreground">
+                  {isNewUser ? "Creating account for " : "Signing in as "}
                 </span>
-              </div>
+                <span className="font-medium">{confirmedEmail}</span>
+              </p>
             </div>
+          </div>
 
-            <Form {...emailForm}>
-              <form
-                onSubmit={emailForm.handleSubmit(handleEmailContinue)}
-                className="space-y-4"
-              >
-                <FormField
-                  control={emailForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="email"
-                          placeholder="you@example.com"
-                          autoComplete="email"
-                          disabled={!!isLoading}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {error && (
-                  <p className="text-center text-destructive text-sm">
-                    {error}
-                  </p>
-                )}
-
-                <Button
-                  type="submit"
-                  variant="secondary"
-                  className="w-full"
-                  disabled={!!isLoading}
-                >
-                  {isLoading === "email" && (
-                    <Loader2 className="animate-spin" />
-                  )}
-                  Continue with email
-                </Button>
-              </form>
-            </Form>
-          </>
-        ) : (
-          <>
-            <div className="space-y-4">
-              <button
-                type="button"
-                onClick={handleBack}
-                className="inline-flex items-center gap-1.5 text-muted-foreground text-sm hover:text-foreground"
-              >
-                <ArrowLeft className="size-4" />
-                Back
-              </button>
-
-              <div className="rounded-lg border bg-muted/50 px-4 py-3">
-                <p className="text-sm">
-                  <span className="text-muted-foreground">
-                    {isNewUser ? "Creating account for " : "Signing in as "}
-                  </span>
-                  <span className="font-medium">{confirmedEmail}</span>
-                </p>
-              </div>
-            </div>
-
-            <Form {...credentialsForm}>
-              <form
-                onSubmit={credentialsForm.handleSubmit(onSubmit)}
-                className="space-y-4"
-              >
-                {isNewUser && (
-                  <FormField
-                    control={credentialsForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Name</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Your name"
-                            autoComplete="name"
-                            autoFocus
-                            disabled={!!isLoading}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
+          <Form {...credentialsForm}>
+            <form
+              onSubmit={credentialsForm.handleSubmit(onSubmit)}
+              className="space-y-4"
+            >
+              {isNewUser && (
                 <FormField
                   control={credentialsForm.control}
-                  name="password"
+                  name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <div className="flex items-center justify-between">
-                        <FormLabel>Password</FormLabel>
-                        {!isNewUser && confirmedEmail && (
-                          <Link
-                            href={`/forgot-password?email=${encodeURIComponent(confirmedEmail)}`}
-                            className="text-muted-foreground text-sm hover:text-foreground"
-                          >
-                            Forgot?
-                          </Link>
-                        )}
-                      </div>
+                      <FormLabel>Name</FormLabel>
                       <FormControl>
                         <Input
-                          type="password"
-                          placeholder="••••••••"
-                          autoComplete={
-                            isNewUser ? "new-password" : "current-password"
-                          }
-                          autoFocus={!isNewUser}
+                          placeholder="Your name"
+                          autoComplete="name"
+                          autoFocus
                           disabled={!!isLoading}
                           {...field}
                         />
@@ -343,37 +305,68 @@ export function AuthForm() {
                     </FormItem>
                   )}
                 />
+              )}
 
-                {error && (
-                  <p className="text-center text-destructive text-sm">
-                    {error}
-                  </p>
+              <FormField
+                control={credentialsForm.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Password</FormLabel>
+                      {!isNewUser && confirmedEmail && (
+                        <Link
+                          href={`/forgot-password?email=${encodeURIComponent(confirmedEmail)}`}
+                          className="text-muted-foreground text-sm hover:text-foreground"
+                        >
+                          Forgot?
+                        </Link>
+                      )}
+                    </div>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        autoComplete={
+                          isNewUser ? "new-password" : "current-password"
+                        }
+                        autoFocus={!isNewUser}
+                        disabled={!!isLoading}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
+              />
 
-                <Button type="submit" className="w-full" disabled={!!isLoading}>
-                  {isLoading === "credentials" && (
-                    <Loader2 className="animate-spin" />
-                  )}
-                  {isNewUser ? "Create account" : "Sign in"}
-                </Button>
+              {error && (
+                <p className="text-center text-destructive text-sm">{error}</p>
+              )}
 
-                {isNewUser && (
-                  <p className="text-center text-muted-foreground text-sm">
-                    Not your email?{" "}
-                    <button
-                      type="button"
-                      onClick={handleBack}
-                      className="font-medium text-foreground hover:underline"
-                    >
-                      Go back
-                    </button>
-                  </p>
+              <Button type="submit" className="w-full" disabled={!!isLoading}>
+                {isLoading === "credentials" && (
+                  <Loader2 className="animate-spin" />
                 )}
-              </form>
-            </Form>
-          </>
-        )}
-      </div>
+                {isNewUser ? "Create account" : "Sign in"}
+              </Button>
+
+              {isNewUser && (
+                <p className="text-center text-muted-foreground text-sm">
+                  Not your email?{" "}
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    className="font-medium text-foreground hover:underline"
+                  >
+                    Go back
+                  </button>
+                </p>
+              )}
+            </form>
+          </Form>
+        </>
+      )}
     </div>
   );
 }
