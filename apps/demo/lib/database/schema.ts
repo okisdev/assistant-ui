@@ -134,6 +134,10 @@ export const share = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    isPublic: boolean("is_public").default(true).notNull(),
+    snapshotAt: timestamp("snapshot_at"),
+    includeBranches: boolean("include_branches").default(false).notNull(),
+    headMessageId: text("head_message_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [

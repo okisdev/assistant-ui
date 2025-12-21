@@ -226,7 +226,7 @@ const AssistantActionBar: FC = () => {
       <ActionBarPrimitive.FeedbackPositive asChild>
         <TooltipIconButton
           tooltip="Good response"
-          className="data-[submitted]:text-emerald-500"
+          className="data-submitted:text-emerald-500"
         >
           <ThumbsUpIcon />
         </TooltipIconButton>
@@ -234,7 +234,7 @@ const AssistantActionBar: FC = () => {
       <ActionBarPrimitive.FeedbackNegative asChild>
         <TooltipIconButton
           tooltip="Bad response"
-          className="data-[submitted]:text-destructive"
+          className="data-submitted:text-destructive"
         >
           <ThumbsDownIcon />
         </TooltipIconButton>

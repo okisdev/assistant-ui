@@ -1,8 +1,10 @@
 "use client";
 
-import type { FC, ReactNode } from "react";
+import { useState, useMemo, useCallback, type FC, type ReactNode } from "react";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 type TextPart = {
   type: "text";
@@ -20,6 +22,7 @@ type MessageContent = MessagePart[];
 
 export type SharedMessage = {
   id: string;
+  parentId: string | null;
   role: string | null;
   format: string;
   content: unknown;
@@ -29,6 +32,41 @@ export type SharedMessage = {
 type SharedThreadProps = {
   messages: SharedMessage[];
 };
+
+type MessageNode = SharedMessage & {
+  children: MessageNode[];
+};
+
+function buildMessageTree(messages: SharedMessage[]): {
+  roots: MessageNode[];
+  nodeMap: Map<string, MessageNode>;
+} {
+  const nodeMap = new Map<string, MessageNode>();
+  const roots: MessageNode[] = [];
+
+  for (const msg of messages) {
+    nodeMap.set(msg.id, { ...msg, children: [] });
+  }
+
+  for (const msg of messages) {
+    const node = nodeMap.get(msg.id)!;
+    if (msg.parentId && nodeMap.has(msg.parentId)) {
+      const parent = nodeMap.get(msg.parentId)!;
+      parent.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  for (const node of nodeMap.values()) {
+    node.children.sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+  }
+
+  return { roots, nodeMap };
+}
 
 function getMessageRole(message: SharedMessage): string | null {
   if (message.role) {
@@ -47,7 +85,57 @@ function getMessageRole(message: SharedMessage): string | null {
   return null;
 }
 
+type BranchSelections = Map<string, number>;
+
+function getLinearPath(
+  roots: MessageNode[],
+  selections: BranchSelections,
+): MessageNode[] {
+  const path: MessageNode[] = [];
+
+  const rootIndex: number = selections.get("root") ?? 0;
+  let current: MessageNode | undefined = roots[rootIndex] ?? roots[0];
+
+  while (current) {
+    path.push(current);
+
+    if (current.children.length === 0) {
+      break;
+    }
+
+    const childIndex: number = selections.get(current.id) ?? 0;
+    current = current.children[childIndex];
+  }
+
+  return path;
+}
+
 export const SharedThread: FC<SharedThreadProps> = ({ messages }) => {
+  const [branchSelections, setBranchSelections] = useState<BranchSelections>(
+    new Map(),
+  );
+
+  const { roots, nodeMap } = useMemo(
+    () => buildMessageTree(messages),
+    [messages],
+  );
+
+  const currentPath = useMemo(
+    () => getLinearPath(roots, branchSelections),
+    [roots, branchSelections],
+  );
+
+  const handleBranchChange = useCallback(
+    (parentId: string | null, newIndex: number) => {
+      setBranchSelections((prev) => {
+        const next = new Map(prev);
+        next.set(parentId ?? "root", newIndex);
+        return next;
+      });
+    },
+    [],
+  );
+
   if (messages.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center text-muted-foreground">
@@ -64,13 +152,56 @@ export const SharedThread: FC<SharedThreadProps> = ({ messages }) => {
         <div className="h-8 shrink-0" />
 
         <div className="mx-auto w-full max-w-2xl pb-8">
-          {messages.map((message) => {
-            const role = getMessageRole(message);
+          {currentPath.map((node) => {
+            const role = getMessageRole(node);
+            const parentId = node.parentId;
+            let siblings: MessageNode[] = [];
+
+            if (parentId === null) {
+              siblings = roots;
+            } else {
+              const parentNode = nodeMap.get(parentId);
+              if (parentNode) {
+                siblings = parentNode.children;
+              }
+            }
+
+            const hasBranches = siblings.length > 1;
+            const currentBranchIndex = siblings.findIndex(
+              (s) => s.id === node.id,
+            );
+
+            const branchPicker = hasBranches ? (
+              <BranchPicker
+                key={`branch-${node.id}`}
+                currentIndex={currentBranchIndex}
+                totalBranches={siblings.length}
+                onPrev={() =>
+                  handleBranchChange(parentId, currentBranchIndex - 1)
+                }
+                onNext={() =>
+                  handleBranchChange(parentId, currentBranchIndex + 1)
+                }
+              />
+            ) : null;
+
             if (role === "user") {
-              return <UserMessage key={message.id} message={message} />;
+              return (
+                <UserMessage
+                  key={node.id}
+                  message={node}
+                  branchPicker={branchPicker}
+                />
+              );
             }
             if (role === "assistant") {
-              return <AssistantMessage key={message.id} message={message} />;
+              return (
+                <AssistantMessage
+                  key={node.id}
+                  message={node}
+                  branchPicker={branchPicker}
+                />
+              );
             }
             return null;
           })}
@@ -80,7 +211,52 @@ export const SharedThread: FC<SharedThreadProps> = ({ messages }) => {
   );
 };
 
-const AssistantMessage: FC<{ message: SharedMessage }> = ({ message }) => {
+type BranchPickerProps = {
+  currentIndex: number;
+  totalBranches: number;
+  onPrev: () => void;
+  onNext: () => void;
+};
+
+const BranchPicker: FC<BranchPickerProps> = ({
+  currentIndex,
+  totalBranches,
+  onPrev,
+  onNext,
+}) => {
+  return (
+    <div className="inline-flex items-center text-muted-foreground text-xs">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="size-6"
+        onClick={onPrev}
+        disabled={currentIndex === 0}
+      >
+        <ChevronLeftIcon className="size-3.5" />
+      </Button>
+      <span className="min-w-[3ch] text-center font-medium">
+        {currentIndex + 1} / {totalBranches}
+      </span>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="size-6"
+        onClick={onNext}
+        disabled={currentIndex === totalBranches - 1}
+      >
+        <ChevronRightIcon className="size-3.5" />
+      </Button>
+    </div>
+  );
+};
+
+type MessageProps = {
+  message: SharedMessage;
+  branchPicker: ReactNode;
+};
+
+const AssistantMessage: FC<MessageProps> = ({ message, branchPicker }) => {
   const content = parseContent(message);
 
   return (
@@ -88,16 +264,24 @@ const AssistantMessage: FC<{ message: SharedMessage }> = ({ message }) => {
       className="fade-in slide-in-from-bottom-2 animate-in py-4 duration-300"
       data-role="assistant"
     >
-      <div className="text-foreground leading-relaxed">
-        {content.map((part, index) => (
-          <MessagePartRenderer key={index} part={part} />
-        ))}
+      <div className="group/assistant relative">
+        <div className="text-foreground leading-relaxed">
+          {content.map((part, index) => (
+            <MessagePartRenderer key={index} part={part} />
+          ))}
+        </div>
+
+        {branchPicker && (
+          <div className="mt-1 flex items-center opacity-0 transition-opacity group-hover/assistant:opacity-100">
+            {branchPicker}
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-const UserMessage: FC<{ message: SharedMessage }> = ({ message }) => {
+const UserMessage: FC<MessageProps> = ({ message, branchPicker }) => {
   const content = parseContent(message);
 
   return (
@@ -105,12 +289,17 @@ const UserMessage: FC<{ message: SharedMessage }> = ({ message }) => {
       className="fade-in slide-in-from-bottom-2 flex animate-in justify-end py-4 duration-300"
       data-role="user"
     >
-      <div className="relative max-w-[85%]">
+      <div className="group/user relative max-w-[85%]">
         <div className="rounded-2xl bg-muted px-4 py-2.5 text-foreground">
           {content.map((part, index) => (
             <MessagePartRenderer key={index} part={part} />
           ))}
         </div>
+        {branchPicker && (
+          <div className="mt-1 flex justify-end opacity-0 transition-opacity group-hover/user:opacity-100">
+            {branchPicker}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -280,7 +469,6 @@ const InlineText: FC<{ text: string }> = ({ text }) => {
       continue;
     }
 
-    // Bold
     const boldMatch = remaining.match(/\*\*([^*]+)\*\*/);
     if (boldMatch && boldMatch.index !== undefined) {
       if (boldMatch.index > 0) {

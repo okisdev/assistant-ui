@@ -12,6 +12,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +49,11 @@ export function ChatHeaderShare() {
   const [copied, setCopied] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
+  // Create form state
+  const [createIsPublic, setCreateIsPublic] = useState(true);
+  const [createIncludesFuture, setCreateIncludesFuture] = useState(true);
+  const [createIncludeBranches, setCreateIncludeBranches] = useState(false);
+
   const utils = api.useUtils();
 
   const { data: existingShare } = api.share.getByResource.useQuery(
@@ -69,6 +75,20 @@ export function ChatHeaderShare() {
     },
     onError: () => {
       toast.error("Failed to create link");
+    },
+  });
+
+  const updateShareMutation = api.share.update.useMutation({
+    onSuccess: () => {
+      if (chatId) {
+        utils.share.getByResource.invalidate({
+          resourceType: "chat",
+          resourceId: chatId,
+        });
+      }
+    },
+    onError: () => {
+      toast.error("Failed to update");
     },
   });
 
@@ -137,6 +157,33 @@ export function ChatHeaderShare() {
     createShareMutation.mutate({
       resourceType: "chat",
       resourceId: chatId,
+      isPublic: createIsPublic,
+      includesFutureMessages: createIncludesFuture,
+      includeBranches: createIncludeBranches,
+    });
+  };
+
+  const handleTogglePublic = (checked: boolean) => {
+    if (!existingShare) return;
+    updateShareMutation.mutate({
+      id: existingShare.id,
+      isPublic: checked,
+    });
+  };
+
+  const handleToggleFuture = (checked: boolean) => {
+    if (!existingShare) return;
+    updateShareMutation.mutate({
+      id: existingShare.id,
+      includesFutureMessages: checked,
+    });
+  };
+
+  const handleToggleBranches = (checked: boolean) => {
+    if (!existingShare) return;
+    updateShareMutation.mutate({
+      id: existingShare.id,
+      includeBranches: checked,
     });
   };
 
@@ -184,6 +231,57 @@ export function ChatHeaderShare() {
                     <Link2 className="size-4 shrink-0 text-emerald-500" />
                     <p className="min-w-0 truncate text-sm">{shareUrl}</p>
                   </div>
+
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2.5">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm">Public access</span>
+                        <span className="text-muted-foreground text-xs">
+                          {existingShare.isPublic
+                            ? "Anyone with link can view"
+                            : "Link is disabled"}
+                        </span>
+                      </div>
+                      <Switch
+                        checked={existingShare.isPublic}
+                        onCheckedChange={handleTogglePublic}
+                        disabled={updateShareMutation.isPending}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2.5">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm">Include future messages</span>
+                        <span className="text-muted-foreground text-xs">
+                          {existingShare.snapshotAt
+                            ? "Frozen at share time"
+                            : "Shows all messages"}
+                        </span>
+                      </div>
+                      <Switch
+                        checked={!existingShare.snapshotAt}
+                        onCheckedChange={handleToggleFuture}
+                        disabled={updateShareMutation.isPending}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2.5">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm">Include all branches</span>
+                        <span className="text-muted-foreground text-xs">
+                          {existingShare.includeBranches
+                            ? "Shows all conversation paths"
+                            : "Current branch only"}
+                        </span>
+                      </div>
+                      <Switch
+                        checked={existingShare.includeBranches}
+                        onCheckedChange={handleToggleBranches}
+                        disabled={updateShareMutation.isPending}
+                      />
+                    </div>
+                  </div>
+
                   <div className="flex gap-2">
                     <Button
                       size="sm"
@@ -210,9 +308,51 @@ export function ChatHeaderShare() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-3">
-                  <p className="text-muted-foreground text-sm">
-                    Create a public link to share this conversation with anyone.
-                  </p>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2.5">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm">Public access</span>
+                        <span className="text-muted-foreground text-xs">
+                          Anyone with link can view
+                        </span>
+                      </div>
+                      <Switch
+                        checked={createIsPublic}
+                        onCheckedChange={setCreateIsPublic}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2.5">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm">Include future messages</span>
+                        <span className="text-muted-foreground text-xs">
+                          {createIncludesFuture
+                            ? "Shows all messages"
+                            : "Frozen at share time"}
+                        </span>
+                      </div>
+                      <Switch
+                        checked={createIncludesFuture}
+                        onCheckedChange={setCreateIncludesFuture}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2.5">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm">Include all branches</span>
+                        <span className="text-muted-foreground text-xs">
+                          {createIncludeBranches
+                            ? "Shows all conversation paths"
+                            : "Current branch only"}
+                        </span>
+                      </div>
+                      <Switch
+                        checked={createIncludeBranches}
+                        onCheckedChange={setCreateIncludeBranches}
+                      />
+                    </div>
+                  </div>
+
                   <Button
                     size="sm"
                     className="h-9"

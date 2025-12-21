@@ -1,33 +1,166 @@
 # Demo App Roadmap
 
-## Pending: @assistant-ui/react
+> A full-stack demo showcasing assistant-ui capabilities
 
-### ThreadListItemPrimitive.Trigger Router Support
+## Authentication
 
-`ThreadListItemPrimitiveTrigger` is a button that only calls `switchTo()` in memory. It doesn't support `href` for URL navigation.
+- [x] Email/Password signup & login
+- [x] Social OAuth
+  - [x] GitHub
+  - [ ] Google
+- [x] Password reset flow
+- [ ] Email verification
+- [ ] Two-factor authentication (2FA)
+- [x] Session management
+  - [x] List active sessions
+  - [x] Revoke single session
+  - [x] Revoke all other sessions
 
-**Workaround**: Use `Link` + manual `switchTo()` call.
+## User Profile
 
-**Solution**: Add `onSwitchToThread` / `onSwitchToNewThread` callbacks to `RemoteThreadListAdapter`.
+- [x] Profile editing
+  - [x] Name
+  - [x] Nickname
+  - [x] Work type
+- [x] Connected accounts
+  - [x] Link social accounts
+  - [x] Unlink social accounts
+- [x] Appearance
+  - [x] Light theme
+  - [x] Dark theme
+  - [x] System preference
 
-### ThreadListItemPrimitive Custom Actions Dropdown
+## Chat
 
-Currently only `ThreadListItemPrimitive.Archive` is available. No support for custom dropdown menu (three dots menu) with additional actions like rename, delete, etc.
+- [x] Conversations
+  - [x] Create new thread
+  - [x] Auto-generate title
+  - [x] Rename thread
+  - [x] Archive / Unarchive
+  - [x] Delete thread
+  - [x] Search threads
+  - [ ] Folders / Tags
+  - [ ] Bulk delete
+- [x] Messaging
+  - [x] Send message
+  - [x] Streaming response
+  - [x] Edit user message
+  - [x] Regenerate response
+  - [x] Copy message
+  - [x] Export message as Markdown
+  - [ ] File attachments
+  - [ ] Image upload
+- [x] Branching
+  - [x] Create branches (edit & regenerate)
+  - [x] Branch picker navigation
+  - [x] Branch count display
+- [x] Message persistence
+  - [x] PostgreSQL storage
+  - [x] History adapter
+  - [x] Message format adapter (AI SDK v5)
 
-**Solution**: Add `ThreadListItemPrimitive.Actions` or similar component for custom dropdown menus.
+## AI Features
 
-### Feedback (Upvote/Downvote) Persistence
+- [x] Model integration
+  - [x] GPT-4o via AI SDK
+  - [ ] Model selector (Claude, Gemini, etc.)
+- [ ] Customization
+  - [ ] System prompt editor
+  - [ ] Temperature control
+  - [ ] Max tokens setting
+- [ ] Advanced
+  - [ ] Tool use visualization
+  - [ ] Reasoning steps display
+  - [ ] Token usage display
 
-When using `MessageFormatAdapter` (e.g., AI SDK v5 format) to load message history, `metadata.submittedFeedback` is lost because `MessageStorageEntry` doesn't include a `metadata` field.
+## Feedback
 
-**Root cause**:
-1. `MessageStorageEntry` interface only has `{id, parent_id, format, content}` - no `metadata`
-2. `ThreadHistoryAdapter` has no `update()` method to persist metadata changes after message is saved
-3. `FeedbackAdapter` has no `load()` method to restore historical feedback state
+- [x] Message voting
+  - [x] Upvote (thumbs up)
+  - [x] Downvote (thumbs down)
+- [x] Persistence
+  - [x] Save to database
+  - [x] Sync on page load
+- [ ] Extended feedback
+  - [ ] Text comments
+  - [ ] Feedback analytics
 
-**Workaround**: Use `useSyncFeedback` hook to fetch votes from database and call `submitFeedback()` after messages load.
+## Sharing
 
-**Solution** (any of these):
-- Add `metadata` field to `MessageStorageEntry` interface
-- Add `update()` method to `ThreadHistoryAdapter`
-- Add `load()` method to `FeedbackAdapter`
+- [x] Share links
+  - [x] Create public link
+  - [x] Copy link
+  - [x] Delete link
+- [x] Share options
+  - [x] Public / Private toggle
+  - [x] Include future messages
+  - [x] Include all branches
+- [x] Public view
+  - [x] Read-only thread display
+  - [x] Branch navigation
+  - [x] Sharer info display
+- [x] Management
+  - [x] List all shares
+  - [x] Delete from list
+
+## Data Management
+
+- [x] Export
+  - [x] Single message as Markdown
+  - [x] Full conversation as Markdown
+  - [ ] Export all conversations
+  - [ ] JSON export
+- [ ] Import
+  - [ ] Import conversations
+  - [ ] Import from other platforms
+
+## Multimodal
+
+- [ ] Images
+  - [ ] Image upload & recognition
+  - [ ] Image generation display
+- [ ] Audio
+  - [ ] Voice input (STT)
+  - [ ] Voice output (TTS)
+
+## Dashboard
+
+- [ ] Usage statistics
+  - [ ] API calls
+  - [ ] Token consumption
+  - [ ] Cost tracking
+- [ ] API key management
+
+## UI Components
+
+- [x] Layout
+  - [x] Collapsible sidebar
+  - [x] Mobile responsive
+  - [x] App layout wrapper
+- [x] Thread UI
+  - [x] Welcome message
+  - [x] Scroll to bottom
+  - [x] Loading indicator
+- [x] Message UI
+  - [x] User message bubble
+  - [x] Assistant message
+  - [x] Action bar (copy, edit, reload, feedback)
+- [x] Markdown rendering
+  - [x] GFM support
+  - [x] Syntax highlighting
+  - [x] Code block copy
+  - [x] Tables
+- [x] Feedback
+  - [x] Toast notifications
+  - [x] Confirmation dialogs
+  - [x] Loading skeletons
+
+---
+
+## Upstream Issues
+
+> See [enhancements.md](./enhancements.md) for details
+
+- [ ] `ThreadListItemPrimitive.Trigger` lacks `href` support
+- [ ] `ThreadListItemPrimitive` needs custom actions dropdown
+- [ ] `FeedbackAdapter` loses state with `MessageFormatAdapter`

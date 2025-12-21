@@ -1,0 +1,16 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "env": [
+        "DATABASE_URL",
+        "AUTH_SECRET",
+        "APPLICATION_*",
+        "ASSISTANT_API_KEY",
+        "NEXT_PUBLIC_ASSISTANT_BASE_URL",
+        "OPENAI_API_KEY"
+      ]
+    }
+  }
+}
