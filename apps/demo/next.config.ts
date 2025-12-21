@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
   reactCompiler: {
     compilationMode: "annotation",
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.public.blob.vercel-storage.com",
+      },
+    ],
+  },
   redirects() {
     return [
       {

@@ -31,3 +31,22 @@ When using `MessageFormatAdapter` (e.g., AI SDK v5 format) to load message histo
 - Add `metadata` field to `MessageStorageEntry` interface
 - Add `update()` method to `ThreadHistoryAdapter`
 - Add `load()` method to `FeedbackAdapter`
+
+### Attachment Persistence in AI SDK Format
+
+When using `aiSDKV5FormatAdapter` to store messages, file attachments are explicitly filtered out and not persisted.
+
+**Root cause** (`packages/react-ai-sdk/src/ui/adapters/aiSDKFormatAdapter.ts`):
+```typescript
+encode({ message: { id, parts, ...message } }) {
+  // Filter out FileContentParts until they are supported
+  return {
+    ...message,
+    parts: parts.filter((part) => part.type !== "file"),  // ← Attachments removed
+  };
+}
+```
+
+**Workaround**: Create a custom `MessageFormatAdapter` in the demo that preserves file parts.
+
+**Solution**: Remove the filter in `aiSDKV5FormatAdapter.encode()` or add a configuration option to include file parts.

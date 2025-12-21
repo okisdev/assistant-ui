@@ -19,6 +19,9 @@ export const env = createEnv({
       .string()
       .min(1, "APPLICATION_GOOGLE_CLIENT_SECRET is required"),
     ASSISTANT_API_KEY: z.string().min(1, "ASSISTANT_API_KEY is required"),
+    BLOB_READ_WRITE_TOKEN: z
+      .string()
+      .min(1, "BLOB_READ_WRITE_TOKEN is required"),
   },
   clientPrefix: "NEXT_PUBLIC_",
   client: {
@@ -37,6 +40,7 @@ export const env = createEnv({
       process.env.APPLICATION_GOOGLE_CLIENT_SECRET,
     ASSISTANT_API_KEY: process.env.ASSISTANT_API_KEY,
     NEXT_PUBLIC_ASSISTANT_BASE_URL: process.env.NEXT_PUBLIC_ASSISTANT_BASE_URL,
+    BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN,
   },
   emptyStringAsUndefined: true,
   extends: [vercel()],

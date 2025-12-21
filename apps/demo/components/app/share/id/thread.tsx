@@ -1,10 +1,16 @@
 "use client";
 
 import { useState, useMemo, useCallback, type FC, type ReactNode } from "react";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, FileIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 type TextPart = {
   type: "text";
@@ -16,7 +22,14 @@ type ToolCallPart = {
   toolName?: string;
 };
 
-type MessagePart = TextPart | ToolCallPart | { type: string };
+type FilePart = {
+  type: "file";
+  url: string;
+  mediaType: string;
+  filename?: string;
+};
+
+type MessagePart = TextPart | ToolCallPart | FilePart | { type: string };
 
 type MessageContent = MessagePart[];
 
@@ -145,66 +158,54 @@ export const SharedThread: FC<SharedThreadProps> = ({ messages }) => {
   }
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col">
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-linear-to-b from-background via-60% via-background/80 to-transparent dark:via-50%" />
+    <div className="mx-auto w-full max-w-3xl px-8 py-6">
+      {currentPath.map((node) => {
+        const role = getMessageRole(node);
+        const parentId = node.parentId;
+        let siblings: MessageNode[] = [];
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto scroll-smooth px-4">
-        <div className="mx-auto w-full max-w-3xl px-4 py-6">
-          {currentPath.map((node) => {
-            const role = getMessageRole(node);
-            const parentId = node.parentId;
-            let siblings: MessageNode[] = [];
+        if (parentId === null) {
+          siblings = roots;
+        } else {
+          const parentNode = nodeMap.get(parentId);
+          if (parentNode) {
+            siblings = parentNode.children;
+          }
+        }
 
-            if (parentId === null) {
-              siblings = roots;
-            } else {
-              const parentNode = nodeMap.get(parentId);
-              if (parentNode) {
-                siblings = parentNode.children;
-              }
-            }
+        const hasBranches = siblings.length > 1;
+        const currentBranchIndex = siblings.findIndex((s) => s.id === node.id);
 
-            const hasBranches = siblings.length > 1;
-            const currentBranchIndex = siblings.findIndex(
-              (s) => s.id === node.id,
-            );
+        const branchPicker = hasBranches ? (
+          <BranchPicker
+            key={`branch-${node.id}`}
+            currentIndex={currentBranchIndex}
+            totalBranches={siblings.length}
+            onPrev={() => handleBranchChange(parentId, currentBranchIndex - 1)}
+            onNext={() => handleBranchChange(parentId, currentBranchIndex + 1)}
+          />
+        ) : null;
 
-            const branchPicker = hasBranches ? (
-              <BranchPicker
-                key={`branch-${node.id}`}
-                currentIndex={currentBranchIndex}
-                totalBranches={siblings.length}
-                onPrev={() =>
-                  handleBranchChange(parentId, currentBranchIndex - 1)
-                }
-                onNext={() =>
-                  handleBranchChange(parentId, currentBranchIndex + 1)
-                }
-              />
-            ) : null;
-
-            if (role === "user") {
-              return (
-                <UserMessage
-                  key={node.id}
-                  message={node}
-                  branchPicker={branchPicker}
-                />
-              );
-            }
-            if (role === "assistant") {
-              return (
-                <AssistantMessage
-                  key={node.id}
-                  message={node}
-                  branchPicker={branchPicker}
-                />
-              );
-            }
-            return null;
-          })}
-        </div>
-      </div>
+        if (role === "user") {
+          return (
+            <UserMessage
+              key={node.id}
+              message={node}
+              branchPicker={branchPicker}
+            />
+          );
+        }
+        if (role === "assistant") {
+          return (
+            <AssistantMessage
+              key={node.id}
+              message={node}
+              branchPicker={branchPicker}
+            />
+          );
+        }
+        return null;
+      })}
     </div>
   );
 };
@@ -281,25 +282,86 @@ const AssistantMessage: FC<MessageProps> = ({ message, branchPicker }) => {
 
 const UserMessage: FC<MessageProps> = ({ message, branchPicker }) => {
   const content = parseContent(message);
+  const fileParts = content.filter((part) => part.type === "file");
+  const textParts = content.filter((part) => part.type !== "file");
 
   return (
     <div
-      className="fade-in slide-in-from-bottom-2 flex animate-in justify-end py-4 duration-300"
+      className="fade-in slide-in-from-bottom-2 flex animate-in flex-col items-end gap-2 py-4 duration-300"
       data-role="user"
     >
-      <div className="group/user relative max-w-[85%]">
-        <div className="rounded-2xl bg-muted px-4 py-2.5 text-foreground">
-          {content.map((part, index) => (
-            <MessagePartRenderer key={index} part={part} />
+      {fileParts.length > 0 && (
+        <div className="flex max-w-[85%] flex-wrap justify-end gap-2">
+          {fileParts.map((part, index) => (
+            <UserAttachment key={index} part={part as FilePart} />
           ))}
         </div>
-        {branchPicker && (
-          <div className="mt-1 flex justify-end opacity-0 transition-opacity group-hover/user:opacity-100">
-            {branchPicker}
+      )}
+      {textParts.length > 0 && (
+        <div className="group/user relative max-w-[85%]">
+          <div className="rounded-2xl bg-muted px-4 py-2.5 text-foreground">
+            {textParts.map((part, index) => (
+              <MessagePartRenderer key={index} part={part} />
+            ))}
           </div>
-        )}
-      </div>
+          {branchPicker && (
+            <div className="mt-1 flex justify-end opacity-0 transition-opacity group-hover/user:opacity-100">
+              {branchPicker}
+            </div>
+          )}
+        </div>
+      )}
     </div>
+  );
+};
+
+const UserAttachment: FC<{ part: FilePart }> = ({ part }) => {
+  const isImage = part.mediaType?.startsWith("image/");
+
+  if (isImage) {
+    return (
+      <Dialog>
+        <DialogTrigger asChild>
+          <button
+            type="button"
+            className="cursor-pointer overflow-hidden rounded-lg transition-opacity hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          >
+            <img
+              src={part.url}
+              alt={part.filename ?? "Attached image"}
+              className="max-h-48 max-w-48 rounded-lg object-cover"
+            />
+          </button>
+        </DialogTrigger>
+        <DialogContent
+          className="p-2 sm:max-w-3xl [&>button]:rounded-full [&>button]:bg-foreground/60 [&>button]:p-1 [&>button]:opacity-100 [&>button]:ring-0! [&_svg]:text-background [&>button]:hover:[&_svg]:text-destructive"
+          showCloseButton
+        >
+          <DialogTitle className="sr-only">
+            {part.filename ?? "Image preview"}
+          </DialogTitle>
+          <div className="relative mx-auto flex max-h-[80dvh] w-full items-center justify-center overflow-hidden bg-background">
+            <img
+              src={part.url}
+              alt={part.filename ?? "Attached image"}
+              className="block h-auto max-h-[80vh] w-auto max-w-full object-contain"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <a
+      href={part.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm transition-colors hover:bg-muted"
+    >
+      <FileIcon className="size-4 text-muted-foreground" />
+      <span className="font-medium">{part.filename ?? "Attached file"}</span>
+    </a>
   );
 };
 
@@ -313,6 +375,61 @@ const MessagePartRenderer: FC<{ part: MessagePart }> = ({ part }) => {
       <div className="my-2 rounded-md bg-muted/50 p-3 text-muted-foreground text-sm">
         <span className="font-medium">Tool call:</span>{" "}
         {(part as ToolCallPart).toolName}
+      </div>
+    );
+  }
+
+  if (part.type === "file" && "url" in part) {
+    const filePart = part as FilePart;
+    const isImage = filePart.mediaType?.startsWith("image/");
+
+    if (isImage) {
+      return (
+        <div className="my-2">
+          <Dialog>
+            <DialogTrigger asChild>
+              <button
+                type="button"
+                className="cursor-pointer overflow-hidden rounded-lg transition-opacity hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                <img
+                  src={filePart.url}
+                  alt={filePart.filename ?? "Attached image"}
+                  className="max-h-64 rounded-lg object-contain"
+                />
+              </button>
+            </DialogTrigger>
+            <DialogContent
+              className="p-2 sm:max-w-3xl [&>button]:rounded-full [&>button]:bg-foreground/60 [&>button]:p-1 [&>button]:opacity-100 [&>button]:ring-0! [&_svg]:text-background [&>button]:hover:[&_svg]:text-destructive"
+              showCloseButton
+            >
+              <DialogTitle className="sr-only">
+                {filePart.filename ?? "Image preview"}
+              </DialogTitle>
+              <div className="relative mx-auto flex max-h-[80dvh] w-full items-center justify-center overflow-hidden bg-background">
+                <img
+                  src={filePart.url}
+                  alt={filePart.filename ?? "Attached image"}
+                  className="block h-auto max-h-[80vh] w-auto max-w-full object-contain"
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      );
+    }
+
+    return (
+      <div className="my-2 inline-flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm">
+        <FileIcon className="size-4 text-muted-foreground" />
+        <a
+          href={filePart.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-foreground hover:underline"
+        >
+          {filePart.filename ?? "Attached file"}
+        </a>
       </div>
     );
   }

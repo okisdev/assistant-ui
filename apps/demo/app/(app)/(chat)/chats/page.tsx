@@ -81,7 +81,7 @@ function ChatItem({
   const isArchived = chat.status === "archived";
 
   return (
-    <div className="group flex items-center gap-4 rounded-lg bg-muted/30 px-4 py-3 transition-colors hover:bg-muted/50">
+    <div className="group flex items-center gap-4 rounded-lg bg-muted/30 px-4 py-3 transition-colors hover:bg-muted">
       <Link
         href={`/chat/${chat.id}`}
         onClick={handleClick}

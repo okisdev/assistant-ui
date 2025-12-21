@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -90,7 +91,33 @@ export const SidebarThreadListNew: FC = () => {
   );
 };
 
-export const SidebarThreadList: FC = () => {
+const ThreadListSkeleton: FC = () => {
+  return (
+    <SidebarMenu>
+      {Array.from({ length: 5 }, (_, i) => (
+        <SidebarMenuItem key={i}>
+          <div className="flex h-8 items-center px-2">
+            <Skeleton className="h-4 w-full" />
+          </div>
+        </SidebarMenuItem>
+      ))}
+    </SidebarMenu>
+  );
+};
+
+const ThreadListFallback: FC = () => (
+  <SidebarGroup className="flex-1 overflow-y-auto group-data-[collapsible=icon]:hidden">
+    <SidebarGroupLabel className="flex w-full items-center">
+      Conversations
+      <ChevronDown className="ml-auto" />
+    </SidebarGroupLabel>
+    <SidebarGroupContent>
+      <ThreadListSkeleton />
+    </SidebarGroupContent>
+  </SidebarGroup>
+);
+
+const SidebarThreadListContent: FC = () => {
   return (
     <Collapsible defaultOpen className="group/collapsible">
       <SidebarGroup className="flex-1 overflow-y-auto group-data-[collapsible=icon]:hidden">
@@ -151,19 +178,10 @@ export const SidebarThreadList: FC = () => {
   );
 };
 
-const ThreadListSkeleton: FC = () => {
-  return (
-    <SidebarMenu>
-      {Array.from({ length: 5 }, (_, i) => (
-        <SidebarMenuItem key={i}>
-          <div className="flex h-8 items-center px-2">
-            <Skeleton className="h-4 w-full" />
-          </div>
-        </SidebarMenuItem>
-      ))}
-    </SidebarMenu>
-  );
-};
+export const SidebarThreadList = dynamic(
+  () => Promise.resolve(SidebarThreadListContent),
+  { ssr: false, loading: () => <ThreadListFallback /> },
+);
 
 const ThreadListEmpty: FC = () => {
   return (

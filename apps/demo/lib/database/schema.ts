@@ -6,6 +6,7 @@ import {
   index,
   jsonb,
   primaryKey,
+  integer,
 } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
@@ -164,5 +165,25 @@ export const chatVote = pgTable(
   (table) => [
     primaryKey({ columns: [table.chatId, table.messageId, table.userId] }),
     index("chat_vote_userId_idx").on(table.userId),
+  ],
+);
+
+export const attachment = pgTable(
+  "attachment",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    chatId: text("chat_id").references(() => chat.id, { onDelete: "set null" }),
+    url: text("url").notNull(),
+    pathname: text("pathname").notNull(),
+    contentType: text("content_type").notNull(),
+    size: integer("size").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("attachment_userId_idx").on(table.userId),
+    index("attachment_chatId_idx").on(table.chatId),
   ],
 );

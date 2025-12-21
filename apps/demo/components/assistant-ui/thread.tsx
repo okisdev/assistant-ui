@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  ComposerAddAttachment,
+  ComposerAttachments,
+  UserMessageAttachments,
+} from "@/components/assistant-ui/attachment";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { Button } from "@/components/ui/button";
@@ -117,30 +122,46 @@ const ThreadWelcome: FC<ThreadWelcomeProps> = ({ message }) => {
 };
 
 const Composer: FC = () => {
+  const hasUploadingAttachments = useAssistantState(({ composer }) =>
+    composer.attachments.some((a) => a.status.type === "running"),
+  );
+
   return (
-    <ComposerPrimitive.Root className="w-full rounded-2xl bg-muted/50 p-4">
-      <div className="flex items-center gap-3">
-        <ComposerPrimitive.Input
-          placeholder="Ask anything..."
-          className="flex-1 resize-none bg-transparent text-base outline-none placeholder:text-muted-foreground"
-          rows={1}
-          autoFocus
-        />
-        <AssistantIf condition={({ thread }) => !thread.isRunning}>
-          <ComposerPrimitive.Send asChild>
-            <Button size="icon" className="shrink-0 rounded-full">
-              <ArrowRight className="size-4" />
-            </Button>
-          </ComposerPrimitive.Send>
-        </AssistantIf>
-        <AssistantIf condition={({ thread }) => thread.isRunning}>
-          <ComposerPrimitive.Cancel asChild>
-            <Button size="icon" className="shrink-0 rounded-full">
-              <SquareIcon className="size-3 fill-current" />
-            </Button>
-          </ComposerPrimitive.Cancel>
-        </AssistantIf>
-      </div>
+    <ComposerPrimitive.Root className="w-full rounded-2xl bg-muted/50">
+      <ComposerPrimitive.AttachmentDropzone className="flex w-full flex-col p-4 outline-none data-[dragging=true]:rounded-2xl data-[dragging=true]:bg-accent/30">
+        <ComposerAttachments />
+        <div className="flex items-center gap-3">
+          <ComposerAddAttachment />
+          <ComposerPrimitive.Input
+            placeholder="Ask anything..."
+            className="flex-1 resize-none bg-transparent text-base outline-none placeholder:text-muted-foreground"
+            rows={1}
+            autoFocus
+          />
+          <AssistantIf condition={({ thread }) => !thread.isRunning}>
+            <ComposerPrimitive.Send asChild disabled={hasUploadingAttachments}>
+              <Button
+                size="icon"
+                className="shrink-0 rounded-full"
+                disabled={hasUploadingAttachments}
+              >
+                {hasUploadingAttachments ? (
+                  <LoaderIcon className="size-4 animate-spin" />
+                ) : (
+                  <ArrowRight className="size-4" />
+                )}
+              </Button>
+            </ComposerPrimitive.Send>
+          </AssistantIf>
+          <AssistantIf condition={({ thread }) => thread.isRunning}>
+            <ComposerPrimitive.Cancel asChild>
+              <Button size="icon" className="shrink-0 rounded-full">
+                <SquareIcon className="size-3 fill-current" />
+              </Button>
+            </ComposerPrimitive.Cancel>
+          </AssistantIf>
+        </div>
+      </ComposerPrimitive.AttachmentDropzone>
     </ComposerPrimitive.Root>
   );
 };
@@ -246,9 +267,10 @@ const AssistantActionBar: FC = () => {
 const UserMessage: FC = () => {
   return (
     <MessagePrimitive.Root
-      className="fade-in slide-in-from-bottom-2 flex animate-in justify-end py-4 duration-300"
+      className="fade-in slide-in-from-bottom-2 flex animate-in flex-col items-end gap-2 py-4 duration-300"
       data-role="user"
     >
+      <UserMessageAttachments />
       <div className="relative max-w-[85%]">
         <div className="rounded-2xl bg-muted px-4 py-2.5 text-foreground">
           <MessagePrimitive.Parts />

@@ -7,6 +7,7 @@ import {
   chatMessage,
   share,
   chatVote,
+  attachment,
 } from "./schema";
 
 export const userRelations = relations(user, ({ many }) => ({
@@ -14,6 +15,7 @@ export const userRelations = relations(user, ({ many }) => ({
   accounts: many(account),
   chats: many(chat),
   shares: many(share),
+  attachments: many(attachment),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -36,6 +38,7 @@ export const chatRelations = relations(chat, ({ one, many }) => ({
     references: [user.id],
   }),
   messages: many(chatMessage),
+  attachments: many(attachment),
 }));
 
 export const messageRelations = relations(chatMessage, ({ one }) => ({
@@ -65,5 +68,16 @@ export const voteRelations = relations(chatVote, ({ one }) => ({
   user: one(user, {
     fields: [chatVote.userId],
     references: [user.id],
+  }),
+}));
+
+export const attachmentRelations = relations(attachment, ({ one }) => ({
+  user: one(user, {
+    fields: [attachment.userId],
+    references: [user.id],
+  }),
+  chat: one(chat, {
+    fields: [attachment.chatId],
+    references: [chat.id],
   }),
 }));

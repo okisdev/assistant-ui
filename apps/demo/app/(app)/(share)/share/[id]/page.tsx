@@ -7,12 +7,8 @@ import { api } from "@/utils/trpc/server";
 import { SharedThread } from "@/components/app/share/id/thread";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-type SharePageProps = {
-  params: Promise<{ id: string }>;
-};
-
-export default async function SharePage({ params }: SharePageProps) {
-  const { id } = await params;
+export default async function SharePage(props: PageProps<"/share/[id]">) {
+  const { id } = await props.params;
 
   const data = await api.share.getPublic({ id });
 
@@ -29,8 +25,8 @@ export default async function SharePage({ params }: SharePageProps) {
   const title = resource.chat.title || "Shared Chat";
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm">
+    <div className="flex h-dvh flex-col overflow-hidden bg-background">
+      <header className="shrink-0 bg-background/80 backdrop-blur-sm">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
           <Link
             href="/"
@@ -56,14 +52,17 @@ export default async function SharePage({ params }: SharePageProps) {
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col">
-        <div className="mx-auto w-full max-w-3xl px-4 py-6">
+      <div className="shrink-0">
+        <div className="mx-auto max-w-3xl px-4 py-4">
           <h1 className="font-medium text-lg">{title}</h1>
         </div>
+      </div>
+
+      <main className="min-h-0 flex-1 overflow-y-auto">
         <SharedThread messages={resource.messages} />
       </main>
 
-      <footer className="py-6">
+      <footer className="shrink-0 py-4">
         <div className="mx-auto max-w-3xl px-4">
           <Link
             href="/"

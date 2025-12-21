@@ -14,16 +14,19 @@ import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
 import { createAssistantStream } from "assistant-stream";
 import { api } from "@/utils/trpc/client";
 import {
-  DatabaseHistoryAdapter,
+  DatabaseHistoryAdapterWithAttachments,
   type DbOperations,
 } from "@/lib/adapters/database-history-adapter";
 import { useFeedbackAdapter } from "@/lib/adapters/feedback-adapter";
+import { BlobAttachmentAdapter } from "@/lib/adapters/blob-attachment-adapter";
 
 function HistoryProvider({ children }: { children?: ReactNode }) {
   const threadListItem = useAssistantState(
     ({ threadListItem }) => threadListItem,
   );
   const utils = api.useUtils();
+
+  const remoteId = threadListItem.remoteId;
 
   const db: DbOperations = useMemo(
     () => ({
@@ -57,19 +60,14 @@ function HistoryProvider({ children }: { children?: ReactNode }) {
     [utils],
   );
 
-  const chatId = threadListItem.remoteId;
-
   const history = useMemo(
-    () => (chatId ? new DatabaseHistoryAdapter(chatId, db) : null),
-    [chatId, db],
+    () =>
+      remoteId ? new DatabaseHistoryAdapterWithAttachments(remoteId, db) : null,
+    [remoteId, db],
   );
 
-  if (!history) {
-    return <>{children}</>;
-  }
-
   return (
-    <RuntimeAdapterProvider adapters={{ history }}>
+    <RuntimeAdapterProvider adapters={{ history: history ?? undefined }}>
       {children}
     </RuntimeAdapterProvider>
   );
@@ -161,7 +159,8 @@ function useDatabaseThreadListAdapter(): RemoteThreadListAdapter {
 
 function useCustomChatRuntime() {
   const feedback = useFeedbackAdapter();
-  return useChatRuntime({ adapters: { feedback } });
+  const attachments = useMemo(() => new BlobAttachmentAdapter(), []);
+  return useChatRuntime({ adapters: { feedback, attachments } });
 }
 
 function RuntimeProviderInner({

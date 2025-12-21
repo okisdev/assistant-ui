@@ -18,9 +18,11 @@ import {
   SidebarThreadListNew,
 } from "@/components/shared/sidebar-thread-list";
 import { SidebarUserMenu } from "@/components/shared/sidebar-user-menu";
+import { useAssistantApi } from "@assistant-ui/react";
 
 export function AppSidebar() {
   const router = useRouter();
+  const api = useAssistantApi();
 
   return (
     <Sidebar collapsible="icon" className="border-none">
@@ -30,6 +32,7 @@ export function AppSidebar() {
             <div className="flex w-full items-center justify-between">
               <SidebarMenuButton
                 onClick={() => {
+                  api.threads().switchToNewThread();
                   router.push("/");
                 }}
                 size="default"

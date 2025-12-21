@@ -107,7 +107,9 @@ export const useExternalHistory = <TMessage,>(
   ]);
 
   useEffect(() => {
-    return runtimeRef.current.thread.subscribe(async () => {
+    if (!historyAdapter) return;
+
+    const saveMessages = async () => {
       const { messages, isRunning } = runtimeRef.current.thread.getState();
       if (isRunning) return;
 
@@ -122,13 +124,18 @@ export const useExternalHistory = <TMessage,>(
           historyIds.current.add(message.id);
 
           const parentId = i > 0 ? messages[i - 1]!.id : null;
-          await historyAdapter?.withFormat?.(storageFormatAdapter).append({
+          await historyAdapter.withFormat?.(storageFormatAdapter).append({
             parentId,
             message: getExternalStoreMessages<TMessage>(message)[0]!,
           });
         }
       }
-    });
+    };
+
+    // Immediately save any pending messages when historyAdapter becomes available
+    saveMessages();
+
+    return runtimeRef.current.thread.subscribe(saveMessages);
   }, [historyAdapter, storageFormatAdapter, runtimeRef]);
 
   return isLoading;

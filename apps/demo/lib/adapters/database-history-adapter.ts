@@ -8,6 +8,7 @@ import type {
   MessageFormatRepository,
   MessageStorageEntry,
 } from "@assistant-ui/react";
+import { aiSDKFormatAdapterWithAttachments } from "./ai-sdk-format-adapter";
 
 type ExportedMessageRepositoryItem =
   ExportedMessageRepository["messages"][number];
@@ -152,5 +153,40 @@ export class DatabaseHistoryAdapter implements ThreadHistoryAdapter {
       status: msg.status,
       metadata: msg.metadata,
     });
+  }
+}
+
+/**
+ * A wrapper around DatabaseHistoryAdapter that forces using our custom
+ * aiSDKFormatAdapterWithAttachments instead of the library's default.
+ * This preserves file attachments in message history.
+ */
+export class DatabaseHistoryAdapterWithAttachments
+  implements ThreadHistoryAdapter
+{
+  private inner: DatabaseHistoryAdapter;
+
+  constructor(chatId: string, db: DbOperations) {
+    this.inner = new DatabaseHistoryAdapter(chatId, db);
+  }
+
+  withFormat<TMessage, TStorageFormat>(
+    _formatAdapter: MessageFormatAdapter<TMessage, TStorageFormat>,
+  ): GenericThreadHistoryAdapter<TMessage> {
+    // Ignore the passed formatAdapter and use our custom one that preserves attachments
+    return this.inner.withFormat(
+      aiSDKFormatAdapterWithAttachments as MessageFormatAdapter<
+        TMessage,
+        TStorageFormat
+      >,
+    );
+  }
+
+  async load(): Promise<ExportedMessageRepository> {
+    return this.inner.load();
+  }
+
+  async append(item: ExportedMessageRepositoryItem): Promise<void> {
+    return this.inner.append(item);
   }
 }

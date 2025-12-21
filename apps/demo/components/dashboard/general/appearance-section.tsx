@@ -62,7 +62,7 @@ function ThemeOption({
       onClick={onSelect}
       className={cn(
         "flex flex-col items-center gap-2 rounded-xl p-3 transition-all duration-200",
-        selected ? "bg-muted" : "hover:bg-muted/50",
+        selected ? "bg-muted" : "hover:bg-muted",
       )}
     >
       <div className="h-16 w-24 overflow-hidden rounded-lg shadow-sm">
