@@ -101,7 +101,7 @@ type ThreadWelcomeProps = {
 
 const ThreadWelcome: FC<ThreadWelcomeProps> = ({ message }) => {
   return (
-    <div className="fade-in mx-auto flex min-h-full w-full max-w-2xl animate-in flex-col items-center justify-center gap-8 pb-20 duration-300">
+    <div className="fade-in mx-auto flex w-full max-w-2xl flex-1 animate-in flex-col items-center justify-center gap-8 duration-300">
       <h1 className="fade-in slide-in-from-bottom-2 animate-in text-center font-medium text-3xl tracking-tight duration-500">
         {message || "What can I help you with?"}
       </h1>

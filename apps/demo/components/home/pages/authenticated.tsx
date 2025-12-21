@@ -2,10 +2,17 @@
 
 import { Thread } from "@/components/assistant-ui/thread";
 import { AppLayout } from "@/components/shared/app-layout";
+import {
+  ChatHeaderTitle,
+  ChatHeaderShare,
+} from "@/components/shared/chat-header";
+import { useSyncThreadUrl } from "@/hooks/use-sync-thread-url";
 import { authClient } from "@/lib/auth.client";
 import { api } from "@/utils/trpc/client";
 
 export function HomeAuthenticatedPage() {
+  useSyncThreadUrl();
+
   const { data: session } = authClient.useSession();
   const { data: profile } = api.user.getProfile.useQuery(undefined, {
     enabled: !!session?.user,
@@ -17,7 +24,10 @@ export function HomeAuthenticatedPage() {
     : "What can I help you with?";
 
   return (
-    <AppLayout>
+    <AppLayout
+      headerLeft={<ChatHeaderTitle />}
+      headerRight={<ChatHeaderShare />}
+    >
       <Thread welcomeMessage={welcomeMessage} />
     </AppLayout>
   );

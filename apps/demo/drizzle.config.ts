@@ -7,8 +7,8 @@ config({
 });
 
 export default defineConfig({
-  out: "./database/migrations",
-  schema: "./database/schema.ts",
+  out: "./lib/database/migrations",
+  schema: "./lib/database/schema.ts",
   dialect: "postgresql",
   dbCredentials: {
     url: env.DATABASE_URL,

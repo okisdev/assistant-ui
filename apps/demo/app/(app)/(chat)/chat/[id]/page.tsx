@@ -1,25 +1,16 @@
-"use client";
+import { notFound } from "next/navigation";
 
-import { useEffect } from "react";
-import { useParams } from "next/navigation";
-import { useAssistantApi } from "@assistant-ui/react";
+import { api } from "@/utils/trpc/server";
+import { ChatIdContent } from "@/components/app/chat/id/content";
 
-import { Thread } from "@/components/assistant-ui/thread";
-import { AppLayout } from "@/components/shared/app-layout";
+export default async function ChatPage(props: PageProps<"/chat/[id]">) {
+  const { id } = await props.params;
 
-export default function ChatPage() {
-  const params = useParams<{ id: string }>();
-  const api = useAssistantApi();
+  const chat = await api.chat.get({ id });
 
-  useEffect(() => {
-    if (params.id) {
-      api.threads().switchToThread(params.id);
-    }
-  }, [api, params.id]);
+  if (!chat) {
+    notFound();
+  }
 
-  return (
-    <AppLayout>
-      <Thread />
-    </AppLayout>
-  );
+  return <ChatIdContent chatId={id} />;
 }

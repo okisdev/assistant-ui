@@ -33,6 +33,7 @@ function HistoryProvider({ children }: { children?: ReactNode }) {
           chatId: m.chatId,
           parentId: m.parentId,
           role: m.role,
+          format: m.format,
           content: m.content,
           status: m.status,
           metadata: m.metadata,
@@ -44,6 +45,7 @@ function HistoryProvider({ children }: { children?: ReactNode }) {
         chatId: string;
         parentId: string | null;
         role: string;
+        format: string;
         content: unknown;
         status: unknown;
         metadata: unknown;
@@ -54,10 +56,16 @@ function HistoryProvider({ children }: { children?: ReactNode }) {
     [utils],
   );
 
+  const chatId = threadListItem.remoteId;
+
   const history = useMemo(
-    () => new DatabaseHistoryAdapter(threadListItem.id, db),
-    [threadListItem.id, db],
+    () => (chatId ? new DatabaseHistoryAdapter(chatId, db) : null),
+    [chatId, db],
   );
+
+  if (!history) {
+    return <>{children}</>;
+  }
 
   return (
     <RuntimeAdapterProvider adapters={{ history }}>

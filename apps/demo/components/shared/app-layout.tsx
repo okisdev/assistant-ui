@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
   SidebarInset,
   SidebarProvider,
@@ -9,31 +10,59 @@ import {
 import { AppSidebar } from "@/components/shared/app-sidebar";
 import { cn } from "@/lib/utils";
 
-function AppLayoutContent({ children }: { children: React.ReactNode }) {
+type AppLayoutProps = {
+  children: ReactNode;
+  headerLeft?: ReactNode;
+  headerRight?: ReactNode;
+};
+
+function AppLayoutContent({
+  children,
+  headerLeft,
+  headerRight,
+}: AppLayoutProps) {
   const { state } = useSidebar();
+  const hasHeader = headerLeft || headerRight;
 
   return (
-    <SidebarInset className="h-svh min-h-svh w-[calc(100dvw-var(--sidebar-width))] overflow-hidden">
-      <header className="flex h-12 shrink-0 items-center px-4">
+    <SidebarInset className="relative h-svh min-h-svh w-[calc(100dvw-var(--sidebar-width))] overflow-hidden">
+      <header
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 z-20 flex h-12 items-center gap-2 px-4",
+          hasHeader && "pointer-events-auto",
+        )}
+      >
         <SidebarTrigger
           className={cn(
-            "-ml-1 transition-opacity duration-200",
-            state === "collapsed"
-              ? "opacity-100"
-              : "pointer-events-none opacity-0",
+            "-ml-1 pointer-events-auto transition-opacity duration-200",
+            state === "collapsed" ? "opacity-100" : "opacity-0",
           )}
         />
+        {headerLeft && (
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            {headerLeft}
+          </div>
+        )}
+        {headerRight && (
+          <div className="ml-auto flex items-center gap-2">{headerRight}</div>
+        )}
       </header>
-      <main className="flex min-h-0 flex-1 flex-col">{children}</main>
+      <main className="flex h-full min-h-0 flex-1 flex-col">{children}</main>
     </SidebarInset>
   );
 }
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
+export function AppLayout({
+  children,
+  headerLeft,
+  headerRight,
+}: AppLayoutProps) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <AppLayoutContent>{children}</AppLayoutContent>
+      <AppLayoutContent headerLeft={headerLeft} headerRight={headerRight}>
+        {children}
+      </AppLayoutContent>
     </SidebarProvider>
   );
 }

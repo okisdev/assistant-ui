@@ -108,7 +108,8 @@ export const message = pgTable(
       .notNull()
       .references(() => chat.id, { onDelete: "cascade" }),
     parentId: text("parent_id"),
-    role: text("role").notNull(),
+    role: text("role"),
+    format: text("format").notNull().default("aui/v0"),
     content: jsonb("content").notNull(),
     status: jsonb("status"),
     metadata: jsonb("metadata"),
