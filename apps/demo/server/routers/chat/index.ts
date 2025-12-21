@@ -1,10 +1,13 @@
 import { z } from "zod";
 import { eq, desc, and } from "drizzle-orm";
 
-import { chat, message, share } from "@/lib/database/schema";
-import { protectedProcedure, createTRPCRouter } from "../trpc";
+import { chat, chatMessage, chatVote, share } from "@/lib/database/schema";
+import { protectedProcedure, createTRPCRouter } from "../../trpc";
+import { voteRouter } from "./vote";
 
 export const chatRouter = createTRPCRouter({
+  vote: voteRouter,
+
   list: protectedProcedure.query(async ({ ctx }) => {
     const chats = await ctx.db
       .select({
@@ -122,23 +125,50 @@ export const chatRouter = createTRPCRouter({
         return [];
       }
 
-      const messages = await ctx.db
-        .select({
-          id: message.id,
-          chatId: message.chatId,
-          parentId: message.parentId,
-          role: message.role,
-          format: message.format,
-          content: message.content,
-          status: message.status,
-          metadata: message.metadata,
-          createdAt: message.createdAt,
-        })
-        .from(message)
-        .where(eq(message.chatId, input.chatId))
-        .orderBy(message.createdAt);
+      const [messages, votes] = await Promise.all([
+        ctx.db
+          .select({
+            id: chatMessage.id,
+            chatId: chatMessage.chatId,
+            parentId: chatMessage.parentId,
+            role: chatMessage.role,
+            format: chatMessage.format,
+            content: chatMessage.content,
+            status: chatMessage.status,
+            metadata: chatMessage.metadata,
+            createdAt: chatMessage.createdAt,
+          })
+          .from(chatMessage)
+          .where(eq(chatMessage.chatId, input.chatId))
+          .orderBy(chatMessage.createdAt),
+        ctx.db
+          .select({
+            messageId: chatVote.messageId,
+            type: chatVote.type,
+          })
+          .from(chatVote)
+          .where(
+            and(
+              eq(chatVote.chatId, input.chatId),
+              eq(chatVote.userId, ctx.session.user.id),
+            ),
+          ),
+      ]);
 
-      return messages;
+      const voteMap = Object.fromEntries(
+        votes.map((v) => [v.messageId, v.type]),
+      );
+
+      return messages.map((m) => {
+        const voteType = voteMap[m.id];
+        if (!voteType) return m;
+
+        const metadata = m.metadata as Record<string, unknown> | null;
+        return {
+          ...m,
+          metadata: { ...metadata, submittedFeedback: { type: voteType } },
+        };
+      });
     }),
 
   createMessage: protectedProcedure
@@ -168,7 +198,7 @@ export const chatRouter = createTRPCRouter({
         throw new Error("Chat not found");
       }
 
-      await ctx.db.insert(message).values({
+      await ctx.db.insert(chatMessage).values({
         id: input.id,
         chatId: input.chatId,
         parentId: input.parentId,

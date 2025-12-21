@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Share2, Check, Copy, Link2, Loader2, Unlink } from "lucide-react";
+import { Share2, Check, Copy, Link2, Unlink, Download } from "lucide-react";
 import { useAssistantState } from "@assistant-ui/react";
 import { toast } from "sonner";
 
@@ -11,6 +11,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,8 +24,22 @@ import {
 } from "@/components/ui/alert-dialog";
 import { api } from "@/utils/trpc/client";
 
+function getMessageText(message: {
+  content: readonly { type: string; text?: string }[];
+}): string {
+  return message.content
+    .filter(
+      (part): part is { type: "text"; text: string } =>
+        part.type === "text" && typeof part.text === "string",
+    )
+    .map((part) => part.text)
+    .join("\n\n");
+}
+
 export function ChatHeaderShare() {
   const isEmpty = useAssistantState(({ thread }) => thread.isEmpty);
+  const messages = useAssistantState(({ thread }) => thread.messages);
+  const title = useAssistantState(({ threadListItem }) => threadListItem.title);
   const chatId = useAssistantState(
     ({ threadListItem }) => threadListItem.remoteId,
   );
@@ -35,11 +50,10 @@ export function ChatHeaderShare() {
 
   const utils = api.useUtils();
 
-  const { data: existingShare, isLoading: isLoadingShare } =
-    api.share.getByResource.useQuery(
-      { resourceType: "chat", resourceId: chatId! },
-      { enabled: !!chatId && open },
-    );
+  const { data: existingShare } = api.share.getByResource.useQuery(
+    { resourceType: "chat", resourceId: chatId! },
+    { enabled: !!chatId && open },
+  );
 
   const createShareMutation = api.share.create.useMutation({
     onSuccess: (data) => {
@@ -80,6 +94,45 @@ export function ChatHeaderShare() {
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/share/${existingShare.id}`
     : null;
 
+  const handleExport = () => {
+    const lines: string[] = [];
+
+    if (title) {
+      lines.push(`# ${title}`);
+      lines.push("");
+    }
+
+    for (const message of messages) {
+      const roleLabel = message.role === "user" ? "**User**" : "**Assistant**";
+      const text = getMessageText(message);
+
+      if (text) {
+        lines.push(roleLabel);
+        lines.push("");
+        lines.push(text);
+        lines.push("");
+        lines.push("---");
+        lines.push("");
+      }
+    }
+
+    if (lines.length > 0 && lines.at(-2) === "---") {
+      lines.splice(-2, 2);
+    }
+
+    const markdown = lines.join("\n");
+    const blob = new Blob([markdown], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title || "conversation"}-${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    toast.success("Exported");
+    setOpen(false);
+  };
+
   const handleCreateShare = () => {
     createShareMutation.mutate({
       resourceType: "chat",
@@ -102,73 +155,89 @@ export function ChatHeaderShare() {
     }
   };
 
-  const isLoading =
-    isLoadingShare ||
-    createShareMutation.isPending ||
-    deleteShareMutation.isPending;
-
   return (
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button variant="ghost" size="icon-sm">
             <Share2 className="size-4" />
-            <span className="sr-only">Share</span>
+            <span className="sr-only">Share & Export</span>
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-72 p-3">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : existingShare ? (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
-                  <Link2 className="size-4 text-emerald-500" />
+        <PopoverContent align="end" className="w-80 p-4">
+          <Tabs defaultValue="share" className="gap-4">
+            <TabsList className="w-full">
+              <TabsTrigger value="share" className="flex-1 gap-1.5">
+                <Link2 className="size-3.5" />
+                Share
+              </TabsTrigger>
+              <TabsTrigger value="download" className="flex-1 gap-1.5">
+                <Download className="size-3.5" />
+                Download
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="share">
+              {existingShare ? (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2.5 rounded-lg bg-emerald-500/10 px-3 py-2.5">
+                    <Link2 className="size-4 shrink-0 text-emerald-500" />
+                    <p className="min-w-0 truncate text-sm">{shareUrl}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="h-9 flex-1"
+                      onClick={handleCopyLink}
+                    >
+                      {copied ? (
+                        <Check className="size-4" />
+                      ) : (
+                        <Copy className="size-4" />
+                      )}
+                      {copied ? "Copied" : "Copy link"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 text-muted-foreground hover:text-destructive"
+                      onClick={() => setDeleteDialogOpen(true)}
+                    >
+                      <Unlink className="size-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm">Public link active</p>
-                  <p className="truncate text-muted-foreground text-xs">
-                    {shareUrl}
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <p className="text-muted-foreground text-sm">
+                    Create a public link to share this conversation with anyone.
                   </p>
+                  <Button
+                    size="sm"
+                    className="h-9"
+                    onClick={handleCreateShare}
+                    disabled={createShareMutation.isPending}
+                  >
+                    <Link2 className="size-4" />
+                    Create link
+                  </Button>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" className="flex-1" onClick={handleCopyLink}>
-                  {copied ? (
-                    <Check className="size-4" />
-                  ) : (
-                    <Copy className="size-4" />
-                  )}
-                  {copied ? "Copied" : "Copy link"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setDeleteDialogOpen(true)}
-                  className="text-muted-foreground hover:text-destructive"
-                >
-                  <Unlink className="size-4" />
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
-                  <Link2 className="size-4 text-muted-foreground" />
-                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="download">
+              <div className="flex flex-col gap-3">
                 <p className="text-muted-foreground text-sm">
-                  Create a public link to share this conversation
+                  Export this conversation as a Markdown file.
                 </p>
+                <Button size="sm" className="h-9" onClick={handleExport}>
+                  <Download className="size-4" />
+                  Download .md
+                </Button>
               </div>
-              <Button size="sm" onClick={handleCreateShare}>
-                <Link2 className="size-4" />
-                Create link
-              </Button>
-            </div>
-          )}
+            </TabsContent>
+          </Tabs>
         </PopoverContent>
       </Popover>
 

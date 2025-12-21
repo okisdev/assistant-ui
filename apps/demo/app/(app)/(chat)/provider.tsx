@@ -17,6 +17,7 @@ import {
   DatabaseHistoryAdapter,
   type DbOperations,
 } from "@/lib/adapters/database-history-adapter";
+import { useFeedbackAdapter } from "@/lib/adapters/feedback-adapter";
 
 function HistoryProvider({ children }: { children?: ReactNode }) {
   const threadListItem = useAssistantState(
@@ -158,6 +159,11 @@ function useDatabaseThreadListAdapter(): RemoteThreadListAdapter {
   }, [utils]);
 }
 
+function useCustomChatRuntime() {
+  const feedback = useFeedbackAdapter();
+  return useChatRuntime({ adapters: { feedback } });
+}
+
 function RuntimeProviderInner({
   children,
   adapter,
@@ -166,7 +172,7 @@ function RuntimeProviderInner({
   adapter: RemoteThreadListAdapter;
 }) {
   const runtime = useRemoteThreadListRuntime({
-    runtimeHook: useChatRuntime,
+    runtimeHook: useCustomChatRuntime,
     adapter,
   });
 

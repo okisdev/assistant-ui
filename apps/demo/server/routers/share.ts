@@ -5,7 +5,7 @@ import { nanoid } from "nanoid";
 import {
   share,
   chat,
-  message,
+  chatMessage,
   user,
   type ShareResourceType,
 } from "@/lib/database/schema";
@@ -57,19 +57,19 @@ async function loadResourceData(
 
       const messages = await db
         .select({
-          id: message.id,
-          chatId: message.chatId,
-          parentId: message.parentId,
-          role: message.role,
-          format: message.format,
-          content: message.content,
-          status: message.status,
-          metadata: message.metadata,
-          createdAt: message.createdAt,
+          id: chatMessage.id,
+          chatId: chatMessage.chatId,
+          parentId: chatMessage.parentId,
+          role: chatMessage.role,
+          format: chatMessage.format,
+          content: chatMessage.content,
+          status: chatMessage.status,
+          metadata: chatMessage.metadata,
+          createdAt: chatMessage.createdAt,
         })
-        .from(message)
-        .where(eq(message.chatId, resourceId))
-        .orderBy(message.createdAt);
+        .from(chatMessage)
+        .where(eq(chatMessage.chatId, resourceId))
+        .orderBy(chatMessage.createdAt);
 
       return {
         type: "chat" as const,

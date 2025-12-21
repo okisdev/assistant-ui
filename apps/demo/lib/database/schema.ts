@@ -5,6 +5,7 @@ import {
   boolean,
   index,
   jsonb,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
@@ -101,8 +102,8 @@ export const chat = pgTable(
   (table) => [index("chat_userId_idx").on(table.userId)],
 );
 
-export const message = pgTable(
-  "message",
+export const chatMessage = pgTable(
+  "chat_message",
   {
     id: text("id").primaryKey(),
     chatId: text("chat_id")
@@ -117,8 +118,8 @@ export const message = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
-    index("message_chatId_idx").on(table.chatId),
-    index("message_parentId_idx").on(table.parentId),
+    index("chat_message_chatId_idx").on(table.chatId),
+    index("chat_message_parentId_idx").on(table.parentId),
   ],
 );
 
@@ -138,5 +139,26 @@ export const share = pgTable(
   (table) => [
     index("share_resource_idx").on(table.resourceType, table.resourceId),
     index("share_userId_idx").on(table.userId),
+  ],
+);
+
+export type VoteType = "positive" | "negative";
+
+export const chatVote = pgTable(
+  "chat_vote",
+  {
+    chatId: text("chat_id")
+      .notNull()
+      .references(() => chat.id, { onDelete: "cascade" }),
+    messageId: text("message_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    type: text("type").$type<VoteType>().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.chatId, table.messageId, table.userId] }),
+    index("chat_vote_userId_idx").on(table.userId),
   ],
 );

@@ -5,6 +5,7 @@ import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAutoGenerateTitle } from "@/hooks/ai/use-auto-generate-title";
+import { useSyncFeedback } from "@/hooks/use-sync-feedback";
 import {
   ActionBarPrimitive,
   AssistantIf,
@@ -27,6 +28,8 @@ import {
   PencilIcon,
   RefreshCwIcon,
   SquareIcon,
+  ThumbsDownIcon,
+  ThumbsUpIcon,
 } from "lucide-react";
 import type { FC } from "react";
 
@@ -36,6 +39,7 @@ type ThreadProps = {
 
 export const Thread: FC<ThreadProps> = ({ welcomeMessage }) => {
   useAutoGenerateTitle();
+  useSyncFeedback();
 
   return (
     <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col">
@@ -67,7 +71,7 @@ export const Thread: FC<ThreadProps> = ({ welcomeMessage }) => {
 
         <ThreadPrimitive.ViewportFooter className="sticky bottom-0 mx-auto mt-auto w-full max-w-2xl bg-background pt-2 pb-4">
           <AssistantIf condition={({ thread }) => !thread.isEmpty}>
-            <div className="-top-12 pointer-events-none absolute inset-x-0 h-12 bg-linear-to-t from-background to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 -top-12 h-12 bg-linear-to-t from-background to-transparent" />
           </AssistantIf>
           <ThreadScrollToBottom />
           <AssistantIf condition={({ thread }) => !thread.isEmpty}>
@@ -87,7 +91,7 @@ const ThreadScrollToBottom: FC = () => {
       <TooltipIconButton
         tooltip="Scroll to bottom"
         variant="outline"
-        className="-top-10 absolute right-4 z-10 rounded-full disabled:invisible"
+        className="absolute -top-10 right-4 z-10 rounded-full disabled:invisible"
       >
         <ArrowDownIcon />
       </TooltipIconButton>
@@ -181,7 +185,7 @@ const AssistantMessage: FC = () => {
             <MessageError />
           </div>
 
-          <div className="-bottom-1 absolute left-0 flex translate-y-full items-center opacity-0 transition-opacity group-hover/assistant:opacity-100 data-floating:opacity-100">
+          <div className="absolute -bottom-1 left-0 flex translate-y-full items-center opacity-0 transition-opacity group-hover/assistant:opacity-100 data-floating:opacity-100">
             <BranchPicker />
             <AssistantActionBar />
           </div>
@@ -219,6 +223,22 @@ const AssistantActionBar: FC = () => {
           <RefreshCwIcon />
         </TooltipIconButton>
       </ActionBarPrimitive.Reload>
+      <ActionBarPrimitive.FeedbackPositive asChild>
+        <TooltipIconButton
+          tooltip="Good response"
+          className="data-[submitted]:text-emerald-500"
+        >
+          <ThumbsUpIcon />
+        </TooltipIconButton>
+      </ActionBarPrimitive.FeedbackPositive>
+      <ActionBarPrimitive.FeedbackNegative asChild>
+        <TooltipIconButton
+          tooltip="Bad response"
+          className="data-[submitted]:text-destructive"
+        >
+          <ThumbsDownIcon />
+        </TooltipIconButton>
+      </ActionBarPrimitive.FeedbackNegative>
     </ActionBarPrimitive.Root>
   );
 };
@@ -233,7 +253,7 @@ const UserMessage: FC = () => {
         <div className="rounded-2xl bg-muted px-4 py-2.5 text-foreground">
           <MessagePrimitive.Parts />
         </div>
-        <div className="-translate-x-full -translate-y-1/2 absolute top-1/2 left-0 pr-2">
+        <div className="absolute top-1/2 left-0 -translate-x-full -translate-y-1/2 pr-2">
           <UserActionBar />
         </div>
       </div>
@@ -298,7 +318,7 @@ const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({
     <BranchPickerPrimitive.Root
       hideWhenSingleBranch
       className={cn(
-        "-ml-2 mr-2 inline-flex items-center text-muted-foreground text-xs",
+        "mr-2 -ml-2 inline-flex items-center text-muted-foreground text-xs",
         className,
       )}
       {...rest}
