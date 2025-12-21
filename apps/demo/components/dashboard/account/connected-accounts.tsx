@@ -169,12 +169,12 @@ export function ConnectedAccounts() {
             ))}
 
             {availableProviders.map((providerId) => (
-              <Button
+              <button
                 key={providerId}
-                variant="ghost"
+                type="button"
                 disabled={isLinking === providerId}
                 onClick={() => handleLink(providerId)}
-                className="flex h-auto items-center justify-start gap-4 rounded-lg border border-dashed bg-transparent px-4 py-3 text-muted-foreground hover:border-solid hover:bg-muted/30"
+                className="flex items-center gap-4 rounded-lg bg-muted/20 px-4 py-3 text-muted-foreground transition-colors hover:bg-muted/40 disabled:pointer-events-none disabled:opacity-50"
               >
                 <div className="flex size-10 items-center justify-center rounded-full bg-muted/50">
                   {isLinking === providerId ? (
@@ -183,11 +183,11 @@ export function ConnectedAccounts() {
                     <ProviderIcon providerId={providerId} />
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 text-sm">
                   <Plus className="size-4" />
                   <span>Connect {getProviderName(providerId)}</span>
                 </div>
-              </Button>
+              </button>
             ))}
 
             {accounts?.length === 0 && availableProviders.length === 0 && (

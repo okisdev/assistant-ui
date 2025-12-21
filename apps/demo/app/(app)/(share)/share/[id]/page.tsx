@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
+import { MessagesSquare, ArrowRight } from "lucide-react";
 
 import { api } from "@/utils/trpc/server";
 import { SharedThread } from "@/components/app/share/id/thread";
@@ -28,22 +30,24 @@ export default async function SharePage({ params }: SharePageProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
+      <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <h1 className="font-medium text-lg">{title}</h1>
-          </div>
-          <div className="flex items-center gap-2 text-muted-foreground text-sm">
-            <span>Shared by</span>
-            <Avatar className="size-6">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <MessagesSquare className="size-4" strokeWidth={2.5} />
+            <span className="text-sm">assistant-ui</span>
+          </Link>
+          <div className="flex items-center gap-2 text-sm">
+            <Avatar className="size-5">
               <AvatarImage src={sharer.image ?? undefined} alt={sharer.name} />
-              <AvatarFallback className="text-xs">
+              <AvatarFallback className="text-[10px]">
                 {sharer.name.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="font-medium text-foreground">{sharer.name}</span>
-            <span>·</span>
-            <span>
+            <span className="text-muted-foreground">
+              {sharer.name} ·{" "}
               {formatDistanceToNow(new Date(share.createdAt), {
                 addSuffix: true,
               })}
@@ -53,20 +57,21 @@ export default async function SharePage({ params }: SharePageProps) {
       </header>
 
       <main className="flex flex-1 flex-col">
+        <div className="mx-auto w-full max-w-3xl px-4 py-6">
+          <h1 className="font-medium text-lg">{title}</h1>
+        </div>
         <SharedThread messages={resource.messages} />
       </main>
 
-      <footer className="border-t py-4">
-        <div className="mx-auto max-w-3xl px-4 text-center text-muted-foreground text-sm">
-          <p>
-            This is a shared conversation.{" "}
-            <a
-              href="/"
-              className="font-medium text-foreground underline underline-offset-4"
-            >
-              Start your own chat
-            </a>
-          </p>
+      <footer className="py-6">
+        <div className="mx-auto max-w-3xl px-4">
+          <Link
+            href="/"
+            className="group inline-flex items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground"
+          >
+            Start your own chat
+            <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+          </Link>
         </div>
       </footer>
     </div>

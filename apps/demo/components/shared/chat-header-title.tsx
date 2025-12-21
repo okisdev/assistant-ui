@@ -83,7 +83,7 @@ export function ChatHeaderTitle() {
 
   if (isEditing) {
     return (
-      <ButtonGroup>
+      <div className="flex h-7 items-center gap-1 rounded-md bg-muted/50 pr-1 pl-2">
         <input
           ref={inputRef}
           type="text"
@@ -91,34 +91,38 @@ export function ChatHeaderTitle() {
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={handleSave}
-          className="h-7 w-40 rounded-md rounded-r-none border border-input bg-transparent px-2 font-medium text-sm outline-none focus:ring-1 focus:ring-ring"
+          className="w-36 bg-transparent font-medium text-sm outline-none placeholder:text-muted-foreground"
+          placeholder="Chat title"
         />
-        <Button
-          variant="outline"
-          size="icon-sm"
+        <button
+          type="button"
           onClick={handleSave}
-          className="size-7 rounded-l-none border-l-0"
+          className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <Check className="size-3.5" />
-        </Button>
-      </ButtonGroup>
+        </button>
+      </div>
     );
   }
 
   return (
     <AlertDialog>
-      <ButtonGroup>
+      <ButtonGroup className="group/title">
         <Button
           variant="ghost"
           size="sm"
-          className="h-7"
+          className="h-7 group-hover/title:bg-accent/50"
           onClick={handleStartEdit}
         >
           {displayTitle}
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 pl-2!">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 pl-2! group-hover/title:bg-accent/50"
+            >
               <ChevronDown />
             </Button>
           </DropdownMenuTrigger>

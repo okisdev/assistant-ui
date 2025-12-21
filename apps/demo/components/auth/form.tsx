@@ -270,7 +270,7 @@ export function AuthForm({ onSuccess }: AuthFormContentProps) {
               Back
             </button>
 
-            <div className="rounded-lg border bg-muted/50 px-4 py-3">
+            <div className="rounded-lg bg-muted/50 px-4 py-3">
               <p className="text-sm">
                 <span className="text-muted-foreground">
                   {isNewUser ? "Creating account for " : "Signing in as "}
