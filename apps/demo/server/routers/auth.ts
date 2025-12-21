@@ -2,7 +2,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
-import { user } from "@/database/schema";
+import { user } from "@/lib/database/schema";
 import { rateLimiters } from "@/lib/rate-limit";
 import { publicProcedure, createTRPCRouter } from "../trpc";
 

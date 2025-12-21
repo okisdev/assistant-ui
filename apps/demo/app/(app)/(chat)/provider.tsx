@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, type ReactNode } from "react";
+import { nanoid } from "nanoid";
 import {
-  AssistantCloud,
   AssistantRuntimeProvider,
   RuntimeAdapterProvider,
   unstable_useRemoteThreadListRuntime as useRemoteThreadListRuntime,
@@ -14,14 +14,9 @@ import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
 import { createAssistantStream } from "assistant-stream";
 import { api } from "@/utils/trpc/client";
 import {
-  DualStorageHistoryAdapter,
-  type DbOperations as HistoryDbOps,
-} from "@/lib/adapters/dual-storage-history-adapter";
-
-const cloud = new AssistantCloud({
-  baseUrl: process.env["NEXT_PUBLIC_ASSISTANT_BASE_URL"]!,
-  anonymous: true,
-});
+  DatabaseHistoryAdapter,
+  type DbOperations,
+} from "@/lib/adapters/database-history-adapter";
 
 function HistoryProvider({ children }: { children?: ReactNode }) {
   const threadListItem = useAssistantState(
@@ -29,7 +24,7 @@ function HistoryProvider({ children }: { children?: ReactNode }) {
   );
   const utils = api.useUtils();
 
-  const db: HistoryDbOps = useMemo(
+  const db: DbOperations = useMemo(
     () => ({
       getMessages: async (chatId: string) => {
         const messages = await utils.chat.getMessages.fetch({ chatId });
@@ -60,14 +55,8 @@ function HistoryProvider({ children }: { children?: ReactNode }) {
   );
 
   const history = useMemo(
-    () =>
-      new DualStorageHistoryAdapter(
-        threadListItem.id,
-        db,
-        cloud,
-        threadListItem.externalId ?? null,
-      ),
-    [threadListItem.id, threadListItem.externalId, db],
+    () => new DatabaseHistoryAdapter(threadListItem.id, db),
+    [threadListItem.id, db],
   );
 
   return (
@@ -89,44 +78,18 @@ function useDatabaseThreadListAdapter(): RemoteThreadListAdapter {
             remoteId: c.id,
             status: c.status as "regular" | "archived",
             title: c.title ?? undefined,
-            externalId: c.remoteId ?? undefined,
           })),
         };
       },
 
-      async initialize(localId: string) {
-        await utils.client.chat.create.mutate({ id: localId });
-
-        let remoteId: string | undefined;
-        try {
-          const result = await cloud.threads.create({
-            external_id: localId,
-            last_message_at: new Date(),
-          });
-          remoteId = result.thread_id;
-
-          await utils.client.chat.updateRemoteId.mutate({
-            id: localId,
-            remoteId,
-          });
-        } catch (err) {
-          console.error("[Backup] Failed to create cloud thread:", err);
-        }
-
-        return { remoteId: localId, externalId: remoteId };
+      async initialize(_localId: string) {
+        const id = nanoid();
+        await utils.client.chat.create.mutate({ id });
+        return { remoteId: id, externalId: undefined };
       },
 
       async rename(chatId: string, newTitle: string) {
         await utils.client.chat.update.mutate({ id: chatId, title: newTitle });
-
-        const chatData = await utils.chat.get.fetch({ id: chatId });
-        if (chatData?.remoteId) {
-          cloud.threads
-            .update(chatData.remoteId, { title: newTitle })
-            .catch((err) => {
-              console.error("[Backup] Failed to rename cloud thread:", err);
-            });
-        }
       },
 
       async archive(chatId: string) {
@@ -134,15 +97,6 @@ function useDatabaseThreadListAdapter(): RemoteThreadListAdapter {
           id: chatId,
           status: "archived",
         });
-
-        const chatData = await utils.chat.get.fetch({ id: chatId });
-        if (chatData?.remoteId) {
-          cloud.threads
-            .update(chatData.remoteId, { is_archived: true })
-            .catch((err) => {
-              console.error("[Backup] Failed to archive cloud thread:", err);
-            });
-        }
       },
 
       async unarchive(chatId: string) {
@@ -150,27 +104,10 @@ function useDatabaseThreadListAdapter(): RemoteThreadListAdapter {
           id: chatId,
           status: "regular",
         });
-
-        const chatData = await utils.chat.get.fetch({ id: chatId });
-        if (chatData?.remoteId) {
-          cloud.threads
-            .update(chatData.remoteId, { is_archived: false })
-            .catch((err) => {
-              console.error("[Backup] Failed to unarchive cloud thread:", err);
-            });
-        }
       },
 
       async delete(chatId: string) {
-        const chatData = await utils.chat.get.fetch({ id: chatId });
-
         await utils.client.chat.delete.mutate({ id: chatId });
-
-        if (chatData?.remoteId) {
-          cloud.threads.delete(chatData.remoteId).catch((err) => {
-            console.error("[Backup] Failed to delete cloud thread:", err);
-          });
-        }
       },
 
       async fetch(chatId: string) {
@@ -184,7 +121,6 @@ function useDatabaseThreadListAdapter(): RemoteThreadListAdapter {
           remoteId: chatData.id,
           status: chatData.status as "regular" | "archived",
           title: chatData.title ?? undefined,
-          externalId: chatData.remoteId ?? undefined,
         };
       },
 

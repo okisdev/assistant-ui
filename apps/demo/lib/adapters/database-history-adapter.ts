@@ -1,7 +1,4 @@
-import type { AssistantCloud } from "assistant-cloud";
 import type { ThreadMessage } from "@assistant-ui/react";
-import type { ReadonlyJSONObject } from "assistant-stream/utils";
-import { auiV0Encode } from "./aui-v0";
 
 export type ExportedMessageRepositoryItem = {
   message: ThreadMessage;
@@ -42,12 +39,10 @@ export type DbOperations = {
   }) => Promise<void>;
 };
 
-export class DualStorageHistoryAdapter implements ThreadHistoryAdapter {
+export class DatabaseHistoryAdapter implements ThreadHistoryAdapter {
   constructor(
     private chatId: string,
     private db: DbOperations,
-    private cloud: AssistantCloud | null,
-    private remoteId: string | null,
   ) {}
 
   async load(): Promise<ExportedMessageRepository> {
@@ -71,7 +66,6 @@ export class DualStorageHistoryAdapter implements ThreadHistoryAdapter {
   async append(item: ExportedMessageRepositoryItem): Promise<void> {
     const { message: msg, parentId } = item;
 
-    // 1. Primary storage: write to local database (sync)
     await this.db.createMessage({
       id: msg.id,
       chatId: this.chatId,
@@ -80,25 +74,6 @@ export class DualStorageHistoryAdapter implements ThreadHistoryAdapter {
       content: msg.content,
       status: msg.status,
       metadata: msg.metadata,
-    });
-
-    // 2. Backup: async write to AssistantCloud (non-blocking)
-    if (this.cloud && this.remoteId) {
-      this.backupToCloud(item).catch((err) => {
-        console.error("[Backup] Failed to sync to AssistantCloud:", err);
-      });
-    }
-  }
-
-  private async backupToCloud(
-    item: ExportedMessageRepositoryItem,
-  ): Promise<void> {
-    if (!this.cloud || !this.remoteId) return;
-
-    await this.cloud.threads.messages.create(this.remoteId, {
-      parent_id: item.parentId,
-      format: "aui/v0",
-      content: auiV0Encode(item.message) as ReadonlyJSONObject,
     });
   }
 }

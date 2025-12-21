@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { eq, and, ne } from "drizzle-orm";
 
-import { user, account } from "@/database/schema";
+import { user, account } from "@/lib/database/schema";
 import { workTypeOptions } from "@/lib/constants";
 import { protectedProcedure, createTRPCRouter } from "../trpc";
 

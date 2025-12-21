@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { eq, desc, and } from "drizzle-orm";
 
-import { chat, message } from "@/database/schema";
+import { chat, message } from "@/lib/database/schema";
 import { protectedProcedure, createTRPCRouter } from "../trpc";
 
 export const chatRouter = createTRPCRouter({

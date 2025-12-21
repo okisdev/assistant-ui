@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { database } from "@/database";
+import { database } from "@/lib/database";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod/v4";

@@ -1,10 +1,14 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Plus, Archive } from "lucide-react";
 import {
   AssistantIf,
   ThreadListItemPrimitive,
   ThreadListPrimitive,
+  useAssistantApi,
+  useAssistantState,
 } from "@assistant-ui/react";
 import type { FC } from "react";
 
@@ -19,21 +23,25 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const SidebarThreadListNew: FC = () => {
+  const router = useRouter();
+  const api = useAssistantApi();
+
+  const handleNewChat = () => {
+    api.threads().switchToNewThread();
+    router.push("/");
+  };
+
   return (
     <SidebarGroup>
       <SidebarGroupContent>
-        <ThreadListPrimitive.Root>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <ThreadListPrimitive.New asChild>
-                <SidebarMenuButton>
-                  <Plus />
-                  <span>New Chat</span>
-                </SidebarMenuButton>
-              </ThreadListPrimitive.New>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </ThreadListPrimitive.Root>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={handleNewChat} tooltip="New Chat">
+              <Plus />
+              <span>New Chat</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
   );
@@ -41,7 +49,7 @@ export const SidebarThreadListNew: FC = () => {
 
 export const SidebarThreadList: FC = () => {
   return (
-    <SidebarGroup className="flex-1 overflow-y-auto">
+    <SidebarGroup className="flex-1 overflow-y-auto group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>Conversations</SidebarGroupLabel>
       <SidebarGroupContent>
         <ThreadListPrimitive.Root className="flex flex-col">
@@ -95,12 +103,26 @@ const ThreadListEmpty: FC = () => {
 };
 
 const SidebarThreadListItem: FC = () => {
+  const router = useRouter();
+  const api = useAssistantApi();
+  const threadId = useAssistantState(({ threadListItem }) => threadListItem.id);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    api.threadListItem().switchTo();
+    router.push(`/chat/${threadId}`);
+  };
+
   return (
     <SidebarMenuItem>
       <ThreadListItemPrimitive.Root className="group/item flex h-8 w-full items-center rounded-md text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground">
-        <ThreadListItemPrimitive.Trigger className="flex h-full flex-1 items-center truncate px-2">
+        <Link
+          href={`/chat/${threadId}`}
+          onClick={handleClick}
+          className="flex h-full flex-1 items-center truncate px-2"
+        >
           <ThreadListItemPrimitive.Title fallback="New Chat" />
-        </ThreadListItemPrimitive.Trigger>
+        </Link>
         <ThreadListItemPrimitive.Archive asChild>
           <button
             type="button"

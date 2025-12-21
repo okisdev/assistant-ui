@@ -5,11 +5,9 @@ import { auth } from "@/lib/auth";
 import { DashboardNav } from "@/components/dashboard/nav";
 import { DashboardHeader } from "@/components/dashboard/header";
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function DashboardLayout(props: LayoutProps<"/">) {
+  const { children } = props;
+
   const session = await auth.api.getSession({
     headers: await headers(),
   });

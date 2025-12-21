@@ -16,7 +16,7 @@ import {
 import {
   SidebarThreadList,
   SidebarThreadListNew,
-} from "@/components/assistant-ui/sidebar-thread-list";
+} from "@/components/shared/sidebar-thread-list";
 import { SidebarUserMenu } from "@/components/shared/sidebar-user-menu";
 
 export function AppSidebar() {
