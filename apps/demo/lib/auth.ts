@@ -10,6 +10,11 @@ export const auth = betterAuth({
     provider: "pg",
     schema: schema,
   }),
+  account: {
+    accountLinking: {
+      trustedProviders: ["google", "github"],
+    },
+  },
   emailAndPassword: {
     enabled: true,
     autoSignIn: true,
@@ -18,6 +23,12 @@ export const auth = betterAuth({
     github: {
       clientId: env.APPLICATION_GITHUB_CLIENT_ID,
       clientSecret: env.APPLICATION_GITHUB_CLIENT_SECRET,
+    },
+    google: {
+      accessType: "offline",
+      prompt: "select_account consent",
+      clientId: env.APPLICATION_GOOGLE_CLIENT_ID,
+      clientSecret: env.APPLICATION_GOOGLE_CLIENT_SECRET,
     },
   },
   rateLimit: {

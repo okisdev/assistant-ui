@@ -12,6 +12,12 @@ export const env = createEnv({
     APPLICATION_GITHUB_CLIENT_SECRET: z
       .string()
       .min(1, "APPLICATION_GITHUB_CLIENT_SECRET is required"),
+    APPLICATION_GOOGLE_CLIENT_ID: z
+      .string()
+      .min(1, "APPLICATION_GOOGLE_CLIENT_ID is required"),
+    APPLICATION_GOOGLE_CLIENT_SECRET: z
+      .string()
+      .min(1, "APPLICATION_GOOGLE_CLIENT_SECRET is required"),
     ASSISTANT_API_KEY: z.string().min(1, "ASSISTANT_API_KEY is required"),
   },
   clientPrefix: "NEXT_PUBLIC_",
@@ -26,6 +32,9 @@ export const env = createEnv({
     APPLICATION_GITHUB_CLIENT_ID: process.env.APPLICATION_GITHUB_CLIENT_ID,
     APPLICATION_GITHUB_CLIENT_SECRET:
       process.env.APPLICATION_GITHUB_CLIENT_SECRET,
+    APPLICATION_GOOGLE_CLIENT_ID: process.env.APPLICATION_GOOGLE_CLIENT_ID,
+    APPLICATION_GOOGLE_CLIENT_SECRET:
+      process.env.APPLICATION_GOOGLE_CLIENT_SECRET,
     ASSISTANT_API_KEY: process.env.ASSISTANT_API_KEY,
     NEXT_PUBLIC_ASSISTANT_BASE_URL: process.env.NEXT_PUBLIC_ASSISTANT_BASE_URL,
   },

@@ -17,7 +17,7 @@ export default async function AuthLayout(props: LayoutProps<"/">) {
 
   return (
     <div className="relative min-h-svh">
-      <header className="absolute top-0 left-0 p-6">
+      <header className="absolute top-0 left-0 px-6 py-5.5">
         <Link href="/" className="flex items-center gap-2">
           <MessagesSquare className="size-5" strokeWidth={3} />
           <span className="font-medium text-sm">assistant-ui demo</span>

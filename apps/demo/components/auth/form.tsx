@@ -39,10 +39,12 @@ type CredentialsFormValues = z.infer<typeof credentialsSchema>;
 
 interface AuthFormContentProps {
   onSuccess?: () => void;
+  redirectTo?: string;
 }
 
-export function AuthForm({ onSuccess }: AuthFormContentProps) {
+export function AuthForm({ onSuccess, redirectTo }: AuthFormContentProps) {
   const router = useRouter();
+  const callbackURL = redirectTo || "/";
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [step, setStep] = useState<"initial" | "credentials">("initial");
@@ -100,7 +102,7 @@ export function AuthForm({ onSuccess }: AuthFormContentProps) {
     try {
       await authClient.signIn.social({
         provider,
-        callbackURL: "/",
+        callbackURL,
       });
     } catch {
       setError(`Failed to sign in with ${provider}`);
@@ -153,7 +155,7 @@ export function AuthForm({ onSuccess }: AuthFormContentProps) {
       }
 
       onSuccess?.();
-      router.push("/");
+      router.push(callbackURL);
       router.refresh();
     } catch {
       setError("An unexpected error occurred. Please try again.");

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Unlink, Github, Plus } from "lucide-react";
+import { Loader2, Unlink, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { authClient } from "@/lib/auth.client";
@@ -18,27 +18,21 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { GitHub } from "@/components/icons/github";
+import { Google } from "@/components/icons/google";
 
 const PROVIDERS = {
   github: {
     name: "GitHub",
-    icon: Github,
+    icon: GitHub,
+  },
+  google: {
+    name: "Google",
+    icon: Google,
   },
 } as const;
 
 type ProviderId = keyof typeof PROVIDERS;
-
-function ConnectedAccountSkeleton() {
-  return (
-    <div className="flex items-center gap-4 rounded-lg bg-muted/30 px-4 py-3">
-      <div className="size-10 animate-pulse rounded-full bg-muted" />
-      <div className="flex-1 space-y-2">
-        <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-        <div className="h-3 w-32 animate-pulse rounded bg-muted" />
-      </div>
-    </div>
-  );
-}
 
 function ProviderIcon({ providerId }: { providerId: string }) {
   const provider = PROVIDERS[providerId as ProviderId];
@@ -106,97 +100,100 @@ export function ConnectedAccounts() {
       <h1 className="font-medium text-xl tracking-tight">Connected Accounts</h1>
 
       <div className="flex flex-col gap-2">
-        {isLoading ? (
-          <>
-            <ConnectedAccountSkeleton />
-            <ConnectedAccountSkeleton />
-          </>
-        ) : (
-          <>
-            {accounts?.map((account) => (
-              <div
-                key={account.id}
-                className="flex items-center gap-4 rounded-lg bg-muted/30 px-4 py-3 transition-colors duration-200 hover:bg-muted/50"
-              >
-                <div className="flex size-10 items-center justify-center rounded-full bg-muted/50">
-                  <ProviderIcon providerId={account.providerId} />
-                </div>
+        {accounts?.map((account) => (
+          <div
+            key={account.id}
+            className="flex items-center gap-4 rounded-lg bg-muted/30 px-4 py-3 transition-colors duration-200 hover:bg-muted/50"
+          >
+            <div className="flex size-10 items-center justify-center rounded-full bg-muted/50">
+              <ProviderIcon providerId={account.providerId} />
+            </div>
 
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium text-sm">
-                    {getProviderName(account.providerId)}
-                  </div>
-                  <div className="text-muted-foreground text-xs">Connected</div>
-                </div>
-
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      disabled={isUnlinking === account.providerId}
-                      className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      {isUnlinking === account.providerId ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <Unlink className="size-4" />
-                      )}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        Disconnect {getProviderName(account.providerId)}?
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        You will no longer be able to sign in with{" "}
-                        {getProviderName(account.providerId)}. Make sure you
-                        have another way to access your account.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleUnlink(account.providerId)}
-                      >
-                        Disconnect
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+            <div className="min-w-0 flex-1">
+              <div className="font-medium text-sm">
+                {getProviderName(account.providerId)}
               </div>
-            ))}
+              <div className="text-muted-foreground text-xs">Connected</div>
+            </div>
 
-            {availableProviders.map((providerId) => (
-              <button
-                key={providerId}
-                type="button"
-                disabled={isLinking === providerId}
-                onClick={() => handleLink(providerId)}
-                className="flex items-center gap-4 rounded-lg bg-muted/20 px-4 py-3 text-muted-foreground transition-colors hover:bg-muted/40 disabled:pointer-events-none disabled:opacity-50"
-              >
-                <div className="flex size-10 items-center justify-center rounded-full bg-muted/50">
-                  {isLinking === providerId ? (
-                    <Loader2 className="size-5 animate-spin" />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={isUnlinking === account.providerId}
+                  className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                >
+                  {isUnlinking === account.providerId ? (
+                    <Loader2 className="size-4 animate-spin" />
                   ) : (
-                    <ProviderIcon providerId={providerId} />
+                    <Unlink className="size-4" />
                   )}
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Plus className="size-4" />
-                  <span>Connect {getProviderName(providerId)}</span>
-                </div>
-              </button>
-            ))}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Disconnect {getProviderName(account.providerId)}?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    You will no longer be able to sign in with{" "}
+                    {getProviderName(account.providerId)}. Make sure you have
+                    another way to access your account.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => handleUnlink(account.providerId)}
+                  >
+                    Disconnect
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        ))}
 
-            {accounts?.length === 0 && availableProviders.length === 0 && (
-              <div className="py-8 text-center text-muted-foreground text-sm">
-                No social providers available
+        {availableProviders.map((providerId) => (
+          <div
+            key={providerId}
+            className="flex items-center gap-4 rounded-lg bg-muted/30 px-4 py-3 transition-colors duration-200 hover:bg-muted/50"
+          >
+            <div className="flex size-10 items-center justify-center rounded-full bg-muted/50">
+              <ProviderIcon providerId={providerId} />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="font-medium text-sm">
+                {getProviderName(providerId)}
               </div>
-            )}
-          </>
-        )}
+              <div className="text-muted-foreground text-xs">Not connected</div>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              disabled={isLinking === providerId}
+              className="text-muted-foreground hover:bg-muted-foreground/10 hover:text-muted-foreground"
+              onClick={() => handleLink(providerId)}
+            >
+              {isLinking === providerId ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Plus className="size-4" />
+              )}
+            </Button>
+          </div>
+        ))}
+
+        {!isLoading &&
+          accounts?.length === 0 &&
+          availableProviders.length === 0 && (
+            <div className="py-8 text-center text-muted-foreground text-sm">
+              No social providers available
+            </div>
+          )}
       </div>
     </div>
   );

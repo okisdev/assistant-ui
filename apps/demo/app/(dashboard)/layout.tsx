@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { DashboardNav } from "@/components/dashboard/nav";
 import { DashboardHeader } from "@/components/dashboard/header";
+import { DashboardLayoutClient } from "@/components/dashboard/layout-client";
 
 export default async function DashboardLayout(props: LayoutProps<"/">) {
   const { children } = props;
@@ -17,8 +18,8 @@ export default async function DashboardLayout(props: LayoutProps<"/">) {
   }
 
   return (
-    <div className="flex min-h-svh flex-col">
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4">
+    <DashboardLayoutClient>
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pt-12">
         <DashboardHeader />
         <div className="flex flex-1">
           <aside className="hidden w-48 shrink-0 py-8 md:block">
@@ -27,6 +28,6 @@ export default async function DashboardLayout(props: LayoutProps<"/">) {
           <main className="flex flex-1 flex-col">{children}</main>
         </div>
       </div>
-    </div>
+    </DashboardLayoutClient>
   );
 }

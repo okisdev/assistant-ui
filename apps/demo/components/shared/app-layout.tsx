@@ -34,7 +34,7 @@ function AppLayoutContent({
       >
         <SidebarTrigger
           className={cn(
-            "-ml-1 pointer-events-auto transition-all duration-200",
+            "pointer-events-auto -ml-1 transition-all duration-200",
             state === "collapsed"
               ? "w-7 opacity-100"
               : "w-0 overflow-hidden opacity-0",

@@ -149,9 +149,7 @@ export const SharedThread: FC<SharedThreadProps> = ({ messages }) => {
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-linear-to-b from-background via-60% via-background/80 to-transparent dark:via-50%" />
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto scroll-smooth px-4">
-        <div className="h-8 shrink-0" />
-
-        <div className="mx-auto w-full max-w-2xl pb-8">
+        <div className="mx-auto w-full max-w-3xl px-4 py-6">
           {currentPath.map((node) => {
             const role = getMessageRole(node);
             const parentId = node.parentId;
