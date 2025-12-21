@@ -91,6 +91,7 @@ export const chat = pgTable(
     remoteId: text("remote_id"),
     title: text("title"),
     status: text("status").notNull().default("regular"),
+    headMessageId: text("head_message_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -118,5 +119,24 @@ export const message = pgTable(
   (table) => [
     index("message_chatId_idx").on(table.chatId),
     index("message_parentId_idx").on(table.parentId),
+  ],
+);
+
+export type ShareResourceType = "chat";
+
+export const share = pgTable(
+  "share",
+  {
+    id: text("id").primaryKey(),
+    resourceType: text("resource_type").$type<ShareResourceType>().notNull(),
+    resourceId: text("resource_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("share_resource_idx").on(table.resourceType, table.resourceId),
+    index("share_userId_idx").on(table.userId),
   ],
 );

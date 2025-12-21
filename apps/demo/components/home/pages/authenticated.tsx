@@ -2,10 +2,8 @@
 
 import { Thread } from "@/components/assistant-ui/thread";
 import { AppLayout } from "@/components/shared/app-layout";
-import {
-  ChatHeaderTitle,
-  ChatHeaderShare,
-} from "@/components/shared/chat-header";
+import { ChatHeaderShare } from "@/components/shared/chat-header-share";
+import { ChatHeaderTitle } from "@/components/shared/chat-header-title";
 import { useSyncThreadUrl } from "@/hooks/use-sync-thread-url";
 import { authClient } from "@/lib/auth.client";
 import { api } from "@/utils/trpc/client";

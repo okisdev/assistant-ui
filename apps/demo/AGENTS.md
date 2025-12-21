@@ -128,6 +128,13 @@ Keep feature-related code in a single file unless it grows too large:
 // Contains: types, helpers, sub-components, main export
 ```
 
+## assistant-ui Limitations
+
+When implementing features blocked by `assistant-ui` package limitations, document them in `roadmap.md` with:
+- Problem description
+- Current workaround
+- Proposed upstream solution
+
 ## Do NOT
 
 - Create documentation files (README, .md) unless explicitly asked

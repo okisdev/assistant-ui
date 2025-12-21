@@ -171,7 +171,7 @@ const AssistantMessage: FC = () => {
           <span className="text-sm">Thinking...</span>
         </div>
       ) : (
-        <>
+        <div className="group/assistant relative">
           <div className="text-foreground leading-relaxed">
             <MessagePrimitive.Parts
               components={{
@@ -181,11 +181,11 @@ const AssistantMessage: FC = () => {
             <MessageError />
           </div>
 
-          <div className="mt-2 flex">
+          <div className="-bottom-1 absolute left-0 flex translate-y-full items-center opacity-0 transition-opacity group-hover/assistant:opacity-100 data-floating:opacity-100">
             <BranchPicker />
             <AssistantActionBar />
           </div>
-        </>
+        </div>
       )}
     </MessagePrimitive.Root>
   );
@@ -246,8 +246,18 @@ const UserActionBar: FC = () => {
     <ActionBarPrimitive.Root
       hideWhenRunning
       autohide="not-last"
-      className="flex flex-col items-end"
+      className="flex items-center gap-1 text-muted-foreground"
     >
+      <ActionBarPrimitive.Copy asChild>
+        <TooltipIconButton tooltip="Copy">
+          <AssistantIf condition={({ message }) => message.isCopied}>
+            <CheckIcon />
+          </AssistantIf>
+          <AssistantIf condition={({ message }) => !message.isCopied}>
+            <CopyIcon />
+          </AssistantIf>
+        </TooltipIconButton>
+      </ActionBarPrimitive.Copy>
       <ActionBarPrimitive.Edit asChild>
         <TooltipIconButton tooltip="Edit">
           <PencilIcon />

@@ -1,10 +1,11 @@
 import { relations } from "drizzle-orm";
-import { account, session, user, chat, message } from "./schema";
+import { account, session, user, chat, message, share } from "./schema";
 
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
   chats: many(chat),
+  shares: many(share),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -38,5 +39,12 @@ export const messageRelations = relations(message, ({ one }) => ({
     fields: [message.parentId],
     references: [message.id],
     relationName: "messageParent",
+  }),
+}));
+
+export const shareRelations = relations(share, ({ one }) => ({
+  user: one(user, {
+    fields: [share.userId],
+    references: [user.id],
   }),
 }));

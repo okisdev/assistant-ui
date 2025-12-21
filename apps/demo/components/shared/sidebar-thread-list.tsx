@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   Plus,
   Archive,
@@ -10,6 +11,7 @@ import {
   MoreVertical,
   Trash2,
   ArchiveRestore,
+  Pencil,
 } from "lucide-react";
 import {
   AssistantIf,
@@ -51,6 +53,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export const SidebarThreadListNew: FC = () => {
   const router = useRouter();
@@ -163,78 +176,131 @@ const ThreadListEmpty: FC = () => {
 const SidebarThreadListItem: FC = () => {
   const router = useRouter();
   const api = useAssistantApi();
-  const threadId = useAssistantState(({ threadListItem }) => threadListItem.id);
+  const remoteId = useAssistantState(
+    ({ threadListItem }) => threadListItem.remoteId,
+  );
+  const title = useAssistantState(({ threadListItem }) => threadListItem.title);
   const isArchived = useAssistantState(
     ({ threadListItem }) => threadListItem.status === "archived",
   );
 
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     api.threadListItem().switchTo();
-    router.push(`/chat/${threadId}`);
+    if (remoteId) {
+      router.push(`/chat/${remoteId}`);
+    }
   };
+
+  const handleRenameOpen = () => {
+    setRenameValue(title || "New Chat");
+    setRenameOpen(true);
+  };
+
+  const handleRename = () => {
+    const trimmed = renameValue.trim();
+    if (trimmed && trimmed !== title) {
+      api.threadListItem().rename(trimmed);
+    }
+    setRenameOpen(false);
+  };
+
+  if (!remoteId) return null;
 
   return (
     <SidebarMenuItem>
       <ThreadListItemPrimitive.Root className="group/item flex h-8 w-full items-center rounded-md text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground">
         <Link
-          href={`/chat/${threadId}`}
+          href={`/chat/${remoteId}`}
           onClick={handleClick}
           className="flex h-full flex-1 items-center truncate px-2"
         >
           <ThreadListItemPrimitive.Title fallback="New Chat" />
         </Link>
-        <AlertDialog>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="mr-1 size-6 shrink-0 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-hover/item:opacity-100 data-[state=open]:bg-sidebar-accent data-[state=open]:opacity-100"
-                aria-label="Thread options"
-              >
-                <MoreVertical className="size-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" side="right">
-              {isArchived ? (
-                <ThreadListItemPrimitive.Unarchive asChild>
-                  <DropdownMenuItem>
-                    <ArchiveRestore className="size-4" />
-                    Restore
+        <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+          <AlertDialog>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="mr-1 size-6 shrink-0 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-hover/item:opacity-100 data-[state=open]:bg-sidebar-accent data-[state=open]:opacity-100"
+                  aria-label="Thread options"
+                >
+                  <MoreVertical className="size-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="right">
+                <DialogTrigger asChild>
+                  <DropdownMenuItem onSelect={handleRenameOpen}>
+                    <Pencil className="size-4" />
+                    Rename
                   </DropdownMenuItem>
-                </ThreadListItemPrimitive.Unarchive>
-              ) : (
-                <ThreadListItemPrimitive.Archive asChild>
-                  <DropdownMenuItem>
-                    <Archive className="size-4" />
-                    Archive
+                </DialogTrigger>
+                {isArchived ? (
+                  <ThreadListItemPrimitive.Unarchive asChild>
+                    <DropdownMenuItem>
+                      <ArchiveRestore className="size-4" />
+                      Restore
+                    </DropdownMenuItem>
+                  </ThreadListItemPrimitive.Unarchive>
+                ) : (
+                  <ThreadListItemPrimitive.Archive asChild>
+                    <DropdownMenuItem>
+                      <Archive className="size-4" />
+                      Archive
+                    </DropdownMenuItem>
+                  </ThreadListItemPrimitive.Archive>
+                )}
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem className="text-destructive focus:text-destructive">
+                    <Trash2 className="size-4" />
+                    Delete
                   </DropdownMenuItem>
-                </ThreadListItemPrimitive.Archive>
-              )}
-              <AlertDialogTrigger asChild>
-                <DropdownMenuItem className="text-destructive focus:text-destructive">
-                  <Trash2 className="size-4" />
-                  Delete
-                </DropdownMenuItem>
-              </AlertDialogTrigger>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete this chat?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the
-                chat and all its messages.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <ThreadListItemPrimitive.Delete asChild>
-                <AlertDialogAction>Delete</AlertDialogAction>
-              </ThreadListItemPrimitive.Delete>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+                </AlertDialogTrigger>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this chat?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the
+                  chat and all its messages.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <ThreadListItemPrimitive.Delete asChild>
+                  <AlertDialogAction>Delete</AlertDialogAction>
+                </ThreadListItemPrimitive.Delete>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Rename chat</DialogTitle>
+            </DialogHeader>
+            <Input
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleRename();
+                }
+              }}
+              placeholder="Chat title"
+              autoFocus
+            />
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button onClick={handleRename}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </ThreadListItemPrimitive.Root>
     </SidebarMenuItem>
   );
