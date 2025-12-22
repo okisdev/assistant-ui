@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, User, BarChart3, Share2, Brain } from "lucide-react";
+import { Settings, User, BarChart3, Share2, Brain, Zap } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -31,6 +31,11 @@ const navItems = [
     title: "Usage",
     href: "/usage",
     icon: BarChart3,
+  },
+  {
+    title: "Integrations",
+    href: "/integrations",
+    icon: Zap,
   },
 ];
 

@@ -103,7 +103,7 @@ export function ConnectedAccounts() {
         {accounts?.map((account) => (
           <div
             key={account.id}
-            className="flex items-center gap-4 rounded-lg bg-muted/30 px-4 py-3 transition-colors duration-200 hover:bg-muted"
+            className="flex items-center gap-4 rounded-lg bg-muted/50 px-4 py-3 transition-colors duration-200 hover:bg-muted"
           >
             <div className="flex size-10 items-center justify-center rounded-full bg-muted/50">
               <ProviderIcon providerId={account.providerId} />
@@ -158,7 +158,7 @@ export function ConnectedAccounts() {
         {availableProviders.map((providerId) => (
           <div
             key={providerId}
-            className="flex items-center gap-4 rounded-lg bg-muted/30 px-4 py-3 transition-colors duration-200 hover:bg-muted"
+            className="flex items-center gap-4 rounded-lg bg-muted/50 px-4 py-3 transition-colors duration-200 hover:bg-muted"
           >
             <div className="flex size-10 items-center justify-center rounded-full bg-muted/50">
               <ProviderIcon providerId={providerId} />

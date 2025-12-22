@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { nanoid } from "nanoid";
 import {
   AssistantRuntimeProvider,
@@ -13,7 +13,7 @@ import {
 import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { createAssistantStream } from "assistant-stream";
-import { api } from "@/utils/trpc/client";
+import { api, useTRPCReady } from "@/utils/trpc/client";
 import {
   DatabaseHistoryAdapterWithAttachments,
   type DbOperations,
@@ -23,6 +23,13 @@ import { BlobAttachmentAdapter } from "@/lib/adapters/blob-attachment-adapter";
 import { DatabaseMemoryStore } from "@/lib/adapters/database-memory-adapter";
 import { useAssistantMemory } from "@/hooks/use-assistant-memory";
 import { useMemoryTools } from "@/hooks/use-memory-tools";
+import { useArtifactTools } from "@/hooks/use-artifact-tools";
+import { ArtifactToolUI } from "@/components/assistant-ui/artifact-tool-ui";
+import {
+  ArtifactProvider as ArtifactContextProvider,
+  useArtifact,
+} from "@/lib/artifact-context";
+import { ChatLayout } from "@/components/assistant-ui/chat-layout";
 
 function HistoryProvider({ children }: { children?: ReactNode }) {
   const threadListItem = useAssistantState(
@@ -193,6 +200,39 @@ function MemoryProvider({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function ArtifactToolsProvider({ children }: { children: ReactNode }) {
+  const { data: capabilities } = api.user.getCapabilities.useQuery();
+  const artifactsEnabled = capabilities?.artifacts ?? true;
+  const { closeArtifact } = useArtifact();
+
+  const threadId = useAssistantState(
+    ({ threadListItem }) => threadListItem.remoteId,
+  );
+
+  const prevThreadIdRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (prevThreadIdRef.current === undefined) {
+      prevThreadIdRef.current = threadId;
+      return;
+    }
+
+    if (prevThreadIdRef.current !== threadId) {
+      closeArtifact();
+      prevThreadIdRef.current = threadId;
+    }
+  }, [threadId, closeArtifact]);
+
+  useArtifactTools({ enabled: artifactsEnabled });
+
+  return (
+    <>
+      {artifactsEnabled && <ArtifactToolUI />}
+      {children}
+    </>
+  );
+}
+
 function RuntimeProviderInner({
   children,
   adapter,
@@ -207,15 +247,33 @@ function RuntimeProviderInner({
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <MemoryProvider>{children}</MemoryProvider>
+      <MemoryProvider>
+        <ArtifactToolsProvider>
+          <ChatLayout>{children}</ChatLayout>
+        </ArtifactToolsProvider>
+      </MemoryProvider>
     </AssistantRuntimeProvider>
   );
 }
 
-export function ChatProvider({ children }: { children: ReactNode }) {
+function ChatProviderInner({ children }: { children: ReactNode }) {
   const adapter = useDatabaseThreadListAdapter();
 
   return (
     <RuntimeProviderInner adapter={adapter}>{children}</RuntimeProviderInner>
+  );
+}
+
+export function ChatProvider({ children }: { children: ReactNode }) {
+  const isTRPCReady = useTRPCReady();
+
+  if (!isTRPCReady) {
+    return null;
+  }
+
+  return (
+    <ArtifactContextProvider>
+      <ChatProviderInner>{children}</ChatProviderInner>
+    </ArtifactContextProvider>
   );
 }

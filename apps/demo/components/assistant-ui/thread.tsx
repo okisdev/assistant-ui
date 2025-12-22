@@ -61,10 +61,10 @@ export const Thread: FC<ThreadProps> = ({ welcomeMessage }) => {
         </AssistantIf>
 
         <AssistantIf condition={({ thread }) => !thread.isEmpty}>
-          <div className="h-8 shrink-0" />
+          <div className="h-16 shrink-0" />
         </AssistantIf>
 
-        <div className="mx-auto w-full max-w-2xl">
+        <div className="mx-auto w-full max-w-2xl pb-12">
           <ThreadPrimitive.Messages
             components={{
               UserMessage,
@@ -74,7 +74,7 @@ export const Thread: FC<ThreadProps> = ({ welcomeMessage }) => {
           />
         </div>
 
-        <ThreadPrimitive.ViewportFooter className="sticky bottom-0 mx-auto mt-auto w-full max-w-2xl bg-background pt-2 pb-4">
+        <ThreadPrimitive.ViewportFooter className="sticky bottom-0 mx-auto mt-auto w-full max-w-2xl bg-background pt-4 pb-4">
           <AssistantIf condition={({ thread }) => !thread.isEmpty}>
             <div className="pointer-events-none absolute inset-x-0 -top-12 h-12 bg-linear-to-t from-background to-transparent" />
           </AssistantIf>

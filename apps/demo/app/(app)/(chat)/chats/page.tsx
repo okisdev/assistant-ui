@@ -41,7 +41,7 @@ import {
 
 function ChatSkeleton() {
   return (
-    <div className="flex items-center gap-4 rounded-lg bg-muted/30 px-4 py-3">
+    <div className="flex items-center gap-4 rounded-lg bg-muted/50 px-4 py-3">
       <div className="flex size-10 items-center justify-center rounded-full bg-muted/50">
         <Skeleton className="size-5" />
       </div>
@@ -81,7 +81,7 @@ function ChatItem({
   const isArchived = chat.status === "archived";
 
   return (
-    <div className="group flex items-center gap-4 rounded-lg bg-muted/30 px-4 py-3 transition-colors hover:bg-muted">
+    <div className="group flex items-center gap-4 rounded-lg bg-muted/50 px-4 py-3 transition-colors hover:bg-muted">
       <Link
         href={`/chat/${chat.id}`}
         onClick={handleClick}

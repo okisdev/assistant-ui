@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 
 @import "./animate.css";
+@import "./sugar-high.css";
 
 @custom-variant dark (&:is(.dark *));
 

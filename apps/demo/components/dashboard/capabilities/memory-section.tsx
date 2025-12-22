@@ -56,7 +56,7 @@ function MemoryItem({
   onDelete: () => void;
 }) {
   return (
-    <div className="group flex items-start gap-4 rounded-lg bg-muted/30 px-4 py-3">
+    <div className="group flex items-start gap-4 rounded-lg bg-muted/50 px-4 py-3">
       <div className="min-w-0 flex-1">
         {memory.category && (
           <span className="mb-1 inline-block rounded bg-primary/10 px-2 py-0.5 font-medium text-primary text-xs">
@@ -116,7 +116,7 @@ function MemoryItem({
 
 function MemorySkeleton() {
   return (
-    <div className="flex items-center gap-4 rounded-lg bg-muted/30 px-4 py-3">
+    <div className="flex items-center gap-4 rounded-lg bg-muted/50 px-4 py-3">
       <div className="flex-1 space-y-2">
         <div className="h-4 w-64 animate-pulse rounded bg-muted" />
         <div className="h-3 w-32 animate-pulse rounded bg-muted" />
@@ -225,7 +225,7 @@ function MemoriesDialog() {
               </AlertDialog>
             </>
           ) : (
-            <div className="flex flex-col items-center gap-4 rounded-lg bg-muted/30 py-12">
+            <div className="flex flex-col items-center gap-4 rounded-lg bg-muted/50 py-12">
               <div className="flex size-16 items-center justify-center rounded-full bg-muted/50">
                 <Brain className="size-8 text-muted-foreground" />
               </div>
@@ -256,7 +256,7 @@ function CapabilityRow({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg bg-muted/30 px-4 py-3">
+    <div className="flex items-center justify-between gap-4 rounded-lg bg-muted/50 px-4 py-3">
       <div className="flex min-w-0 flex-col gap-0.5">
         <div className="flex items-center gap-2">
           <span className="font-medium text-sm">{title}</span>

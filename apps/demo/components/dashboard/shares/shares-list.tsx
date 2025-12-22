@@ -37,7 +37,7 @@ import {
 
 function ShareSkeleton() {
   return (
-    <div className="flex items-center gap-4 rounded-lg bg-muted/30 px-4 py-3">
+    <div className="flex items-center gap-4 rounded-lg bg-muted/50 px-4 py-3">
       <div className="size-10 animate-pulse rounded-full bg-muted" />
       <div className="flex-1 space-y-2">
         <div className="h-4 w-48 animate-pulse rounded bg-muted" />
@@ -86,7 +86,7 @@ function ShareItem({
   };
 
   return (
-    <div className="flex items-center gap-4 rounded-lg bg-muted/30 px-4 py-3">
+    <div className="flex items-center gap-4 rounded-lg bg-muted/50 px-4 py-3">
       <div className="flex size-10 items-center justify-center rounded-full bg-muted/50">
         <ResourceIcon type={share.resourceType} />
       </div>
@@ -207,7 +207,7 @@ export function SharesList() {
             />
           ))
         ) : (
-          <div className="flex flex-col items-center gap-4 rounded-lg bg-muted/30 py-12">
+          <div className="flex flex-col items-center gap-4 rounded-lg bg-muted/50 py-12">
             <div className="flex size-16 items-center justify-center rounded-full bg-muted/50">
               <Share2 className="size-8 text-muted-foreground" />
             </div>

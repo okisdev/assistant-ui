@@ -12,6 +12,7 @@ import {
 export type UserCapabilities = {
   personalization?: boolean;
   chatHistoryContext?: boolean;
+  artifacts?: boolean;
 };
 
 export const user = pgTable("user", {

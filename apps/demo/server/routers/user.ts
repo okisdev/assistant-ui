@@ -115,6 +115,7 @@ export const userRouter = createTRPCRouter({
     return {
       personalization: capabilities.personalization ?? true,
       chatHistoryContext: capabilities.chatHistoryContext ?? false,
+      artifacts: capabilities.artifacts ?? true,
     } satisfies Required<UserCapabilities>;
   }),
 
@@ -123,6 +124,7 @@ export const userRouter = createTRPCRouter({
       z.object({
         personalization: z.boolean().optional(),
         chatHistoryContext: z.boolean().optional(),
+        artifacts: z.boolean().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -143,6 +145,9 @@ export const userRouter = createTRPCRouter({
         }),
         ...(input.chatHistoryContext !== undefined && {
           chatHistoryContext: input.chatHistoryContext,
+        }),
+        ...(input.artifacts !== undefined && {
+          artifacts: input.artifacts,
         }),
       };
 

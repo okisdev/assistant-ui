@@ -74,6 +74,15 @@
   - [x] Memory management
     - [x] View memories dialog
     - [x] Delete/clear memories
+- [x] Artifacts
+  - [x] Enable/disable toggle
+  - [x] create_artifact tool
+  - [x] Sandboxed iframe preview (safe-content-frame)
+  - [x] Preview/Code tabs
+  - [x] Copy and download actions
+  - [x] Resizable side panel
+  - [x] Compact inline card with "View" button
+  - [x] Auto-open on artifact creation
 - [ ] Web search
   - [ ] Enable/disable toggle
   - [ ] Search provider integration

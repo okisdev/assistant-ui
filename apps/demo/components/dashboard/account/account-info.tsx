@@ -25,15 +25,15 @@ function AccountInfoSkeleton() {
     <div className="flex flex-col gap-4">
       <div className="h-7 w-32 animate-pulse rounded bg-muted" />
       <div className="flex flex-col gap-2">
-        <div className="flex h-14 items-center justify-between rounded-lg bg-muted/30 px-4">
+        <div className="flex h-14 items-center justify-between rounded-lg bg-muted/50 px-4">
           <div className="h-4 w-12 animate-pulse rounded bg-muted" />
           <div className="h-5 w-40 animate-pulse rounded bg-muted" />
         </div>
-        <div className="flex h-14 items-center justify-between rounded-lg bg-muted/30 px-4">
+        <div className="flex h-14 items-center justify-between rounded-lg bg-muted/50 px-4">
           <div className="h-4 w-16 animate-pulse rounded bg-muted" />
           <div className="h-5 w-24 animate-pulse rounded bg-muted" />
         </div>
-        <div className="flex h-14 items-center justify-between rounded-lg bg-muted/30 px-4">
+        <div className="flex h-14 items-center justify-between rounded-lg bg-muted/50 px-4">
           <div className="h-4 w-16 animate-pulse rounded bg-muted" />
           <div className="h-5 w-20 animate-pulse rounded bg-muted" />
         </div>
@@ -84,7 +84,7 @@ export function AccountInfo() {
       <h1 className="font-medium text-xl tracking-tight">Account</h1>
 
       <div className="flex flex-col gap-2">
-        <div className="flex h-14 items-center justify-between rounded-lg bg-muted/30 px-4 transition-colors duration-200 hover:bg-muted">
+        <div className="flex h-14 items-center justify-between rounded-lg bg-muted/50 px-4 transition-colors duration-200 hover:bg-muted">
           <span className="text-muted-foreground text-sm">Email</span>
           {email && (
             <Button
@@ -117,7 +117,7 @@ export function AccountInfo() {
           )}
         </div>
 
-        <div className="flex h-14 items-center justify-between rounded-lg bg-muted/30 px-4 transition-colors duration-200 hover:bg-muted">
+        <div className="flex h-14 items-center justify-between rounded-lg bg-muted/50 px-4 transition-colors duration-200 hover:bg-muted">
           <span className="text-muted-foreground text-sm">User ID</span>
           {userId && (
             <Button
@@ -150,7 +150,7 @@ export function AccountInfo() {
           )}
         </div>
 
-        <div className="group flex h-14 items-center justify-between rounded-lg bg-muted/30 px-4 transition-colors duration-200 hover:bg-muted">
+        <div className="group flex h-14 items-center justify-between rounded-lg bg-muted/50 px-4 transition-colors duration-200 hover:bg-muted">
           <span className="text-muted-foreground text-sm">Sign out</span>
           <AlertDialog>
             <AlertDialogTrigger asChild>

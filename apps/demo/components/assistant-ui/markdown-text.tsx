@@ -9,7 +9,8 @@ import {
   useIsMarkdownCodeBlock,
 } from "@assistant-ui/react-markdown";
 import remarkGfm from "remark-gfm";
-import { type FC, memo, useState } from "react";
+import { highlight } from "sugar-high";
+import { type FC, memo, useMemo, useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
 
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
@@ -157,14 +158,34 @@ const defaultComponents = memoizeMarkdownComponents({
   pre: ({ className, ...props }) => (
     <pre
       className={cn(
-        "overflow-x-auto rounded-b-lg bg-[#1e1e1e] p-4 text-sm text-white",
+        "overflow-x-auto rounded-b-lg bg-muted/50 p-4 font-mono text-sm",
         className,
       )}
       {...props}
     />
   ),
-  code: function Code({ className, ...props }) {
+  code: function Code({ className, children, ...props }) {
     const isCodeBlock = useIsMarkdownCodeBlock();
+
+    const highlighted = useMemo(() => {
+      if (!isCodeBlock || typeof children !== "string") return null;
+      try {
+        return highlight(children);
+      } catch {
+        return null;
+      }
+    }, [isCodeBlock, children]);
+
+    if (isCodeBlock && highlighted) {
+      return (
+        <code
+          className={className}
+          dangerouslySetInnerHTML={{ __html: highlighted }}
+          {...props}
+        />
+      );
+    }
+
     return (
       <code
         className={cn(
@@ -172,7 +193,9 @@ const defaultComponents = memoizeMarkdownComponents({
           className,
         )}
         {...props}
-      />
+      >
+        {children}
+      </code>
     );
   },
   CodeHeader,

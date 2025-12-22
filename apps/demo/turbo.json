@@ -4,8 +4,8 @@
   "tasks": {
     "build": {
       "env": [
-        "DATABASE_URL",
-        "AUTH_SECRET",
+        "DATABASE_*",
+        "AUTH_*",
         "APPLICATION_*",
         "ASSISTANT_API_KEY",
         "NEXT_PUBLIC_ASSISTANT_BASE_URL",

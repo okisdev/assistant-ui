@@ -108,10 +108,10 @@ apps/demo/
 ### Visual Separation (NO borders)
 Instead of borders, use these patterns:
 - **Header separation**: `bg-background/80 backdrop-blur-sm` (transparent with blur)
-- **List items**: `bg-muted/30` with `hover:bg-muted` for hover state
+- **List items**: `bg-muted/50` with `hover:bg-muted` for hover state
 - **Info boxes**: `bg-muted/50` with `rounded-lg` (no border)
 - **Icon containers**: `bg-muted/50` with `rounded-full`
-- **Inactive elements**: `bg-muted/20` for subtle distinction
+- **Inactive elements**: `bg-muted/30` for subtle distinction
 - **Interactive elements**: Use `hover:bg-muted` or `hover:bg-accent` for clear hover feedback
 
 ### Status Indication

@@ -4,8 +4,25 @@ import type { AppRouter } from "@/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchStreamLink, loggerLink } from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
 import superjson from "superjson";
+
+const TRPCReadyContext = createContext(false);
+
+export function useTRPCReady() {
+  return useContext(TRPCReadyContext);
+}
+
+export function TRPCReady({
+  children,
+  fallback = null,
+}: {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}) {
+  const isReady = useTRPCReady();
+  return isReady ? children : fallback;
+}
 
 const createQueryClient = () => new QueryClient();
 
@@ -54,10 +71,12 @@ export function TRPCReactProvider(
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <api.Provider client={trpcClient} queryClient={queryClient}>
-        {props.children}
-      </api.Provider>
-    </QueryClientProvider>
+    <TRPCReadyContext.Provider value={true}>
+      <QueryClientProvider client={queryClient}>
+        <api.Provider client={trpcClient} queryClient={queryClient}>
+          {props.children}
+        </api.Provider>
+      </QueryClientProvider>
+    </TRPCReadyContext.Provider>
   );
 }

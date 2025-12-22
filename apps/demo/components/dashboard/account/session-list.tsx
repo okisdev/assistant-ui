@@ -48,7 +48,7 @@ function DeviceIcon({ device }: { device: DeviceType }) {
 
 function SessionSkeleton() {
   return (
-    <div className="flex items-center gap-4 rounded-lg bg-muted/30 px-4 py-3">
+    <div className="flex items-center gap-4 rounded-lg bg-muted/50 px-4 py-3">
       <div className="size-10 animate-pulse rounded-full bg-muted" />
       <div className="flex-1 space-y-2">
         <div className="h-4 w-40 animate-pulse rounded bg-muted" />
@@ -72,7 +72,7 @@ function SessionItem({
   const { browser, os, device } = parseUserAgent(session.userAgent);
 
   return (
-    <div className="flex items-center gap-4 rounded-lg bg-muted/30 px-4 py-3">
+    <div className="flex items-center gap-4 rounded-lg bg-muted/50 px-4 py-3">
       <div className="flex size-10 items-center justify-center rounded-full bg-muted/50">
         <DeviceIcon device={device} />
       </div>
