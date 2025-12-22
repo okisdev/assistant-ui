@@ -9,6 +9,11 @@ import {
   integer,
 } from "drizzle-orm/pg-core";
 
+export type UserCapabilities = {
+  personalization?: boolean;
+  chatHistoryContext?: boolean;
+};
+
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -17,6 +22,7 @@ export const user = pgTable("user", {
   image: text("image"),
   nickname: text("nickname"),
   workType: text("work_type"),
+  capabilities: jsonb("capabilities").$type<UserCapabilities>().default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
@@ -186,4 +192,18 @@ export const attachment = pgTable(
     index("attachment_userId_idx").on(table.userId),
     index("attachment_chatId_idx").on(table.chatId),
   ],
+);
+
+export const memory = pgTable(
+  "memory",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    category: text("category"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("memory_userId_idx").on(table.userId)],
 );

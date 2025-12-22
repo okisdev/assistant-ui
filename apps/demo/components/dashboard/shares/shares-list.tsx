@@ -187,13 +187,8 @@ export function SharesList() {
   };
 
   return (
-    <section>
-      <div className="mb-6">
-        <h2 className="font-semibold text-xl tracking-tight">Shared Links</h2>
-        <p className="mt-1 text-muted-foreground text-sm">
-          Manage your shared conversations and content.
-        </p>
-      </div>
+    <div className="flex flex-col gap-4">
+      <h1 className="font-medium text-xl tracking-tight">Shared Links</h1>
 
       <div className="flex flex-col gap-2">
         {isLoading ? (
@@ -216,15 +211,10 @@ export function SharesList() {
             <div className="flex size-16 items-center justify-center rounded-full bg-muted/50">
               <Share2 className="size-8 text-muted-foreground" />
             </div>
-            <div className="text-center">
-              <p className="font-medium text-sm">No shared links</p>
-              <p className="mt-1 text-muted-foreground text-sm">
-                Share a conversation to see it here.
-              </p>
-            </div>
+            <p className="text-muted-foreground text-sm">No shared links</p>
           </div>
         )}
       </div>
-    </section>
+    </div>
   );
 }

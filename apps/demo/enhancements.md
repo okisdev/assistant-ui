@@ -50,3 +50,17 @@ encode({ message: { id, parts, ...message } }) {
 **Workaround**: Create a custom `MessageFormatAdapter` in the demo that preserves file parts.
 
 **Solution**: Remove the filter in `aiSDKV5FormatAdapter.encode()` or add a configuration option to include file parts.
+
+### Memory (User Context) Support
+
+No built-in support for persistent user memories that are automatically injected as system context.
+
+**Workaround**: Custom implementation in demo app:
+- `DatabaseMemoryStore` class to manage memories with tRPC backend
+- `useAssistantMemory` hook to register memories via `api.modelContext().register()`
+- `useMemoryTools` hook to register `save_memory` tool via `useAssistantTool()`
+
+**Solution**: Add to `@assistant-ui/react`:
+- Export `Memory` and `MemoryStore` types
+- Export `useAssistantMemory` hook for system context injection
+- Export `useMemoryTools` hook for AI-driven memory creation

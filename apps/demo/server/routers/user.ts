@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { eq, and, ne } from "drizzle-orm";
 
-import { user, account } from "@/lib/database/schema";
+import { user, account, type UserCapabilities } from "@/lib/database/schema";
 import { workTypeOptions } from "@/lib/constants";
 import { protectedProcedure, createTRPCRouter } from "../trpc";
 
@@ -98,6 +98,58 @@ export const userRouter = createTRPCRouter({
             eq(account.providerId, input.providerId),
           ),
         );
+
+      return { success: true };
+    }),
+
+  getCapabilities: protectedProcedure.query(async ({ ctx }) => {
+    const result = await ctx.db
+      .select({ capabilities: user.capabilities })
+      .from(user)
+      .where(eq(user.id, ctx.session.user.id))
+      .limit(1);
+
+    const capabilities = result[0]?.capabilities ?? {};
+
+    // Return with defaults
+    return {
+      personalization: capabilities.personalization ?? true,
+      chatHistoryContext: capabilities.chatHistoryContext ?? false,
+    } satisfies Required<UserCapabilities>;
+  }),
+
+  updateCapabilities: protectedProcedure
+    .input(
+      z.object({
+        personalization: z.boolean().optional(),
+        chatHistoryContext: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Get current capabilities
+      const result = await ctx.db
+        .select({ capabilities: user.capabilities })
+        .from(user)
+        .where(eq(user.id, ctx.session.user.id))
+        .limit(1);
+
+      const current = result[0]?.capabilities ?? {};
+
+      // Merge with new values
+      const updated: UserCapabilities = {
+        ...current,
+        ...(input.personalization !== undefined && {
+          personalization: input.personalization,
+        }),
+        ...(input.chatHistoryContext !== undefined && {
+          chatHistoryContext: input.chatHistoryContext,
+        }),
+      };
+
+      await ctx.db
+        .update(user)
+        .set({ capabilities: updated })
+        .where(eq(user.id, ctx.session.user.id));
 
       return { success: true };
     }),

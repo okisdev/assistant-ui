@@ -1,6 +1,6 @@
 import { openai } from "@ai-sdk/openai";
 import { frontendTools } from "@assistant-ui/react-ai-sdk";
-import { convertToModelMessages, streamText } from "ai";
+import { convertToModelMessages, streamText, stepCountIs } from "ai";
 
 export const maxDuration = 30;
 
@@ -14,6 +14,7 @@ export async function POST(req: Request) {
     tools: {
       ...frontendTools(tools),
     },
+    stopWhen: stepCountIs(5),
   });
 
   return result.toUIMessageStreamResponse();

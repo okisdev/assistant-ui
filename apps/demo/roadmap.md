@@ -59,6 +59,30 @@
   - [x] History adapter
   - [x] Message format adapter (AI SDK v5)
 
+## Capabilities
+
+- [x] Memory
+  - [x] Personalization (auto-save memories)
+    - [x] Enable/disable toggle
+    - [x] Database storage (PostgreSQL)
+    - [x] User profile context (name, nickname, work type)
+    - [x] AI-initiated memory saving (save_memory tool)
+    - [x] Read-only mode when disabled
+  - [ ] Chat history context
+    - [ ] Enable/disable toggle
+    - [ ] Reference past conversations
+  - [x] Memory management
+    - [x] View memories dialog
+    - [x] Delete/clear memories
+- [ ] Web search
+  - [ ] Enable/disable toggle
+  - [ ] Search provider integration
+  - [ ] Search results display
+- [ ] Code execution
+  - [ ] Enable/disable toggle
+  - [ ] Sandboxed execution
+  - [ ] Code output display
+
 ## AI Features
 
 - [x] Model integration

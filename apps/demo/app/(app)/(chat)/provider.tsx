@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { nanoid } from "nanoid";
 import {
   AssistantRuntimeProvider,
@@ -11,6 +11,7 @@ import {
   type ThreadMessage,
 } from "@assistant-ui/react";
 import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
+import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { createAssistantStream } from "assistant-stream";
 import { api } from "@/utils/trpc/client";
 import {
@@ -19,6 +20,9 @@ import {
 } from "@/lib/adapters/database-history-adapter";
 import { useFeedbackAdapter } from "@/lib/adapters/feedback-adapter";
 import { BlobAttachmentAdapter } from "@/lib/adapters/blob-attachment-adapter";
+import { DatabaseMemoryStore } from "@/lib/adapters/database-memory-adapter";
+import { useAssistantMemory } from "@/hooks/use-assistant-memory";
+import { useMemoryTools } from "@/hooks/use-memory-tools";
 
 function HistoryProvider({ children }: { children?: ReactNode }) {
   const threadListItem = useAssistantState(
@@ -160,7 +164,33 @@ function useDatabaseThreadListAdapter(): RemoteThreadListAdapter {
 function useCustomChatRuntime() {
   const feedback = useFeedbackAdapter();
   const attachments = useMemo(() => new BlobAttachmentAdapter(), []);
-  return useChatRuntime({ adapters: { feedback, attachments } });
+  return useChatRuntime({
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    adapters: { feedback, attachments },
+  });
+}
+
+function MemoryProvider({ children }: { children: ReactNode }) {
+  const utils = api.useUtils();
+  const { data: user } = api.user.getProfile.useQuery();
+  const { data: capabilities } = api.user.getCapabilities.useQuery();
+
+  const personalization = capabilities?.personalization ?? true;
+
+  const memoryStore = useMemo(() => new DatabaseMemoryStore(utils), [utils]);
+
+  // Always initialize the memory store (for read-only access)
+  useEffect(() => {
+    memoryStore.initialize();
+  }, [memoryStore]);
+
+  // Always register memory context, but only allow saving when personalization is enabled
+  useAssistantMemory(memoryStore, user, { canSave: personalization });
+
+  // Only register save_memory tool when personalization is enabled
+  useMemoryTools(memoryStore, { enabled: personalization });
+
+  return <>{children}</>;
 }
 
 function RuntimeProviderInner({
@@ -177,7 +207,7 @@ function RuntimeProviderInner({
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      {children}
+      <MemoryProvider>{children}</MemoryProvider>
     </AssistantRuntimeProvider>
   );
 }
