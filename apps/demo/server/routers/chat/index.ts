@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, isNull } from "drizzle-orm";
 
 import { chat, chatMessage, chatVote, share } from "@/lib/database/schema";
 import { protectedProcedure, createTRPCRouter } from "../../trpc";
@@ -8,32 +8,61 @@ import { voteRouter } from "./vote";
 export const chatRouter = createTRPCRouter({
   vote: voteRouter,
 
-  list: protectedProcedure.query(async ({ ctx }) => {
-    const chats = await ctx.db
-      .select({
-        id: chat.id,
-        remoteId: chat.remoteId,
-        title: chat.title,
-        status: chat.status,
-        createdAt: chat.createdAt,
-        updatedAt: chat.updatedAt,
-      })
-      .from(chat)
-      .where(eq(chat.userId, ctx.session.user.id))
-      .orderBy(desc(chat.updatedAt));
+  list: protectedProcedure
+    .input(
+      z
+        .object({
+          projectId: z.string().nullable().optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const projectId = input?.projectId;
 
-    return chats;
-  }),
+      // Build the where condition
+      const conditions = [eq(chat.userId, ctx.session.user.id)];
+
+      if (projectId === null) {
+        // Explicitly filter for chats with no project
+        conditions.push(isNull(chat.projectId));
+      } else if (projectId !== undefined) {
+        // Filter for specific project
+        conditions.push(eq(chat.projectId, projectId));
+      }
+      // If projectId is undefined, return all chats (no project filter)
+
+      const chats = await ctx.db
+        .select({
+          id: chat.id,
+          projectId: chat.projectId,
+          remoteId: chat.remoteId,
+          title: chat.title,
+          status: chat.status,
+          createdAt: chat.createdAt,
+          updatedAt: chat.updatedAt,
+        })
+        .from(chat)
+        .where(and(...conditions))
+        .orderBy(desc(chat.updatedAt));
+
+      return chats;
+    }),
 
   create: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(
+      z.object({
+        id: z.string(),
+        projectId: z.string().nullable().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       await ctx.db.insert(chat).values({
         id: input.id,
         userId: ctx.session.user.id,
+        projectId: input.projectId ?? null,
       });
 
-      return { id: input.id };
+      return { id: input.id, projectId: input.projectId ?? null };
     }),
 
   update: protectedProcedure
@@ -96,6 +125,7 @@ export const chatRouter = createTRPCRouter({
       const result = await ctx.db
         .select({
           id: chat.id,
+          projectId: chat.projectId,
           remoteId: chat.remoteId,
           title: chat.title,
           status: chat.status,

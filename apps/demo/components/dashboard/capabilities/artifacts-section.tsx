@@ -1,7 +1,6 @@
 "use client";
 
 import { toast } from "sonner";
-import { Sparkles } from "lucide-react";
 
 import { api } from "@/utils/trpc/client";
 import { Switch } from "@/components/ui/switch";
@@ -69,17 +68,7 @@ export function ArtifactsSection() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
-        <div className="flex size-10 items-center justify-center rounded-full bg-muted/50">
-          <Sparkles className="size-5 text-muted-foreground" />
-        </div>
-        <div>
-          <h1 className="font-medium text-xl tracking-tight">Artifacts</h1>
-          <p className="text-muted-foreground text-sm">
-            Generate interactive content like websites, apps, and games
-          </p>
-        </div>
-      </div>
+      <h1 className="font-medium text-xl tracking-tight">Artifacts</h1>
 
       <div className="flex flex-col gap-2">
         <CapabilityRow

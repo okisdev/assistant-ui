@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { nanoid } from "nanoid";
 import {
   AssistantRuntimeProvider,
@@ -30,6 +30,7 @@ import {
   useArtifact,
 } from "@/lib/artifact-context";
 import { ChatLayout } from "@/components/assistant-ui/chat-layout";
+import { ProjectContext, type ProjectContextValue } from "@/hooks/use-project";
 
 function HistoryProvider({ children }: { children?: ReactNode }) {
   const threadListItem = useAssistantState(
@@ -84,13 +85,19 @@ function HistoryProvider({ children }: { children?: ReactNode }) {
   );
 }
 
-function useDatabaseThreadListAdapter(): RemoteThreadListAdapter {
+function useDatabaseThreadListAdapter(
+  projectId: string | null,
+): RemoteThreadListAdapter {
   const utils = api.useUtils();
 
   return useMemo(() => {
     const adapter: RemoteThreadListAdapter = {
       async list() {
-        const chats = await utils.chat.list.fetch();
+        // If projectId is set, filter chats by project
+        // If projectId is null, show chats without a project
+        const chats = await utils.chat.list.fetch({
+          projectId: projectId ?? null,
+        });
         return {
           threads: chats.map((c) => ({
             remoteId: c.id,
@@ -102,7 +109,8 @@ function useDatabaseThreadListAdapter(): RemoteThreadListAdapter {
 
       async initialize(_localId: string) {
         const id = nanoid();
-        await utils.client.chat.create.mutate({ id });
+        // Create chat with the current project association
+        await utils.client.chat.create.mutate({ id, projectId });
         return { remoteId: id, externalId: undefined };
       },
 
@@ -165,12 +173,13 @@ function useDatabaseThreadListAdapter(): RemoteThreadListAdapter {
     };
 
     return adapter;
-  }, [utils]);
+  }, [utils, projectId]);
 }
 
 function useCustomChatRuntime() {
   const feedback = useFeedbackAdapter();
   const attachments = useMemo(() => new BlobAttachmentAdapter(), []);
+
   return useChatRuntime({
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     adapters: { feedback, attachments },
@@ -256,8 +265,14 @@ function RuntimeProviderInner({
   );
 }
 
-function ChatProviderInner({ children }: { children: ReactNode }) {
-  const adapter = useDatabaseThreadListAdapter();
+function ChatProviderInner({
+  children,
+  projectId,
+}: {
+  children: ReactNode;
+  projectId: string | null;
+}) {
+  const adapter = useDatabaseThreadListAdapter(projectId);
 
   return (
     <RuntimeProviderInner adapter={adapter}>{children}</RuntimeProviderInner>
@@ -266,14 +281,27 @@ function ChatProviderInner({ children }: { children: ReactNode }) {
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const isTRPCReady = useTRPCReady();
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+
+  const projectContextValue: ProjectContextValue = useMemo(
+    () => ({
+      currentProjectId,
+      setCurrentProjectId,
+    }),
+    [currentProjectId],
+  );
 
   if (!isTRPCReady) {
     return null;
   }
 
   return (
-    <ArtifactContextProvider>
-      <ChatProviderInner>{children}</ChatProviderInner>
-    </ArtifactContextProvider>
+    <ProjectContext.Provider value={projectContextValue}>
+      <ArtifactContextProvider>
+        <ChatProviderInner projectId={currentProjectId}>
+          {children}
+        </ChatProviderInner>
+      </ArtifactContextProvider>
+    </ProjectContext.Provider>
   );
 }

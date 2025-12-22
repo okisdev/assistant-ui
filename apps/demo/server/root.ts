@@ -4,6 +4,7 @@ import { authRouter } from "./routers/auth";
 import { userRouter } from "./routers/user";
 import { chatRouter } from "./routers/chat";
 import { shareRouter } from "./routers/share";
+import { projectRouter } from "./routers/project";
 import { memoryRouter } from "./routers/memory";
 
 export const appRouter = createTRPCRouter({
@@ -11,6 +12,7 @@ export const appRouter = createTRPCRouter({
   user: userRouter,
   chat: chatRouter,
   share: shareRouter,
+  project: projectRouter,
   memory: memoryRouter,
 });
 

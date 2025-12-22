@@ -6,9 +6,14 @@ import { useAssistantApi } from "@assistant-ui/react";
 import { Thread } from "@/components/assistant-ui/thread";
 import { AppLayout } from "@/components/shared/app-layout";
 import { ChatHeaderShare } from "@/components/shared/chat-header-share";
-import { ChatHeaderTitle } from "@/components/shared/chat-header-title";
+import { ChatHeaderBreadcrumb } from "@/components/shared/chat-header-breadcrumb";
 
-export function ChatIdContent({ chatId }: { chatId: string }) {
+type ChatIdContentProps = {
+  chatId: string;
+  project: { id: string; name: string } | null;
+};
+
+export function ChatIdContent({ chatId, project }: ChatIdContentProps) {
   const api = useAssistantApi();
 
   useEffect(() => {
@@ -17,7 +22,7 @@ export function ChatIdContent({ chatId }: { chatId: string }) {
 
   return (
     <AppLayout
-      headerLeft={<ChatHeaderTitle />}
+      headerLeft={<ChatHeaderBreadcrumb project={project} />}
       headerRight={<ChatHeaderShare />}
     >
       <Thread />

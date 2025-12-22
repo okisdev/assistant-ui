@@ -13,10 +13,9 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import {
-  SidebarThreadList,
-  SidebarThreadListNew,
-} from "@/components/shared/sidebar-thread-list";
+import { SidebarThreadList } from "@/components/shared/sidebar-thread-list";
+import { SidebarHeroSection } from "@/components/shared/sidebar-hero-section";
+import { SidebarProjectList } from "@/components/shared/sidebar-project-list";
 import { SidebarUserMenu } from "@/components/shared/sidebar-user-menu";
 import { useAssistantApi } from "@assistant-ui/react";
 
@@ -48,7 +47,8 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarThreadListNew />
+        <SidebarHeroSection />
+        <SidebarProjectList />
         <SidebarThreadList />
       </SidebarContent>
 

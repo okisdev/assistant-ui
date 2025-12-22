@@ -22,5 +22,15 @@ export default async function ChatPage(props: PageProps<"/chat/[id]">) {
     notFound();
   }
 
-  return <ChatIdContent chatId={id} />;
+  // Fetch project info if chat belongs to a project
+  const project = chat.projectId
+    ? await api.project.get({ id: chat.projectId })
+    : null;
+
+  return (
+    <ChatIdContent
+      chatId={id}
+      project={project ? { id: project.id, name: project.name } : null}
+    />
+  );
 }

@@ -3,6 +3,7 @@ import { env } from "@/lib/env";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import * as schema from "@/lib/database/schema";
+import { organization } from "better-auth/plugins";
 
 export const auth = betterAuth({
   secret: env.AUTH_SECRET,
@@ -51,4 +52,5 @@ export const auth = betterAuth({
       },
     },
   },
+  plugins: [organization()],
 });
