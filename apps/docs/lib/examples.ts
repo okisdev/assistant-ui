@@ -71,7 +71,7 @@ const INTERNAL_EXAMPLES: ExampleItem[] = [
       "A personalized AI chat app powered by Mem0 that remembers your preferences, facts, and memories.",
     link: "/examples/mem0",
     githubLink:
-      "https://github.com/assistant-ui/assistant-ui/tree/main/examples/with-ai-sdk-v5",
+      "https://github.com/assistant-ui/assistant-ui/tree/main/examples/with-ai-sdk",
   },
   {
     title: "LangGraph Stockbroker",

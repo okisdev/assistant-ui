@@ -8,10 +8,17 @@ import {
 // Storage format for AI SDK messages - just the UIMessage
 export type AISDKStorageFormat = Omit<UIMessage, "id">;
 
-export const aiSDKV5FormatAdapter: MessageFormatAdapter<
+/**
+ * Message format adapter for AI SDK.
+ * Uses "ai-sdk/v5" format string for backward compatibility with existing stored messages.
+ * The format is compatible with both AI SDK v5 and v6.
+ */
+export const aiSDKFormatAdapter: MessageFormatAdapter<
   UIMessage,
   AISDKStorageFormat
 > = {
+  // Keep "ai-sdk/v5" format string for backward compatibility
+  // The message format itself hasn't changed between v5 and v6
   format: "ai-sdk/v5",
 
   encode({
@@ -40,3 +47,8 @@ export const aiSDKV5FormatAdapter: MessageFormatAdapter<
     return message.id;
   },
 };
+
+/**
+ * @deprecated Use `aiSDKFormatAdapter` instead. This export is kept for backward compatibility.
+ */
+export const aiSDKV5FormatAdapter = aiSDKFormatAdapter;
