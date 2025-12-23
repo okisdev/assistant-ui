@@ -1,5 +1,7 @@
 import { z } from "zod";
-import { attachment } from "@/lib/database/schema";
+import { eq, desc } from "drizzle-orm";
+import { sql } from "drizzle-orm";
+import { attachment, projectDocument } from "@/lib/database/schema";
 import { protectedProcedure, createTRPCRouter } from "../trpc";
 
 export const attachmentRouter = createTRPCRouter({
@@ -27,4 +29,51 @@ export const attachmentRouter = createTRPCRouter({
 
       return { id: input.id };
     }),
+
+  getStorageUsage: protectedProcedure.query(async ({ ctx }) => {
+    // Get total attachment size
+    const attachmentResult = await ctx.db
+      .select({
+        totalSize: sql<number>`COALESCE(SUM(${attachment.size}), 0)`,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(attachment)
+      .where(eq(attachment.userId, ctx.session.user.id));
+
+    // Get total project document size
+    const documentResult = await ctx.db
+      .select({
+        totalSize: sql<number>`COALESCE(SUM(${projectDocument.size}), 0)`,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(projectDocument)
+      .where(eq(projectDocument.userId, ctx.session.user.id));
+
+    // Get recent attachments list
+    const recentAttachments = await ctx.db
+      .select({
+        id: attachment.id,
+        pathname: attachment.pathname,
+        contentType: attachment.contentType,
+        size: attachment.size,
+        createdAt: attachment.createdAt,
+      })
+      .from(attachment)
+      .where(eq(attachment.userId, ctx.session.user.id))
+      .orderBy(desc(attachment.createdAt))
+      .limit(10);
+
+    const attachmentSize = Number(attachmentResult[0]?.totalSize ?? 0);
+    const documentSize = Number(documentResult[0]?.totalSize ?? 0);
+    const attachmentCount = Number(attachmentResult[0]?.count ?? 0);
+    const documentCount = Number(documentResult[0]?.count ?? 0);
+
+    return {
+      usedBytes: attachmentSize + documentSize,
+      limitBytes: 100 * 1024 * 1024, // 100MB
+      attachmentCount,
+      documentCount,
+      recentAttachments,
+    };
+  }),
 });

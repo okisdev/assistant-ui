@@ -3,6 +3,7 @@
 import { useTheme } from "next-themes";
 
 import { cn } from "@/lib/utils";
+import { SettingHeader } from "@/components/dashboard/setting-header";
 
 type ThemeValue = "system" | "light" | "dark";
 
@@ -104,7 +105,7 @@ export function AppearanceSection() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-medium text-xl tracking-tight">Appearance</h1>
+      <SettingHeader title="Appearance" />
 
       <div className="flex gap-4">
         {themeOptions.map((option) => (

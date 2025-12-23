@@ -133,6 +133,11 @@
 }
 
 [data-slot="input"]:focus-visible,
+[data-slot="button"]:focus-visible,
 [data-slot="textarea"]:focus-visible {
   box-shadow: none;
+}
+
+[data-slot="button"]:focus-visible{
+  @apply border-none ring-0;
 }

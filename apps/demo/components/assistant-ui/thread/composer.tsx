@@ -6,7 +6,7 @@ import {
   ComposerPrimitive,
   useAssistantState,
 } from "@assistant-ui/react";
-import { ArrowRight, LoaderIcon, SquareIcon } from "lucide-react";
+import { ArrowRight, LoaderIcon, SquareIcon, UploadIcon } from "lucide-react";
 
 import {
   ComposerAddAttachment,
@@ -31,13 +31,19 @@ export const Composer: FC<ComposerProps> = ({
 
   return (
     <ComposerPrimitive.Root className="group/composer w-full rounded-2xl bg-muted/50">
-      <ComposerPrimitive.AttachmentDropzone className="flex w-full flex-col px-4 py-4 outline-none data-[dragging=true]:rounded-2xl data-[dragging=true]:bg-accent/30">
+      <ComposerPrimitive.AttachmentDropzone className="group/dropzone relative flex w-full flex-col px-4 py-4 outline-none">
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-accent/50 opacity-0 transition-opacity duration-200 group-data-[dragging=true]/dropzone:opacity-100">
+          <div className="flex flex-col items-center gap-2 text-accent-foreground">
+            <UploadIcon className="size-8" />
+            <span className="font-medium text-sm">Drop files here</span>
+          </div>
+        </div>
         <ComposerAttachments />
-        <div className="flex items-center gap-3">
+        <div className="flex items-end gap-3">
           <ComposerAddAttachment />
           <ComposerPrimitive.Input
             placeholder={placeholder}
-            className="peer flex-1 resize-none bg-transparent text-base outline-none placeholder:text-muted-foreground"
+            className="peer max-h-40 flex-1 resize-none overflow-y-auto bg-transparent py-1.5 text-base outline-none placeholder:text-muted-foreground"
             rows={1}
             autoFocus
           />
@@ -66,7 +72,7 @@ export const Composer: FC<ComposerProps> = ({
         </div>
         <div className="grid grid-rows-[0fr] opacity-0 transition-all duration-200 ease-out group-focus-within/composer:grid-rows-[1fr] group-focus-within/composer:opacity-100 group-has-[textarea:not(:placeholder-shown)]/composer:grid-rows-[1fr] group-has-data-[state=open]/composer:grid-rows-[1fr] group-has-[textarea:not(:placeholder-shown)]/composer:opacity-100 group-has-data-[state=open]/composer:opacity-100">
           <div className="overflow-hidden">
-            <div className="flex items-center pt-3">
+            <div className="flex items-center gap-2 pt-3">
               <ModelSelector />
               <ReasoningToggle />
             </div>

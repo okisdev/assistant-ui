@@ -19,6 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { SettingHeader } from "@/components/dashboard/setting-header";
 
 function AccountInfoSkeleton() {
   return (
@@ -81,7 +82,7 @@ export function AccountInfo() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-medium text-xl tracking-tight">Account</h1>
+      <SettingHeader title="Account" />
 
       <div className="flex flex-col gap-2">
         <div className="flex h-14 items-center justify-between rounded-lg bg-muted/50 px-4 transition-colors duration-200 hover:bg-muted">

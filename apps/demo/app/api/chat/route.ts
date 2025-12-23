@@ -11,7 +11,7 @@ import { getUserContext, type UserContext } from "@/lib/ai/context";
 import { saveMemoryTool } from "@/lib/ai/tools/save-memory";
 import { createArtifactTool } from "@/lib/ai/tools/create-artifact";
 
-export const maxDuration = 30;
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const {

@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { type DeviceType, parseUserAgent } from "@/lib/user-agent";
+import { SettingHeader } from "@/components/dashboard/setting-header";
 
 function DeviceIcon({ device }: { device: DeviceType }) {
   switch (device) {
@@ -201,56 +202,52 @@ export function SessionList() {
   const currentSessionToken = currentSession?.session?.token;
   const otherSessions = sessions.filter((s) => s.token !== currentSessionToken);
 
+  const sessionAction = otherSessions.length > 0 && (
+    <AlertDialog>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="text-muted-foreground data-[state=open]:bg-muted"
+          >
+            {isRevokingAll ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <MoreVertical className="size-4" />
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <AlertDialogTrigger asChild>
+            <DropdownMenuItem className="text-destructive focus:text-destructive">
+              <LogOut className="size-4" />
+              Sign out all other
+            </DropdownMenuItem>
+          </AlertDialogTrigger>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Sign out all other sessions?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will sign you out from all other devices. Your current session
+            will remain active.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleRevokeOtherSessions}>
+            Sign out all
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="font-medium text-xl tracking-tight">Active Sessions</h1>
-
-        {otherSessions.length > 0 && (
-          <AlertDialog>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-muted-foreground data-[state=open]:bg-muted"
-                >
-                  {isRevokingAll ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <MoreVertical className="size-4" />
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <AlertDialogTrigger asChild>
-                  <DropdownMenuItem className="text-destructive focus:text-destructive">
-                    <LogOut className="size-4" />
-                    Sign out all other
-                  </DropdownMenuItem>
-                </AlertDialogTrigger>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  Sign out all other sessions?
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will sign you out from all other devices. Your current
-                  session will remain active.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleRevokeOtherSessions}>
-                  Sign out all
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-      </div>
+      <SettingHeader title="Active Sessions" action={sessionAction} />
 
       <div className="flex flex-col gap-2">
         {isLoading ? (

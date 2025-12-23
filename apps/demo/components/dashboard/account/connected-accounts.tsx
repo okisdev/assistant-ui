@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { GitHub } from "@/components/icons/github";
 import { Google } from "@/components/icons/google";
+import { SettingHeader } from "@/components/dashboard/setting-header";
 
 const PROVIDERS = {
   github: {
@@ -97,7 +98,7 @@ export function ConnectedAccounts() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-medium text-xl tracking-tight">Connected Accounts</h1>
+      <SettingHeader title="Connected Accounts" />
 
       <div className="flex flex-col gap-2">
         {accounts?.map((account) => (

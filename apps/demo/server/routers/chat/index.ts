@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, desc, and, isNull } from "drizzle-orm";
+import { eq, desc, and, isNull, isNotNull } from "drizzle-orm";
 
 import { chat, chatMessage, chatVote, share } from "@/lib/database/schema";
 import { AVAILABLE_MODELS, type ModelId } from "@/lib/ai/models";
@@ -24,8 +24,11 @@ export const chatRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const projectId = input?.projectId;
 
-      // Build the where condition
-      const conditions = [eq(chat.userId, ctx.session.user.id)];
+      // Build the where condition - exclude deleted chats
+      const conditions = [
+        eq(chat.userId, ctx.session.user.id),
+        isNull(chat.deletedAt),
+      ];
 
       if (projectId === null) {
         // Explicitly filter for chats with no project
@@ -113,6 +116,7 @@ export const chatRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      // Delete associated shares when soft-deleting
       await ctx.db
         .delete(share)
         .where(
@@ -123,8 +127,10 @@ export const chatRouter = createTRPCRouter({
           ),
         );
 
+      // Soft delete: set deletedAt timestamp
       await ctx.db
-        .delete(chat)
+        .update(chat)
+        .set({ deletedAt: new Date() })
         .where(
           and(eq(chat.id, input.id), eq(chat.userId, ctx.session.user.id)),
         );
@@ -254,5 +260,82 @@ export const chatRouter = createTRPCRouter({
       });
 
       return { id: input.id };
+    }),
+
+  listArchived: protectedProcedure.query(async ({ ctx }) => {
+    const chats = await ctx.db
+      .select({
+        id: chat.id,
+        projectId: chat.projectId,
+        title: chat.title,
+        status: chat.status,
+        createdAt: chat.createdAt,
+        updatedAt: chat.updatedAt,
+      })
+      .from(chat)
+      .where(
+        and(
+          eq(chat.userId, ctx.session.user.id),
+          eq(chat.status, "archived"),
+          isNull(chat.deletedAt),
+        ),
+      )
+      .orderBy(desc(chat.updatedAt));
+
+    return chats;
+  }),
+
+  listDeleted: protectedProcedure.query(async ({ ctx }) => {
+    const chats = await ctx.db
+      .select({
+        id: chat.id,
+        projectId: chat.projectId,
+        title: chat.title,
+        status: chat.status,
+        createdAt: chat.createdAt,
+        updatedAt: chat.updatedAt,
+        deletedAt: chat.deletedAt,
+      })
+      .from(chat)
+      .where(
+        and(eq(chat.userId, ctx.session.user.id), isNotNull(chat.deletedAt)),
+      )
+      .orderBy(desc(chat.deletedAt));
+
+    return chats;
+  }),
+
+  restore: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(chat)
+        .set({ deletedAt: null })
+        .where(
+          and(
+            eq(chat.id, input.id),
+            eq(chat.userId, ctx.session.user.id),
+            isNotNull(chat.deletedAt),
+          ),
+        );
+
+      return { success: true };
+    }),
+
+  permanentDelete: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // Only allow permanent deletion of already soft-deleted chats
+      await ctx.db
+        .delete(chat)
+        .where(
+          and(
+            eq(chat.id, input.id),
+            eq(chat.userId, ctx.session.user.id),
+            isNotNull(chat.deletedAt),
+          ),
+        );
+
+      return { success: true };
     }),
 });

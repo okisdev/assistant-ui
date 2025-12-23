@@ -10,7 +10,8 @@ import {
   type unstable_RemoteThreadListAdapter as RemoteThreadListAdapter,
   type ThreadMessage,
 } from "@assistant-ui/react";
-import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
+import { useAISDKRuntime } from "@assistant-ui/react-ai-sdk";
+import { useChat } from "@ai-sdk/react";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { createAssistantStream } from "assistant-stream";
 import { api, useTRPCReady } from "@/utils/trpc/client";
@@ -38,7 +39,11 @@ import { ChatLayout } from "@/components/assistant-ui/chat-layout";
 import { ChatContent } from "@/components/app/chat/chat-content";
 import { ProjectContext, type ProjectContextValue } from "@/hooks/use-project";
 import { ChatPageProvider } from "@/contexts/chat-page-provider";
-import { IncognitoProvider, useIncognito } from "@/contexts/incognito-provider";
+import {
+  IncognitoProvider,
+  useIncognito,
+  useIncognitoOptional,
+} from "@/contexts/incognito-provider";
 
 function HistoryProvider({ children }: { children?: ReactNode }) {
   const threadListItem = useAssistantState(
@@ -257,12 +262,22 @@ export const modelTransport = new ModelChatTransport();
 function useCustomChatRuntime() {
   const feedback = useFeedbackAdapter();
   const attachments = useMemo(() => new BlobAttachmentAdapter(), []);
+  const id = useAssistantState(({ threadListItem }) => threadListItem.id);
 
-  return useChatRuntime({
+  const chat = useChat({
+    id,
     transport: modelTransport,
-    adapters: { feedback, attachments },
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    experimental_throttle: 100,
   });
+
+  const runtime = useAISDKRuntime(chat, {
+    adapters: { feedback, attachments },
+  });
+
+  modelTransport.setRuntime(runtime);
+
+  return runtime;
 }
 
 function MemoryProvider({ children }: { children: ReactNode }) {
@@ -316,41 +331,19 @@ function ArtifactToolsProvider({ children }: { children: ReactNode }) {
 function RuntimeProviderInner({
   children,
   adapter,
-  isIncognito,
 }: {
   children: ReactNode;
   adapter: RemoteThreadListAdapter;
-  isIncognito: boolean;
 }) {
   const runtime = useRemoteThreadListRuntime({
     runtimeHook: useCustomChatRuntime,
     adapter,
   });
 
-  const content = isIncognito ? (
-    <ArtifactToolsProvider>
-      <ChatLayout>
-        <ChatContent />
-      </ChatLayout>
-    </ArtifactToolsProvider>
-  ) : (
-    <MemoryProvider>
-      <ArtifactToolsProvider>
-        <ChatLayout>
-          <ChatContent />
-        </ChatLayout>
-      </ArtifactToolsProvider>
-    </MemoryProvider>
-  );
-
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <CapabilitiesProvider>
-        <ModelSelectionProvider>
-          {content}
-          {/* children used by page components to set context state */}
-          {children}
-        </ModelSelectionProvider>
+        <ModelSelectionProvider>{children}</ModelSelectionProvider>
       </CapabilitiesProvider>
     </AssistantRuntimeProvider>
   );
@@ -374,7 +367,6 @@ function ChatProviderInner({
     <RuntimeProviderInner
       key={isIncognito ? "incognito" : "regular"}
       adapter={adapter}
-      isIncognito={isIncognito}
     >
       {children}
     </RuntimeProviderInner>
@@ -409,5 +401,30 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         </IncognitoProvider>
       </ChatPageProvider>
     </ProjectContext.Provider>
+  );
+}
+
+export function ChatUI() {
+  const incognito = useIncognitoOptional();
+  const isIncognito = incognito?.isIncognito ?? false;
+
+  if (isIncognito) {
+    return (
+      <ArtifactToolsProvider>
+        <ChatLayout>
+          <ChatContent />
+        </ChatLayout>
+      </ArtifactToolsProvider>
+    );
+  }
+
+  return (
+    <MemoryProvider>
+      <ArtifactToolsProvider>
+        <ChatLayout>
+          <ChatContent />
+        </ChatLayout>
+      </ArtifactToolsProvider>
+    </MemoryProvider>
   );
 }

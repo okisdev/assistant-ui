@@ -11,6 +11,7 @@ import {
   type ModelDefinition,
   type ModelProvider,
 } from "@/lib/ai/models";
+import { SettingHeader } from "@/components/dashboard/setting-header";
 
 function ModelSkeleton() {
   return (
@@ -121,24 +122,25 @@ export function ModelsSection() {
     return groups;
   }, [filteredModels]);
 
+  const modelsAction = (
+    <div className="flex items-center gap-2">
+      <Switch
+        id="show-deprecated"
+        checked={showDeprecated}
+        onCheckedChange={setShowDeprecated}
+      />
+      <Label
+        htmlFor="show-deprecated"
+        className="cursor-pointer text-muted-foreground text-sm"
+      >
+        Show deprecated
+      </Label>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-medium text-xl tracking-tight">Models</h1>
-        <div className="flex items-center gap-2">
-          <Switch
-            id="show-deprecated"
-            checked={showDeprecated}
-            onCheckedChange={setShowDeprecated}
-          />
-          <Label
-            htmlFor="show-deprecated"
-            className="cursor-pointer text-muted-foreground text-sm"
-          >
-            Show deprecated
-          </Label>
-        </div>
-      </div>
+      <SettingHeader title="Models" action={modelsAction} />
 
       {isLoading ? (
         <div className="flex flex-col gap-2">

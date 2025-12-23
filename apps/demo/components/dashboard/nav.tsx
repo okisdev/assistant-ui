@@ -6,7 +6,7 @@ import {
   Settings,
   User,
   BarChart3,
-  Share2,
+  Database,
   Brain,
   Zap,
   Bot,
@@ -26,9 +26,9 @@ const navItems = [
     icon: User,
   },
   {
-    title: "Shares",
-    href: "/shares",
-    icon: Share2,
+    title: "Data",
+    href: "/data",
+    icon: Database,
   },
   {
     title: "Models",

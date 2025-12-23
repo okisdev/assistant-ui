@@ -1,11 +1,11 @@
 import { Zap } from "lucide-react";
 
+import { SettingHeader } from "@/components/dashboard/setting-header";
+
 export function IntegrationsSection() {
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h1 className="font-medium text-xl tracking-tight">Integrations</h1>
-      </div>
+      <SettingHeader title="Integrations" />
 
       <div className="flex flex-col items-center gap-4 rounded-lg bg-muted/50 py-16">
         <div className="flex size-16 items-center justify-center rounded-full bg-muted/50">

@@ -257,7 +257,7 @@ export const ComposerAddAttachment: FC = () => {
         tooltip="Attachments not supported by this model"
         side="top"
         variant="ghost"
-        className="size-8 cursor-not-allowed rounded-full text-muted-foreground/50"
+        className="size-9 cursor-not-allowed rounded-full text-muted-foreground/50"
         aria-label="Attachments not supported"
         disabled
       >
@@ -272,7 +272,7 @@ export const ComposerAddAttachment: FC = () => {
         tooltip="Add Attachment"
         side="top"
         variant="ghost"
-        className="size-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+        className="size-9 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
         aria-label="Add Attachment"
       >
         <PlusIcon className="size-5" />

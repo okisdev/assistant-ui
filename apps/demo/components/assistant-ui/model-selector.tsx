@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useModelSelection } from "@/contexts/model-selection-provider";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 type ModelSelectorProps = {
   className?: string;
@@ -87,17 +88,18 @@ export const ReasoningToggle: FC<{ className?: string }> = ({ className }) => {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={() => setReasoningEnabled(!reasoningEnabled)}
           className={cn(
-            "flex items-center gap-1.5 rounded-md px-2 py-1 transition-colors hover:bg-muted/50",
+            "transition-colors",
             reasoningEnabled ? "text-emerald-500" : "text-muted-foreground",
             className,
           )}
         >
           <BrainIcon className="size-3.5" />
-        </button>
+        </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom">
         <p>{reasoningEnabled ? "Reasoning enabled" : "Reasoning disabled"}</p>

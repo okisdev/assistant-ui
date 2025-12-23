@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SettingHeader } from "@/components/dashboard/setting-header";
 
 function ProfileSkeleton() {
   return (
@@ -86,7 +87,7 @@ export function ProfileSection() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-medium text-xl tracking-tight">Profile</h1>
+      <SettingHeader title="Profile" />
 
       {isPending ? (
         <ProfileSkeleton />

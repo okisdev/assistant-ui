@@ -23,7 +23,6 @@ export type UserCapabilities = {
     reasoningEnabled?: boolean;
   };
   models?: {
-    /** List of enabled model IDs */
     enabledIds?: string[];
   };
 };
@@ -221,6 +220,7 @@ export const chat = pgTable(
       .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
+    deletedAt: timestamp("deleted_at"),
   },
   (table) => [
     index("chat_userId_idx").on(table.userId),

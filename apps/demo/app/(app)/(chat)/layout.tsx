@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
-import { ChatProvider } from "./provider";
+import { ChatProvider, ChatUI } from "./provider";
 
 export default async function ChatLayout(props: LayoutProps<"/">) {
   const { children } = props;
@@ -11,7 +11,12 @@ export default async function ChatLayout(props: LayoutProps<"/">) {
   });
 
   if (session?.user) {
-    return <ChatProvider>{children}</ChatProvider>;
+    return (
+      <ChatProvider>
+        <ChatUI />
+        {children}
+      </ChatProvider>
+    );
   }
 
   return children;

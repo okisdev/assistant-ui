@@ -13,7 +13,6 @@ import { toast } from "sonner";
 
 import { api } from "@/utils/trpc/client";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +37,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SettingRowSwitch } from "@/components/dashboard/setting-row";
+import { SettingHeader } from "@/components/dashboard/setting-header";
 
 type MemoryRow = {
   id: string;
@@ -238,50 +239,6 @@ function MemoriesDialog() {
   );
 }
 
-function CapabilityRow({
-  title,
-  description,
-  checked,
-  disabled,
-  onCheckedChange,
-  badge,
-  action,
-}: {
-  title: string;
-  description?: string;
-  checked: boolean;
-  disabled?: boolean;
-  onCheckedChange?: (checked: boolean) => void;
-  badge?: string;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 rounded-lg bg-muted/50 px-4 py-3">
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-sm">{title}</span>
-          {badge && (
-            <span className="rounded bg-muted px-2 py-0.5 text-muted-foreground text-xs">
-              {badge}
-            </span>
-          )}
-        </div>
-        {description && (
-          <p className="text-muted-foreground text-xs">{description}</p>
-        )}
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        {action}
-        <Switch
-          checked={checked}
-          onCheckedChange={onCheckedChange}
-          disabled={disabled}
-        />
-      </div>
-    </div>
-  );
-}
-
 export function MemorySection() {
   const { data: capabilities, isLoading: isCapabilitiesLoading } =
     api.user.capability.list.useQuery();
@@ -304,10 +261,10 @@ export function MemorySection() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-medium text-xl tracking-tight">Memory</h1>
+      <SettingHeader title="Memory" />
 
       <div className="flex flex-col gap-2">
-        <CapabilityRow
+        <SettingRowSwitch
           title="Personalization"
           description="AI remembers your preferences and information from conversations"
           checked={personalization}
@@ -317,7 +274,7 @@ export function MemorySection() {
           onCheckedChange={handleTogglePersonalization}
           action={<MemoriesDialog />}
         />
-        <CapabilityRow
+        <SettingRowSwitch
           title="Chat history context"
           description="AI can reference your past conversations for context"
           checked={false}

@@ -187,34 +187,30 @@ export function SharesList() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="font-medium text-xl tracking-tight">Shared Links</h1>
-
-      <div className="flex flex-col gap-2">
-        {isLoading ? (
-          <>
-            <ShareSkeleton />
-            <ShareSkeleton />
-            <ShareSkeleton />
-          </>
-        ) : shares && shares.length > 0 ? (
-          shares.map((share) => (
-            <ShareItem
-              key={share.id}
-              share={share}
-              isDeleting={deletingId === share.id}
-              onDelete={() => handleDelete(share.id)}
-            />
-          ))
-        ) : (
-          <div className="flex flex-col items-center gap-4 rounded-lg bg-muted/50 py-12">
-            <div className="flex size-16 items-center justify-center rounded-full bg-muted/50">
-              <Share2 className="size-8 text-muted-foreground" />
-            </div>
-            <p className="text-muted-foreground text-sm">No shared links</p>
+    <div className="flex flex-col gap-2">
+      {isLoading ? (
+        <>
+          <ShareSkeleton />
+          <ShareSkeleton />
+          <ShareSkeleton />
+        </>
+      ) : shares && shares.length > 0 ? (
+        shares.map((share) => (
+          <ShareItem
+            key={share.id}
+            share={share}
+            isDeleting={deletingId === share.id}
+            onDelete={() => handleDelete(share.id)}
+          />
+        ))
+      ) : (
+        <div className="flex flex-col items-center gap-4 rounded-lg bg-muted/50 py-12">
+          <div className="flex size-16 items-center justify-center rounded-full bg-muted/50">
+            <Share2 className="size-8 text-muted-foreground" />
           </div>
-        )}
-      </div>
+          <p className="text-muted-foreground text-sm">No shared links</p>
+        </div>
+      )}
     </div>
   );
 }

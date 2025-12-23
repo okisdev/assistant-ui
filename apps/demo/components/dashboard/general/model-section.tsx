@@ -17,6 +17,7 @@ import {
   getModelById,
   isValidModelId,
 } from "@/lib/ai/models";
+import { SettingHeader } from "@/components/dashboard/setting-header";
 
 function ModelSkeleton() {
   return (
@@ -68,7 +69,7 @@ export function ModelSection() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-medium text-xl tracking-tight">AI Model</h1>
+      <SettingHeader title="AI Model" />
 
       {isLoading ? (
         <ModelSkeleton />
