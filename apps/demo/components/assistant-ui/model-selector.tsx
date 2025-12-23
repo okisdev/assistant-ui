@@ -1,6 +1,7 @@
 "use client";
 
 import type { FC } from "react";
+import { BrainIcon } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -8,7 +9,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AVAILABLE_MODELS } from "@/lib/models";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { AVAILABLE_MODELS } from "@/lib/ai/models";
 import { useModelSelection } from "@/hooks/use-model-selection";
 import { cn } from "@/lib/utils";
 
@@ -70,4 +76,33 @@ export const ModelSelectorCompact: FC<{ className?: string }> = ({
   className,
 }) => {
   return <ModelSelector className={className} compact />;
+};
+
+export const ReasoningToggle: FC<{ className?: string }> = ({ className }) => {
+  const { model, reasoningEnabled, setReasoningEnabled } = useModelSelection();
+
+  if (!model.capabilities.includes("reasoning")) {
+    return null;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={() => setReasoningEnabled(!reasoningEnabled)}
+          className={cn(
+            "flex items-center gap-1.5 rounded-md px-2 py-1 transition-colors hover:bg-muted/50",
+            reasoningEnabled ? "text-emerald-500" : "text-muted-foreground",
+            className,
+          )}
+        >
+          <BrainIcon className="size-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">
+        <p>{reasoningEnabled ? "Reasoning enabled" : "Reasoning disabled"}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
 };

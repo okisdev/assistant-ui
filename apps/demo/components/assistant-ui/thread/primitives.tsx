@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
+import { ReasoningContent } from "@/components/assistant-ui/reasoning-content";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { UserMessageAttachments } from "@/components/assistant-ui/attachment";
 import { Button } from "@/components/ui/button";
@@ -72,7 +73,7 @@ export const AssistantMessage: FC = () => {
       {isLoading ? (
         <div className="flex items-center gap-2 text-muted-foreground">
           <LoaderIcon className="size-4 animate-spin" />
-          <span className="text-sm">Thinking...</span>
+          <span className="shimmer text-sm">Thinking...</span>
         </div>
       ) : (
         <div className="group/assistant relative">
@@ -80,6 +81,7 @@ export const AssistantMessage: FC = () => {
             <MessagePrimitive.Parts
               components={{
                 Text: MarkdownText,
+                Reasoning: ReasoningContent,
               }}
             />
             <MessageError />

@@ -12,7 +12,10 @@ import {
   ComposerAddAttachment,
   ComposerAttachments,
 } from "@/components/assistant-ui/attachment";
-import { ModelSelector } from "@/components/assistant-ui/model-selector";
+import {
+  ModelSelector,
+  ReasoningToggle,
+} from "@/components/assistant-ui/model-selector";
 import { Button } from "@/components/ui/button";
 
 type ComposerProps = {
@@ -69,6 +72,7 @@ export const Composer: FC<ComposerProps> = ({
             <div className="overflow-hidden">
               <div className="flex items-center pt-3">
                 <ModelSelector />
+                <ReasoningToggle />
               </div>
             </div>
           </div>

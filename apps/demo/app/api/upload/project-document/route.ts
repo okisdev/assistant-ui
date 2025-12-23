@@ -1,16 +1,8 @@
 import { put } from "@vercel/blob";
 import { nanoid } from "nanoid";
-import { eq, and } from "drizzle-orm";
-import { auth } from "@/lib/auth";
-import { database } from "@/lib/database";
-import { project } from "@/lib/database/schema";
+import { api } from "@/utils/trpc/server";
 
 export async function POST(req: Request) {
-  const session = await auth.api.getSession({ headers: req.headers });
-  if (!session?.user) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
   const projectId = formData.get("projectId") as string | null;
@@ -23,19 +15,24 @@ export async function POST(req: Request) {
     return Response.json({ error: "No project ID provided" }, { status: 400 });
   }
 
-  // Verify user owns the project
-  const projectResult = await database
-    .select({ id: project.id })
-    .from(project)
-    .where(and(eq(project.id, projectId), eq(project.userId, session.user.id)))
-    .limit(1);
+  let userId: string;
+  try {
+    const profile = await api.user.getProfile();
+    if (!profile) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    userId = profile.id;
 
-  if (!projectResult[0]) {
-    return Response.json({ error: "Project not found" }, { status: 404 });
+    const projectData = await api.project.get({ id: projectId });
+    if (!projectData) {
+      return Response.json({ error: "Project not found" }, { status: 404 });
+    }
+  } catch {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const id = nanoid();
-  const pathname = `project-documents/${session.user.id}/${projectId}/${id}/${file.name}`;
+  const pathname = `project-documents/${userId}/${projectId}/${id}/${file.name}`;
 
   const blob = await put(pathname, file, {
     access: "public",

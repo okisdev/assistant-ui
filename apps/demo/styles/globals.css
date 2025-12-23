@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@import "tw-shimmer";
+
 @import "./animate.css";
 @import "./sugar-high.css";
 

@@ -22,7 +22,6 @@ import { useFeedbackAdapter } from "@/lib/adapters/feedback-adapter";
 import { BlobAttachmentAdapter } from "@/lib/adapters/blob-attachment-adapter";
 import { DatabaseMemoryStore } from "@/lib/adapters/database-memory-adapter";
 import { ModelChatTransport } from "@/lib/adapters/model-chat-transport";
-import { useAssistantMemory } from "@/hooks/use-assistant-memory";
 import { useMemoryTools } from "@/hooks/use-memory-tools";
 import { useArtifactTools } from "@/hooks/use-artifact-tools";
 import { ModelSelectionProvider } from "@/hooks/use-model-selection";
@@ -33,6 +32,7 @@ import {
 } from "@/lib/artifact-context";
 import { ChatLayout } from "@/components/assistant-ui/chat-layout";
 import { ProjectContext, type ProjectContextValue } from "@/hooks/use-project";
+import { IncognitoProvider, useIncognito } from "@/hooks/use-incognito";
 
 function HistoryProvider({ children }: { children?: ReactNode }) {
   const threadListItem = useAssistantState(
@@ -95,8 +95,6 @@ function useDatabaseThreadListAdapter(
   return useMemo(() => {
     const adapter: RemoteThreadListAdapter = {
       async list() {
-        // If projectId is set, filter chats by project
-        // If projectId is null, show chats without a project
         const chats = await utils.chat.list.fetch({
           projectId: projectId ?? null,
         });
@@ -111,7 +109,6 @@ function useDatabaseThreadListAdapter(
 
       async initialize(_localId: string) {
         const id = nanoid();
-        // Create chat with the current project association
         await utils.client.chat.create.mutate({ id, projectId });
         return { remoteId: id, externalId: undefined };
       },
@@ -178,8 +175,78 @@ function useDatabaseThreadListAdapter(
   }, [utils, projectId]);
 }
 
-// Singleton transport instance to maintain runtime reference across renders
-const modelTransport = new ModelChatTransport();
+function useIncognitoThreadListAdapter(): RemoteThreadListAdapter {
+  const incognitoThreadRef = useRef<{
+    remoteId: string;
+    title?: string;
+  } | null>(null);
+
+  return useMemo(() => {
+    const adapter: RemoteThreadListAdapter = {
+      async list() {
+        return { threads: [] };
+      },
+
+      async initialize(_localId: string) {
+        const id = `incognito-${nanoid()}`;
+        incognitoThreadRef.current = { remoteId: id };
+        return { remoteId: id, externalId: undefined };
+      },
+
+      async rename(_chatId: string, newTitle: string) {
+        if (incognitoThreadRef.current) {
+          incognitoThreadRef.current.title = newTitle;
+        }
+      },
+
+      async archive(_chatId: string) {},
+
+      async unarchive(_chatId: string) {},
+
+      async delete(_chatId: string) {
+        incognitoThreadRef.current = null;
+      },
+
+      async fetch(chatId: string) {
+        if (
+          incognitoThreadRef.current &&
+          incognitoThreadRef.current.remoteId === chatId
+        ) {
+          return {
+            remoteId: incognitoThreadRef.current.remoteId,
+            status: "regular" as const,
+            title: incognitoThreadRef.current.title,
+          };
+        }
+        throw new Error("Incognito chat not found");
+      },
+
+      async generateTitle(_chatId: string, messages: readonly ThreadMessage[]) {
+        return createAssistantStream(async (controller) => {
+          const firstUserMessage = messages.find((m) => m.role === "user");
+          if (firstUserMessage) {
+            const text = firstUserMessage.content
+              .filter(
+                (c): c is { type: "text"; text: string } => c.type === "text",
+              )
+              .map((c) => c.text)
+              .join(" ");
+            const title =
+              text.slice(0, 50) + (text.length > 50 ? "..." : "") ||
+              "Incognito Chat";
+            controller.appendText(title);
+          } else {
+            controller.appendText("Incognito Chat");
+          }
+        });
+      },
+    };
+
+    return adapter;
+  }, []);
+}
+
+export const modelTransport = new ModelChatTransport();
 
 function useCustomChatRuntime() {
   const feedback = useFeedbackAdapter();
@@ -194,22 +261,16 @@ function useCustomChatRuntime() {
 
 function MemoryProvider({ children }: { children: ReactNode }) {
   const utils = api.useUtils();
-  const { data: user } = api.user.getProfile.useQuery();
   const { data: capabilities } = api.user.getCapabilities.useQuery();
 
   const personalization = capabilities?.personalization ?? true;
 
   const memoryStore = useMemo(() => new DatabaseMemoryStore(utils), [utils]);
 
-  // Always initialize the memory store (for read-only access)
   useEffect(() => {
     memoryStore.initialize();
   }, [memoryStore]);
 
-  // Always register memory context, but only allow saving when personalization is enabled
-  useAssistantMemory(memoryStore, user, { canSave: personalization });
-
-  // Only register save_memory tool when personalization is enabled
   useMemoryTools(memoryStore, { enabled: personalization });
 
   return <>{children}</>;
@@ -251,24 +312,32 @@ function ArtifactToolsProvider({ children }: { children: ReactNode }) {
 function RuntimeProviderInner({
   children,
   adapter,
+  isIncognito,
 }: {
   children: ReactNode;
   adapter: RemoteThreadListAdapter;
+  isIncognito: boolean;
 }) {
   const runtime = useRemoteThreadListRuntime({
     runtimeHook: useCustomChatRuntime,
     adapter,
   });
 
+  const content = isIncognito ? (
+    <ArtifactToolsProvider>
+      <ChatLayout>{children}</ChatLayout>
+    </ArtifactToolsProvider>
+  ) : (
+    <MemoryProvider>
+      <ArtifactToolsProvider>
+        <ChatLayout>{children}</ChatLayout>
+      </ArtifactToolsProvider>
+    </MemoryProvider>
+  );
+
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <ModelSelectionProvider>
-        <MemoryProvider>
-          <ArtifactToolsProvider>
-            <ChatLayout>{children}</ChatLayout>
-          </ArtifactToolsProvider>
-        </MemoryProvider>
-      </ModelSelectionProvider>
+      <ModelSelectionProvider>{content}</ModelSelectionProvider>
     </AssistantRuntimeProvider>
   );
 }
@@ -280,10 +349,21 @@ function ChatProviderInner({
   children: ReactNode;
   projectId: string | null;
 }) {
-  const adapter = useDatabaseThreadListAdapter(projectId);
+  const { isIncognito } = useIncognito();
+
+  const databaseAdapter = useDatabaseThreadListAdapter(projectId);
+  const incognitoAdapter = useIncognitoThreadListAdapter();
+
+  const adapter = isIncognito ? incognitoAdapter : databaseAdapter;
 
   return (
-    <RuntimeProviderInner adapter={adapter}>{children}</RuntimeProviderInner>
+    <RuntimeProviderInner
+      key={isIncognito ? "incognito" : "regular"}
+      adapter={adapter}
+      isIncognito={isIncognito}
+    >
+      {children}
+    </RuntimeProviderInner>
   );
 }
 
@@ -305,11 +385,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   return (
     <ProjectContext.Provider value={projectContextValue}>
-      <ArtifactContextProvider>
-        <ChatProviderInner projectId={currentProjectId}>
-          {children}
-        </ChatProviderInner>
-      </ArtifactContextProvider>
+      <IncognitoProvider>
+        <ArtifactContextProvider>
+          <ChatProviderInner projectId={currentProjectId}>
+            {children}
+          </ChatProviderInner>
+        </ArtifactContextProvider>
+      </IncognitoProvider>
     </ProjectContext.Provider>
   );
 }

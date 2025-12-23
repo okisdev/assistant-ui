@@ -77,7 +77,11 @@ const ProjectListSkeleton: FC = () => {
 };
 
 const ProjectListFallback: FC = () => (
-  <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+  <SidebarGroup className="flex-1 overflow-y-auto group-data-[collapsible=icon]:hidden">
+    <SidebarGroupLabel className="flex w-full items-center">
+      Projects
+      <ChevronDown className="ml-auto" />
+    </SidebarGroupLabel>
     <SidebarGroupContent>
       <ProjectListSkeleton />
     </SidebarGroupContent>
@@ -90,20 +94,20 @@ type ProjectData = {
   color: string | null;
 };
 
+const ProjectListEmpty: FC = () => {
+  return (
+    <div className="px-2 py-4 text-center text-muted-foreground text-sm">
+      No projects yet
+    </div>
+  );
+};
+
 const SidebarProjectListContent: FC = () => {
   const { data: projects, isLoading } = api.project.list.useQuery();
   const { currentProjectId } = useProject();
 
-  if (isLoading) {
-    return <ProjectListFallback />;
-  }
-
-  if (!projects || projects.length === 0) {
-    return null;
-  }
-
-  const visibleProjects = projects.slice(0, MAX_VISIBLE_PROJECTS);
-  const hasMore = projects.length > MAX_VISIBLE_PROJECTS;
+  const visibleProjects = projects?.slice(0, MAX_VISIBLE_PROJECTS) ?? [];
+  const hasMore = (projects?.length ?? 0) > MAX_VISIBLE_PROJECTS;
 
   return (
     <Collapsible defaultOpen className="group/collapsible">
@@ -116,28 +120,34 @@ const SidebarProjectListContent: FC = () => {
         </SidebarGroupLabel>
         <CollapsibleContent>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {visibleProjects.map((project) => (
-                <SidebarProjectListItem
-                  key={project.id}
-                  project={project}
-                  isActive={project.id === currentProjectId}
-                />
-              ))}
-              {hasMore && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <Link
-                      href="/projects"
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      <span>View all ({projects.length})</span>
-                      <ChevronRight className="ml-auto size-4" />
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-            </SidebarMenu>
+            {isLoading && <ProjectListSkeleton />}
+            {!isLoading && (!projects || projects.length === 0) && (
+              <ProjectListEmpty />
+            )}
+            {!isLoading && projects && projects.length > 0 && (
+              <SidebarMenu>
+                {visibleProjects.map((project) => (
+                  <SidebarProjectListItem
+                    key={project.id}
+                    project={project}
+                    isActive={project.id === currentProjectId}
+                  />
+                ))}
+                {hasMore && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <Link
+                        href="/projects"
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <span>View all ({projects.length})</span>
+                        <ChevronRight className="ml-auto size-4" />
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+              </SidebarMenu>
+            )}
           </SidebarGroupContent>
         </CollapsibleContent>
       </SidebarGroup>

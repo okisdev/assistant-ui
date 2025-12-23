@@ -3,7 +3,11 @@ import { eq, and, ne } from "drizzle-orm";
 
 import { user, account, type UserCapabilities } from "@/lib/database/schema";
 import { workTypeOptions } from "@/lib/constants";
-import { AVAILABLE_MODELS, DEFAULT_MODEL_ID, type ModelId } from "@/lib/models";
+import {
+  AVAILABLE_MODELS,
+  DEFAULT_MODEL_ID,
+  type ModelId,
+} from "@/lib/ai/models";
 import { protectedProcedure, createTRPCRouter } from "../trpc";
 
 const modelIdSchema = z.enum(

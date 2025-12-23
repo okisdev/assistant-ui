@@ -71,6 +71,9 @@ apps/demo/
 │   ├── shared/            # Shared layout components
 │   └── assistant-ui/      # Chat UI components
 ├── lib/                   # Utilities and configurations
+│   ├── ai/               # AI backend (prompts, tools, context)
+│   ├── adapters/         # Runtime adapters (transport, memory)
+│   └── database/         # Database schema and client
 ├── server/                # tRPC routers and context
 └── hooks/                 # Custom React hooks
 ```
@@ -167,8 +170,12 @@ export const exampleRouter = createTRPCRouter({
   }),
 });
 
-// Use in components
+// Client-side (components)
 const { data } = api.example.getData.useQuery();
+
+// Server-side (API routes, lib/ai/)
+import { api } from "@/utils/trpc/server";
+const data = await api.example.getData();
 ```
 
 ### Component Organization
@@ -195,3 +202,4 @@ When implementing features blocked by `assistant-ui` package limitations, docume
 - Add Card components for simple list layouts
 - Use border lines (`border-r`, `border-b`) for visual separation
 - Use heavy Dialog for simple quick actions (use Popover instead)
+- Send system prompts or tool schemas from frontend to backend

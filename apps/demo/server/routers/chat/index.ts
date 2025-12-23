@@ -2,7 +2,7 @@ import { z } from "zod";
 import { eq, desc, and, isNull } from "drizzle-orm";
 
 import { chat, chatMessage, chatVote, share } from "@/lib/database/schema";
-import { AVAILABLE_MODELS, type ModelId } from "@/lib/models";
+import { AVAILABLE_MODELS, type ModelId } from "@/lib/ai/models";
 import { protectedProcedure, createTRPCRouter } from "../../trpc";
 import { voteRouter } from "./vote";
 

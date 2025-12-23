@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
+import { useModelSelection } from "@/hooks/use-model-selection";
 import { cn } from "@/lib/utils";
 
 const useFileSrc = (file: File | undefined) => {
@@ -247,6 +248,24 @@ export const ComposerAttachments: FC = () => {
 };
 
 export const ComposerAddAttachment: FC = () => {
+  const { model } = useModelSelection();
+  const supportsAttachments = model.capabilities.includes("image");
+
+  if (!supportsAttachments) {
+    return (
+      <TooltipIconButton
+        tooltip="Attachments not supported by this model"
+        side="top"
+        variant="ghost"
+        className="size-8 cursor-not-allowed rounded-full text-muted-foreground/50"
+        aria-label="Attachments not supported"
+        disabled
+      >
+        <PlusIcon className="size-5" />
+      </TooltipIconButton>
+    );
+  }
+
   return (
     <ComposerPrimitive.AddAttachment asChild>
       <TooltipIconButton

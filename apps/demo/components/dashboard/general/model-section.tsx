@@ -14,7 +14,7 @@ import {
   AVAILABLE_MODELS,
   DEFAULT_MODEL_ID,
   isValidModelId,
-} from "@/lib/models";
+} from "@/lib/ai/models";
 
 function ModelSkeleton() {
   return (

@@ -7,6 +7,7 @@ import { Thread } from "@/components/assistant-ui/thread/thread";
 import { AppLayout } from "@/components/shared/app-layout";
 import { ChatHeaderShare } from "@/components/shared/chat-header-share";
 import { ChatHeaderBreadcrumb } from "@/components/shared/chat-header-breadcrumb";
+import { IncognitoToggle } from "@/components/shared/incognito-toggle";
 
 type ChatIdContentProps = {
   chatId: string;
@@ -20,10 +21,19 @@ export function ChatIdContent({ chatId, project }: ChatIdContentProps) {
     api.threads().switchToThread(chatId);
   }, [api, chatId]);
 
+  const headerRight = project ? (
+    <ChatHeaderShare />
+  ) : (
+    <>
+      <ChatHeaderShare />
+      <IncognitoToggle />
+    </>
+  );
+
   return (
     <AppLayout
       headerLeft={<ChatHeaderBreadcrumb project={project} />}
-      headerRight={<ChatHeaderShare />}
+      headerRight={headerRight}
     >
       <Thread />
     </AppLayout>

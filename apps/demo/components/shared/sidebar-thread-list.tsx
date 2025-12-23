@@ -22,6 +22,8 @@ import {
 } from "@assistant-ui/react";
 import type { FC } from "react";
 
+const MAX_VISIBLE_THREADS = 6;
+
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -119,36 +121,44 @@ const SidebarThreadListContent: FC = () => {
                   !threads.isLoading && threads.threadIds.length > 0
                 }
               >
-                <SidebarMenu>
-                  <ThreadListPrimitive.Items
-                    components={{ ThreadListItem: SidebarThreadListItem }}
-                  />
-                </SidebarMenu>
+                <SidebarThreadListItems />
               </AssistantIf>
             </ThreadListPrimitive.Root>
-            <AssistantIf
-              condition={({ threads }) =>
-                !threads.isLoading && threads.threadIds.length > 0
-              }
-            >
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <Link
-                      href="/chats"
-                      className="mt-1 text-muted-foreground hover:text-foreground"
-                    >
-                      <span>View all</span>
-                      <ChevronRight className="ml-auto" />
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </AssistantIf>
           </SidebarGroupContent>
         </CollapsibleContent>
       </SidebarGroup>
     </Collapsible>
+  );
+};
+
+const SidebarThreadListItems: FC = () => {
+  const threadCount = useAssistantState(
+    ({ threads }) => threads.threadIds.length,
+  );
+  const visibleCount = Math.min(threadCount, MAX_VISIBLE_THREADS);
+  const hasMore = threadCount > MAX_VISIBLE_THREADS;
+
+  return (
+    <SidebarMenu>
+      {Array.from({ length: visibleCount }, (_, index) => (
+        <ThreadListPrimitive.ItemByIndex
+          key={index}
+          index={index}
+          components={{ ThreadListItem: SidebarThreadListItem }}
+        />
+      ))}
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild>
+          <Link
+            href="/chats"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <span>{hasMore ? `View all (${threadCount})` : "View all"}</span>
+            <ChevronRight className="ml-auto" />
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
   );
 };
 

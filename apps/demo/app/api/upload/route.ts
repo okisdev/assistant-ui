@@ -1,15 +1,8 @@
 import { put } from "@vercel/blob";
 import { nanoid } from "nanoid";
-import { auth } from "@/lib/auth";
-import { database } from "@/lib/database";
-import { attachment } from "@/lib/database/schema";
+import { api } from "@/utils/trpc/server";
 
 export async function POST(req: Request) {
-  const session = await auth.api.getSession({ headers: req.headers });
-  if (!session?.user) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
 
@@ -19,16 +12,26 @@ export async function POST(req: Request) {
 
   const chatId = formData.get("chatId") as string | null;
 
+  let userId: string;
+  try {
+    const profile = await api.user.getProfile();
+    if (!profile) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    userId = profile.id;
+  } catch {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const id = nanoid();
-  const pathname = `attachments/${session.user.id}/${id}/${file.name}`;
+  const pathname = `attachments/${userId}/${id}/${file.name}`;
 
   const blob = await put(pathname, file, {
     access: "public",
   });
 
-  await database.insert(attachment).values({
+  await api.attachment.create({
     id,
-    userId: session.user.id,
     chatId: chatId || null,
     url: blob.url,
     pathname: blob.pathname,

@@ -30,16 +30,15 @@ export const SidebarHeroSection: FC = () => {
               <span>New Chat</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Projects">
+              <Link href="/projects">
+                <FolderOpen />
+                <span>Projects</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         </SidebarMenu>
-
-        <SidebarMenuItem>
-          <SidebarMenuButton asChild tooltip="Projects">
-            <Link href="/projects">
-              <FolderOpen />
-              <span>Projects</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
       </SidebarGroupContent>
     </SidebarGroup>
   );
