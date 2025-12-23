@@ -1,25 +1,30 @@
 import { openai } from "@ai-sdk/openai";
 import { xai } from "@ai-sdk/xai";
 import type { LanguageModel } from "ai";
-import { DEFAULT_MODEL_ID, isValidModelId } from "@/lib/ai/models";
+import {
+  DEFAULT_MODEL_ID,
+  getModelById,
+  isValidModelId,
+  type ModelProvider,
+} from "@/lib/ai/models";
 import { api } from "@/utils/trpc/server";
 
-type ModelFactory = () => LanguageModel;
-
-const MODEL_REGISTRY: Record<string, ModelFactory> = {
-  "gpt-5": () => openai("gpt-5"),
-  "gpt-4o": () => openai("gpt-4o"),
-  "grok-3": () => xai("grok-3"),
-  "grok-3-mini": () => xai("grok-3-mini"),
+const PROVIDER_REGISTRY: Record<
+  ModelProvider,
+  (modelName: string) => LanguageModel
+> = {
+  openai: (modelName) => openai(modelName),
+  xai: (modelName) => xai(modelName),
 };
 
 export function getModel(modelId: string): LanguageModel {
-  const factory = MODEL_REGISTRY[modelId];
-  if (!factory) {
+  const model = getModelById(modelId);
+  if (!model) {
     console.warn(`Unknown model: ${modelId}, falling back to default`);
-    return MODEL_REGISTRY[DEFAULT_MODEL_ID]!();
+    const defaultModel = getModelById(DEFAULT_MODEL_ID)!;
+    return PROVIDER_REGISTRY[defaultModel.provider](defaultModel.modelName);
   }
-  return factory();
+  return PROVIDER_REGISTRY[model.provider](model.modelName);
 }
 
 export async function resolveModel(
@@ -42,12 +47,12 @@ export async function resolveModel(
   }
 
   try {
-    const capabilities = await api.user.getCapabilities();
+    const capabilities = await api.user.capability.list();
     if (
-      capabilities.defaultModel &&
-      isValidModelId(capabilities.defaultModel)
+      capabilities.model.defaultId &&
+      isValidModelId(capabilities.model.defaultId)
     ) {
-      return capabilities.defaultModel;
+      return capabilities.model.defaultId;
     }
   } catch {
     // Not authenticated, use default

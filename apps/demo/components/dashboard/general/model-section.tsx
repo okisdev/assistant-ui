@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { toast } from "sonner";
 
 import { api } from "@/utils/trpc/client";
@@ -11,8 +12,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  AVAILABLE_MODELS,
+  ACTIVE_MODELS,
   DEFAULT_MODEL_ID,
+  getModelById,
   isValidModelId,
 } from "@/lib/ai/models";
 
@@ -29,12 +31,12 @@ function ModelSkeleton() {
 }
 
 export function ModelSection() {
-  const { data: capabilities, isLoading } = api.user.getCapabilities.useQuery();
+  const { data: capabilities, isLoading } = api.user.capability.list.useQuery();
   const utils = api.useUtils();
 
-  const updateCapabilitiesMutation = api.user.updateCapabilities.useMutation({
+  const updateCapabilitiesMutation = api.user.capability.update.useMutation({
     onSuccess: () => {
-      utils.user.getCapabilities.invalidate();
+      utils.user.capability.list.invalidate();
       toast.success("Default model updated");
     },
     onError: () => {
@@ -44,10 +46,25 @@ export function ModelSection() {
 
   const handleModelChange = (modelId: string) => {
     if (!isValidModelId(modelId)) return;
-    updateCapabilitiesMutation.mutate({ defaultModel: modelId });
+    updateCapabilitiesMutation.mutate({ model: { defaultId: modelId } });
   };
 
-  const currentModel = capabilities?.defaultModel ?? DEFAULT_MODEL_ID;
+  const currentModelId = capabilities?.model.defaultId ?? DEFAULT_MODEL_ID;
+
+  const enabledModels = useMemo(() => {
+    const enabledIds = new Set(capabilities?.models.enabledIds ?? []);
+
+    // Filter to only show enabled models
+    const models = ACTIVE_MODELS.filter((m) => enabledIds.has(m.id));
+
+    // Always include the current model if it exists (even if disabled)
+    const currentModel = getModelById(currentModelId);
+    if (currentModel && !enabledIds.has(currentModelId)) {
+      models.unshift(currentModel);
+    }
+
+    return models;
+  }, [capabilities?.models.enabledIds, currentModelId]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -64,7 +81,7 @@ export function ModelSection() {
             </p>
           </div>
           <Select
-            value={currentModel}
+            value={currentModelId}
             onValueChange={handleModelChange}
             disabled={updateCapabilitiesMutation.isPending}
           >
@@ -72,7 +89,7 @@ export function ModelSection() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {AVAILABLE_MODELS.map((model) => (
+              {enabledModels.map((model) => (
                 <SelectItem key={model.id} value={model.id}>
                   <div className="flex flex-col">
                     <span>{model.name}</span>

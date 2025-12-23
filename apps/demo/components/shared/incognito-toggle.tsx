@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useIncognitoOptional } from "@/hooks/use-incognito";
+import { useIncognitoOptional } from "@/contexts/incognito-provider";
 import { cn } from "@/lib/utils";
 
 export function IncognitoToggle() {

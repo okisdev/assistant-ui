@@ -1,6 +1,10 @@
 import { convertToModelMessages, streamText, stepCountIs } from "ai";
-import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from "@/lib/ai/models";
-import type { UserCapabilities } from "@/lib/database/schema";
+import {
+  AVAILABLE_MODELS,
+  DEFAULT_MODEL_ID,
+  DEFAULT_ENABLED_MODEL_IDS,
+} from "@/lib/ai/models";
+import type { ResolvedUserCapabilities } from "@/lib/database/types";
 import { getModel, resolveModel } from "@/lib/ai/providers";
 import { buildSystemPrompt } from "@/lib/ai/prompts";
 import { getUserContext, type UserContext } from "@/lib/ai/context";
@@ -18,17 +22,27 @@ export async function POST(req: Request) {
   } = await req.json();
 
   let userContext: UserContext | null = null;
-  let capabilities: Required<UserCapabilities>;
+  let capabilities: ResolvedUserCapabilities;
 
   try {
     userContext = await getUserContext(id);
     capabilities = userContext.capabilities;
   } catch {
     capabilities = {
-      personalization: false,
-      chatHistoryContext: false,
-      artifacts: true,
-      defaultModel: DEFAULT_MODEL_ID,
+      memory: {
+        personalization: false,
+        chatHistoryContext: false,
+      },
+      tools: {
+        artifacts: true,
+      },
+      model: {
+        defaultId: DEFAULT_MODEL_ID,
+        reasoningEnabled: true,
+      },
+      models: {
+        enabledIds: [...DEFAULT_ENABLED_MODEL_IDS],
+      },
     };
   }
 
@@ -57,11 +71,11 @@ export async function POST(req: Request) {
     { description: string; inputSchema: import("zod").ZodType }
   > = {};
 
-  if (capabilities.personalization) {
+  if (capabilities.memory.personalization) {
     tools.save_memory = saveMemoryTool;
   }
 
-  if (capabilities.artifacts) {
+  if (capabilities.tools.artifacts) {
     tools.create_artifact = createArtifactTool;
   }
 

@@ -14,8 +14,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { AVAILABLE_MODELS } from "@/lib/ai/models";
-import { useModelSelection } from "@/hooks/use-model-selection";
+import { useModelSelection } from "@/contexts/model-selection-provider";
 import { cn } from "@/lib/utils";
 
 type ModelSelectorProps = {
@@ -28,7 +27,7 @@ export const ModelSelector: FC<ModelSelectorProps> = ({
   className,
   compact = false,
 }) => {
-  const { modelId, model, setModel } = useModelSelection();
+  const { modelId, model, setModel, enabledModels } = useModelSelection();
   const Icon = model.icon;
 
   return (
@@ -49,7 +48,7 @@ export const ModelSelector: FC<ModelSelectorProps> = ({
         </SelectValue>
       </SelectTrigger>
       <SelectContent align="start">
-        {AVAILABLE_MODELS.map((m) => {
+        {enabledModels.map((m) => {
           const ItemIcon = m.icon;
           return (
             <SelectItem key={m.id} value={m.id}>

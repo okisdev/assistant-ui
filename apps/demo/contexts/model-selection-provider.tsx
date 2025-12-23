@@ -11,7 +11,9 @@ import {
 } from "react";
 import { useAssistantApi, useAssistantState } from "@assistant-ui/react";
 import { api } from "@/utils/trpc/client";
+import { useCapabilities } from "@/contexts/capabilities-provider";
 import {
+  ACTIVE_MODELS,
   DEFAULT_MODEL_ID,
   getModelById,
   isValidModelId,
@@ -29,6 +31,8 @@ type ModelSelectionContextValue = {
   chatModel: string | null;
   reasoningEnabled: boolean;
   setReasoningEnabled: (enabled: boolean) => void;
+  /** Models that are enabled for the user */
+  enabledModels: ModelDefinition[];
 };
 
 const ModelSelectionContext = createContext<ModelSelectionContextValue | null>(
@@ -47,7 +51,7 @@ export function useModelSelection(): ModelSelectionContextValue {
 
 export function ModelSelectionProvider({ children }: { children: ReactNode }) {
   const assistantApi = useAssistantApi();
-  const { data: capabilities } = api.user.getCapabilities.useQuery();
+  const { capabilities, updateCapabilities } = useCapabilities();
   const utils = api.useUtils();
 
   const chatId = useAssistantState(
@@ -60,7 +64,25 @@ export function ModelSelectionProvider({ children }: { children: ReactNode }) {
   );
 
   const [sessionModel, setSessionModel] = useState<string | null>(null);
-  const [reasoningEnabled, setReasoningEnabled] = useState(true);
+  const [optimisticReasoningEnabled, setOptimisticReasoningEnabled] = useState<
+    boolean | null
+  >(null);
+
+  const reasoningEnabled =
+    optimisticReasoningEnabled ?? capabilities.model.reasoningEnabled;
+
+  const setReasoningEnabled = useCallback(
+    (enabled: boolean) => {
+      setOptimisticReasoningEnabled(enabled);
+
+      updateCapabilities({ model: { reasoningEnabled: enabled } }).finally(
+        () => {
+          setOptimisticReasoningEnabled(null);
+        },
+      );
+    },
+    [updateCapabilities],
+  );
 
   const effectiveModel = useMemo(() => {
     if (sessionModel && isValidModelId(sessionModel)) {
@@ -69,19 +91,30 @@ export function ModelSelectionProvider({ children }: { children: ReactNode }) {
     if (chatData?.model && isValidModelId(chatData.model)) {
       return chatData.model;
     }
-    if (
-      capabilities?.defaultModel &&
-      isValidModelId(capabilities.defaultModel)
-    ) {
-      return capabilities.defaultModel;
+    if (isValidModelId(capabilities.model.defaultId)) {
+      return capabilities.model.defaultId;
     }
     return DEFAULT_MODEL_ID;
-  }, [sessionModel, chatData?.model, capabilities?.defaultModel]);
+  }, [sessionModel, chatData?.model, capabilities.model.defaultId]);
 
   const currentModel = useMemo(
     () => getModelById(effectiveModel) ?? getModelById(DEFAULT_MODEL_ID)!,
     [effectiveModel],
   );
+
+  const enabledModels = useMemo(() => {
+    const enabledIds = new Set(capabilities.models.enabledIds);
+
+    // Filter to only show enabled models
+    const models = ACTIVE_MODELS.filter((m) => enabledIds.has(m.id));
+
+    // Always include the current model if it exists (even if disabled)
+    if (currentModel && !enabledIds.has(effectiveModel)) {
+      models.unshift(currentModel);
+    }
+
+    return models;
+  }, [capabilities.models.enabledIds, effectiveModel, currentModel]);
 
   const updateChatMutation = api.chat.update.useMutation({
     onSuccess: () => {
@@ -138,10 +171,11 @@ export function ModelSelectionProvider({ children }: { children: ReactNode }) {
       setModel,
       persistModel,
       isPersisting: updateChatMutation.isPending,
-      userDefaultModel: capabilities?.defaultModel ?? DEFAULT_MODEL_ID,
+      userDefaultModel: capabilities.model.defaultId,
       chatModel: chatData?.model ?? null,
       reasoningEnabled: effectiveReasoningEnabled,
       setReasoningEnabled,
+      enabledModels,
     }),
     [
       effectiveModel,
@@ -149,9 +183,11 @@ export function ModelSelectionProvider({ children }: { children: ReactNode }) {
       setModel,
       persistModel,
       updateChatMutation.isPending,
-      capabilities?.defaultModel,
+      capabilities.model.defaultId,
       chatData?.model,
       effectiveReasoningEnabled,
+      setReasoningEnabled,
+      enabledModels,
     ],
   );
 

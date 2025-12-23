@@ -1,5 +1,4 @@
-import { DEFAULT_MODEL_ID } from "@/lib/ai/models";
-import type { UserCapabilities } from "@/lib/database/schema";
+import type { ResolvedUserCapabilities } from "@/lib/database/types";
 import { api } from "@/utils/trpc/server";
 
 export type UserProfile = {
@@ -22,7 +21,7 @@ export type ProjectContext = {
 export type UserContext = {
   profile: UserProfile | null;
   memories: Memory[];
-  capabilities: Required<UserCapabilities>;
+  capabilities: ResolvedUserCapabilities;
   projectContext: ProjectContext | null;
 };
 
@@ -30,16 +29,9 @@ export async function getUserContext(
   chatId: string | null,
 ): Promise<UserContext> {
   const [profile, capabilities] = await Promise.all([
-    api.user.getProfile(),
-    api.user.getCapabilities(),
+    api.user.profile.get(),
+    api.user.capability.list(),
   ]);
-
-  const resolvedCapabilities: Required<UserCapabilities> = {
-    personalization: capabilities.personalization ?? true,
-    chatHistoryContext: capabilities.chatHistoryContext ?? false,
-    artifacts: capabilities.artifacts ?? true,
-    defaultModel: capabilities.defaultModel ?? DEFAULT_MODEL_ID,
-  };
 
   let projectId: string | null = null;
   if (chatId) {
@@ -52,7 +44,7 @@ export async function getUserContext(
   }
 
   let memories: Memory[] = [];
-  if (resolvedCapabilities.personalization) {
+  if (capabilities.memory.personalization) {
     const memoriesResult = await api.memory.list(
       projectId ? { projectId } : undefined,
     );
@@ -92,7 +84,7 @@ export async function getUserContext(
         }
       : null,
     memories,
-    capabilities: resolvedCapabilities,
+    capabilities,
     projectContext,
   };
 }

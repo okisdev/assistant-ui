@@ -77,11 +77,11 @@ export function buildSystemPrompt(context: UserContext): string {
     );
   }
 
-  if (context.capabilities.personalization) {
+  if (context.capabilities.memory.personalization) {
     parts.push(SAVE_MEMORY_INSTRUCTIONS);
   }
 
-  if (context.capabilities.artifacts) {
+  if (context.capabilities.tools.artifacts) {
     parts.push(ARTIFACT_INSTRUCTIONS);
   }
 

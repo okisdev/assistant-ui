@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
-import { useModelSelection } from "@/hooks/use-model-selection";
+import { useModelSelection } from "@/contexts/model-selection-provider";
 import { cn } from "@/lib/utils";
 
 const useFileSrc = (file: File | undefined) => {

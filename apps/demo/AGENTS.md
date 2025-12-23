@@ -75,7 +75,9 @@ apps/demo/
 │   ├── adapters/         # Runtime adapters (transport, memory)
 │   └── database/         # Database schema and client
 ├── server/                # tRPC routers and context
-└── hooks/                 # Custom React hooks
+├── hooks/                 # Custom React hooks
+├── contexts/              # Context providers
+└── utils/                 # Utility functions and configurations
 ```
 
 ## Code Style Guidelines

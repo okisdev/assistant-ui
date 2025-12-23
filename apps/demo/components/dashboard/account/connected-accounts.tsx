@@ -55,9 +55,9 @@ export function ConnectedAccounts() {
     data: accounts,
     isLoading,
     refetch,
-  } = api.user.getConnectedAccounts.useQuery();
+  } = api.user.account.list.useQuery();
 
-  const unlinkMutation = api.user.unlinkAccount.useMutation({
+  const unlinkMutation = api.user.account.unlink.useMutation({
     onSuccess: () => {
       toast.success("Account disconnected");
       refetch();

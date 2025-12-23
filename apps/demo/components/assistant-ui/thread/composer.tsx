@@ -20,13 +20,10 @@ import { Button } from "@/components/ui/button";
 
 type ComposerProps = {
   placeholder?: string;
-  /** Whether to show the model selector */
-  showModelSelector?: boolean;
 };
 
 export const Composer: FC<ComposerProps> = ({
   placeholder = "Ask anything...",
-  showModelSelector = true,
 }) => {
   const hasUploadingAttachments = useAssistantState(({ composer }) =>
     composer.attachments.some((a) => a.status.type === "running"),
@@ -67,16 +64,14 @@ export const Composer: FC<ComposerProps> = ({
             </ComposerPrimitive.Cancel>
           </AssistantIf>
         </div>
-        {showModelSelector && (
-          <div className="grid grid-rows-[0fr] opacity-0 transition-all duration-200 ease-out group-focus-within/composer:grid-rows-[1fr] group-focus-within/composer:opacity-100 group-has-[textarea:not(:placeholder-shown)]/composer:grid-rows-[1fr] group-has-data-[state=open]/composer:grid-rows-[1fr] group-has-[textarea:not(:placeholder-shown)]/composer:opacity-100 group-has-data-[state=open]/composer:opacity-100">
-            <div className="overflow-hidden">
-              <div className="flex items-center pt-3">
-                <ModelSelector />
-                <ReasoningToggle />
-              </div>
+        <div className="grid grid-rows-[0fr] opacity-0 transition-all duration-200 ease-out group-focus-within/composer:grid-rows-[1fr] group-focus-within/composer:opacity-100 group-has-[textarea:not(:placeholder-shown)]/composer:grid-rows-[1fr] group-has-data-[state=open]/composer:grid-rows-[1fr] group-has-[textarea:not(:placeholder-shown)]/composer:opacity-100 group-has-data-[state=open]/composer:opacity-100">
+          <div className="overflow-hidden">
+            <div className="flex items-center pt-3">
+              <ModelSelector />
+              <ReasoningToggle />
             </div>
           </div>
-        )}
+        </div>
       </ComposerPrimitive.AttachmentDropzone>
     </ComposerPrimitive.Root>
   );

@@ -39,17 +39,17 @@ function ProfileSkeleton() {
 }
 
 export function ProfileSection() {
-  const { data: profile, isPending } = api.user.getProfile.useQuery();
+  const { data: profile, isPending } = api.user.profile.get.useQuery();
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
   const [workType, setWorkType] = useState<WorkType | "">("");
 
   const utils = api.useUtils();
 
-  const updateProfileMutation = api.user.updateProfile.useMutation({
+  const updateProfileMutation = api.user.profile.update.useMutation({
     onSuccess: () => {
       toast.success("Profile updated");
-      utils.user.getProfile.invalidate();
+      utils.user.profile.get.invalidate();
     },
     onError: () => {
       toast.error("Failed to update profile");

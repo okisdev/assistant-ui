@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 import { api } from "@/utils/trpc/server";
-import { ChatIdContent } from "@/components/app/chat/id/content";
+import { ChatPageSetter } from "@/components/app/chat/chat-page-setter";
 
 export default async function ChatPage(props: PageProps<"/chat/[id]">) {
   const { id } = await props.params;
@@ -27,8 +27,9 @@ export default async function ChatPage(props: PageProps<"/chat/[id]">) {
     ? await api.project.get({ id: chat.projectId })
     : null;
 
+  // ChatPageSetter sets the context state, ChatContent (in provider) handles the UI
   return (
-    <ChatIdContent
+    <ChatPageSetter
       chatId={id}
       project={project ? { id: project.id, name: project.name } : null}
     />

@@ -24,15 +24,21 @@ import { DatabaseMemoryStore } from "@/lib/adapters/database-memory-adapter";
 import { ModelChatTransport } from "@/lib/adapters/model-chat-transport";
 import { useMemoryTools } from "@/hooks/use-memory-tools";
 import { useArtifactTools } from "@/hooks/use-artifact-tools";
-import { ModelSelectionProvider } from "@/hooks/use-model-selection";
+import { ModelSelectionProvider } from "@/contexts/model-selection-provider";
+import {
+  CapabilitiesProvider,
+  useCapabilities,
+} from "@/contexts/capabilities-provider";
 import { ArtifactToolUI } from "@/components/assistant-ui/artifact-tool-ui";
 import {
   ArtifactProvider as ArtifactContextProvider,
   useArtifact,
 } from "@/lib/artifact-context";
 import { ChatLayout } from "@/components/assistant-ui/chat-layout";
+import { ChatContent } from "@/components/app/chat/chat-content";
 import { ProjectContext, type ProjectContextValue } from "@/hooks/use-project";
-import { IncognitoProvider, useIncognito } from "@/hooks/use-incognito";
+import { ChatPageProvider } from "@/contexts/chat-page-provider";
+import { IncognitoProvider, useIncognito } from "@/contexts/incognito-provider";
 
 function HistoryProvider({ children }: { children?: ReactNode }) {
   const threadListItem = useAssistantState(
@@ -261,9 +267,7 @@ function useCustomChatRuntime() {
 
 function MemoryProvider({ children }: { children: ReactNode }) {
   const utils = api.useUtils();
-  const { data: capabilities } = api.user.getCapabilities.useQuery();
-
-  const personalization = capabilities?.personalization ?? true;
+  const { capabilities } = useCapabilities();
 
   const memoryStore = useMemo(() => new DatabaseMemoryStore(utils), [utils]);
 
@@ -271,14 +275,14 @@ function MemoryProvider({ children }: { children: ReactNode }) {
     memoryStore.initialize();
   }, [memoryStore]);
 
-  useMemoryTools(memoryStore, { enabled: personalization });
+  useMemoryTools(memoryStore, { enabled: capabilities.memory.personalization });
 
   return <>{children}</>;
 }
 
 function ArtifactToolsProvider({ children }: { children: ReactNode }) {
-  const { data: capabilities } = api.user.getCapabilities.useQuery();
-  const artifactsEnabled = capabilities?.artifacts ?? true;
+  const { capabilities } = useCapabilities();
+  const artifactsEnabled = capabilities.tools.artifacts;
   const { closeArtifact } = useArtifact();
 
   const threadId = useAssistantState(
@@ -325,19 +329,29 @@ function RuntimeProviderInner({
 
   const content = isIncognito ? (
     <ArtifactToolsProvider>
-      <ChatLayout>{children}</ChatLayout>
+      <ChatLayout>
+        <ChatContent />
+      </ChatLayout>
     </ArtifactToolsProvider>
   ) : (
     <MemoryProvider>
       <ArtifactToolsProvider>
-        <ChatLayout>{children}</ChatLayout>
+        <ChatLayout>
+          <ChatContent />
+        </ChatLayout>
       </ArtifactToolsProvider>
     </MemoryProvider>
   );
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <ModelSelectionProvider>{content}</ModelSelectionProvider>
+      <CapabilitiesProvider>
+        <ModelSelectionProvider>
+          {content}
+          {/* children used by page components to set context state */}
+          {children}
+        </ModelSelectionProvider>
+      </CapabilitiesProvider>
     </AssistantRuntimeProvider>
   );
 }
@@ -385,13 +399,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   return (
     <ProjectContext.Provider value={projectContextValue}>
-      <IncognitoProvider>
-        <ArtifactContextProvider>
-          <ChatProviderInner projectId={currentProjectId}>
-            {children}
-          </ChatProviderInner>
-        </ArtifactContextProvider>
-      </IncognitoProvider>
+      <ChatPageProvider>
+        <IncognitoProvider>
+          <ArtifactContextProvider>
+            <ChatProviderInner projectId={currentProjectId}>
+              {children}
+            </ChatProviderInner>
+          </ArtifactContextProvider>
+        </IncognitoProvider>
+      </ChatPageProvider>
     </ProjectContext.Provider>
   );
 }

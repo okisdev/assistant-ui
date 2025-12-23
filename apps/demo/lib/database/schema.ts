@@ -11,10 +11,21 @@ import {
 } from "drizzle-orm/pg-core";
 
 export type UserCapabilities = {
-  personalization?: boolean;
-  chatHistoryContext?: boolean;
-  artifacts?: boolean;
-  defaultModel?: string;
+  memory?: {
+    personalization?: boolean;
+    chatHistoryContext?: boolean;
+  };
+  tools?: {
+    artifacts?: boolean;
+  };
+  model?: {
+    defaultId?: string;
+    reasoningEnabled?: boolean;
+  };
+  models?: {
+    /** List of enabled model IDs */
+    enabledIds?: string[];
+  };
 };
 
 export const user = pgTable("user", {

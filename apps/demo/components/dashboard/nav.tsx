@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, User, BarChart3, Share2, Brain, Zap } from "lucide-react";
+import {
+  Settings,
+  User,
+  BarChart3,
+  Share2,
+  Brain,
+  Zap,
+  Bot,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -21,6 +29,11 @@ const navItems = [
     title: "Shares",
     href: "/shares",
     icon: Share2,
+  },
+  {
+    title: "Models",
+    href: "/models",
+    icon: Bot,
   },
   {
     title: "Capabilities",

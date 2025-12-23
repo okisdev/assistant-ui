@@ -48,12 +48,12 @@ function CapabilityRow({
 
 export function ArtifactsSection() {
   const { data: capabilities, isLoading: isCapabilitiesLoading } =
-    api.user.getCapabilities.useQuery();
+    api.user.capability.list.useQuery();
   const utils = api.useUtils();
 
-  const updateCapabilitiesMutation = api.user.updateCapabilities.useMutation({
+  const updateCapabilitiesMutation = api.user.capability.update.useMutation({
     onSuccess: () => {
-      utils.user.getCapabilities.invalidate();
+      utils.user.capability.list.invalidate();
     },
     onError: () => {
       toast.error("Failed to update setting");
@@ -61,10 +61,10 @@ export function ArtifactsSection() {
   });
 
   const handleToggleArtifacts = (enabled: boolean) => {
-    updateCapabilitiesMutation.mutate({ artifacts: enabled });
+    updateCapabilitiesMutation.mutate({ tools: { artifacts: enabled } });
   };
 
-  const artifactsEnabled = capabilities?.artifacts ?? true;
+  const artifactsEnabled = capabilities?.tools.artifacts ?? true;
 
   return (
     <div className="flex flex-col gap-4">

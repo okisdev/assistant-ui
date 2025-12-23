@@ -14,7 +14,7 @@ export async function POST(req: Request) {
 
   let userId: string;
   try {
-    const profile = await api.user.getProfile();
+    const profile = await api.user.profile.get();
     if (!profile) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }

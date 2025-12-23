@@ -9,7 +9,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/shared/app-sidebar";
-import { useIncognitoOptional } from "@/hooks/use-incognito";
+import { useIncognitoOptional } from "@/contexts/incognito-provider";
 import { cn } from "@/lib/utils";
 
 type AppLayoutProps = {
