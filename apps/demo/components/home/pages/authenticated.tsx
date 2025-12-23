@@ -1,6 +1,6 @@
 "use client";
 
-import { Thread } from "@/components/assistant-ui/thread";
+import { Thread } from "@/components/assistant-ui/thread/thread";
 import { AppLayout } from "@/components/shared/app-layout";
 import { ChatHeaderShare } from "@/components/shared/chat-header-share";
 import { ChatHeaderTitle } from "@/components/shared/chat-header-title";

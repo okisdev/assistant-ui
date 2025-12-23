@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -16,17 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { api } from "@/utils/trpc/client";
 import { cn } from "@/lib/utils";
 
@@ -54,7 +42,6 @@ export function ProjectEditDialog({
   onOpenChange,
   onNameChange,
 }: ProjectEditDialogProps) {
-  const router = useRouter();
   const { data: project } = api.project.get.useQuery({ id: projectId });
   const utils = api.useUtils();
 
@@ -83,18 +70,6 @@ export function ProjectEditDialog({
     },
   });
 
-  const deleteMutation = api.project.delete.useMutation({
-    onSuccess: () => {
-      utils.project.list.invalidate();
-      toast.success("Project deleted");
-      onOpenChange(false);
-      router.push("/");
-    },
-    onError: () => {
-      toast.error("Failed to delete project");
-    },
-  });
-
   const handleSave = () => {
     if (!name.trim()) {
       toast.error("Project name is required");
@@ -105,10 +80,6 @@ export function ProjectEditDialog({
       name: name.trim(),
       color,
     });
-  };
-
-  const handleDelete = () => {
-    deleteMutation.mutate({ id: projectId });
   };
 
   const hasChanges =
@@ -157,35 +128,7 @@ export function ProjectEditDialog({
           </div>
         </div>
 
-        <DialogFooter className="flex-row justify-between sm:justify-between">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash2 className="size-4" />
-                Delete
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete this project?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the
-                  project, all its chats, and all its documents.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete}>
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
+        <DialogFooter>
           <Button
             onClick={handleSave}
             disabled={!hasChanges || updateMutation.isPending}

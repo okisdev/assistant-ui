@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -71,7 +70,6 @@ type ProjectData = {
 };
 
 function ProjectItem({ project }: { project: ProjectData }) {
-  const router = useRouter();
   const utils = api.useUtils();
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
@@ -131,6 +129,7 @@ function ProjectItem({ project }: { project: ProjectData }) {
         <div className="min-w-0 flex-1">
           <span className="truncate font-medium text-sm">{project.name}</span>
           <div className="text-muted-foreground text-xs">
+            updated{" "}
             {formatDistanceToNow(new Date(project.updatedAt), {
               addSuffix: true,
             })}
@@ -303,7 +302,7 @@ function ProjectsContent() {
   }, [projects, search]);
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-8">
+    <div className="mx-auto w-full max-w-2xl px-4 pt-12 pb-8">
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="font-medium text-xl tracking-tight">Projects</h1>

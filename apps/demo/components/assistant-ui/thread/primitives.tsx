@@ -1,16 +1,6 @@
 "use client";
 
-import {
-  ComposerAddAttachment,
-  ComposerAttachments,
-  UserMessageAttachments,
-} from "@/components/assistant-ui/attachment";
-import { MarkdownText } from "@/components/assistant-ui/markdown-text";
-import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { useAutoGenerateTitle } from "@/hooks/ai/use-auto-generate-title";
-import { useSyncFeedback } from "@/hooks/use-sync-feedback";
+import type { FC } from "react";
 import {
   ActionBarPrimitive,
   AssistantIf,
@@ -23,7 +13,6 @@ import {
 } from "@assistant-ui/react";
 import {
   ArrowDownIcon,
-  ArrowRight,
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -32,65 +21,17 @@ import {
   LoaderIcon,
   PencilIcon,
   RefreshCwIcon,
-  SquareIcon,
   ThumbsDownIcon,
   ThumbsUpIcon,
 } from "lucide-react";
-import type { FC } from "react";
 
-type ThreadProps = {
-  welcomeMessage?: string;
-};
+import { MarkdownText } from "@/components/assistant-ui/markdown-text";
+import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
+import { UserMessageAttachments } from "@/components/assistant-ui/attachment";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-export const Thread: FC<ThreadProps> = ({ welcomeMessage }) => {
-  useAutoGenerateTitle();
-  useSyncFeedback();
-
-  return (
-    <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col">
-      <AssistantIf condition={({ thread }) => !thread.isEmpty}>
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-linear-to-b from-background via-60% via-background/80 to-transparent dark:via-50%" />
-      </AssistantIf>
-
-      <ThreadPrimitive.Viewport
-        turnAnchor="top"
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto scroll-smooth px-4"
-      >
-        <AssistantIf condition={({ thread }) => thread.isEmpty}>
-          <ThreadWelcome message={welcomeMessage} />
-        </AssistantIf>
-
-        <AssistantIf condition={({ thread }) => !thread.isEmpty}>
-          <div className="h-16 shrink-0" />
-        </AssistantIf>
-
-        <div className="mx-auto w-full max-w-2xl pb-12">
-          <ThreadPrimitive.Messages
-            components={{
-              UserMessage,
-              EditComposer,
-              AssistantMessage,
-            }}
-          />
-        </div>
-
-        <ThreadPrimitive.ViewportFooter className="sticky bottom-0 mx-auto mt-auto w-full max-w-2xl bg-background pt-4 pb-4">
-          <AssistantIf condition={({ thread }) => !thread.isEmpty}>
-            <div className="pointer-events-none absolute inset-x-0 -top-12 h-12 bg-linear-to-t from-background to-transparent" />
-          </AssistantIf>
-          <ThreadScrollToBottom />
-          <AssistantIf condition={({ thread }) => !thread.isEmpty}>
-            <div className="fade-in slide-in-from-bottom-4 animate-in duration-300">
-              <Composer />
-            </div>
-          </AssistantIf>
-        </ThreadPrimitive.ViewportFooter>
-      </ThreadPrimitive.Viewport>
-    </ThreadPrimitive.Root>
-  );
-};
-
-const ThreadScrollToBottom: FC = () => {
+export const ThreadScrollToBottom: FC = () => {
   return (
     <ThreadPrimitive.ScrollToBottom asChild>
       <TooltipIconButton
@@ -104,69 +45,7 @@ const ThreadScrollToBottom: FC = () => {
   );
 };
 
-type ThreadWelcomeProps = {
-  message?: string;
-};
-
-const ThreadWelcome: FC<ThreadWelcomeProps> = ({ message }) => {
-  return (
-    <div className="fade-in mx-auto flex w-full max-w-2xl flex-1 animate-in flex-col items-center justify-center gap-8 duration-300">
-      <h1 className="fade-in slide-in-from-bottom-2 animate-in text-center font-medium text-3xl tracking-tight duration-500">
-        {message || "What can I help you with?"}
-      </h1>
-      <div className="fade-in slide-in-from-bottom-4 w-full animate-in fill-mode-both delay-150 duration-500">
-        <Composer />
-      </div>
-    </div>
-  );
-};
-
-const Composer: FC = () => {
-  const hasUploadingAttachments = useAssistantState(({ composer }) =>
-    composer.attachments.some((a) => a.status.type === "running"),
-  );
-
-  return (
-    <ComposerPrimitive.Root className="w-full rounded-2xl bg-muted/50">
-      <ComposerPrimitive.AttachmentDropzone className="flex w-full flex-col p-4 outline-none data-[dragging=true]:rounded-2xl data-[dragging=true]:bg-accent/30">
-        <ComposerAttachments />
-        <div className="flex items-center gap-3">
-          <ComposerAddAttachment />
-          <ComposerPrimitive.Input
-            placeholder="Ask anything..."
-            className="flex-1 resize-none bg-transparent text-base outline-none placeholder:text-muted-foreground"
-            rows={1}
-            autoFocus
-          />
-          <AssistantIf condition={({ thread }) => !thread.isRunning}>
-            <ComposerPrimitive.Send asChild disabled={hasUploadingAttachments}>
-              <Button
-                size="icon"
-                className="shrink-0 rounded-full"
-                disabled={hasUploadingAttachments}
-              >
-                {hasUploadingAttachments ? (
-                  <LoaderIcon className="size-4 animate-spin" />
-                ) : (
-                  <ArrowRight className="size-4" />
-                )}
-              </Button>
-            </ComposerPrimitive.Send>
-          </AssistantIf>
-          <AssistantIf condition={({ thread }) => thread.isRunning}>
-            <ComposerPrimitive.Cancel asChild>
-              <Button size="icon" className="shrink-0 rounded-full">
-                <SquareIcon className="size-3 fill-current" />
-              </Button>
-            </ComposerPrimitive.Cancel>
-          </AssistantIf>
-        </div>
-      </ComposerPrimitive.AttachmentDropzone>
-    </ComposerPrimitive.Root>
-  );
-};
-
-const MessageError: FC = () => {
+export const MessageError: FC = () => {
   return (
     <MessagePrimitive.Error>
       <ErrorPrimitive.Root className="mt-2 rounded-md bg-destructive/10 p-3 text-destructive text-sm">
@@ -176,7 +55,7 @@ const MessageError: FC = () => {
   );
 };
 
-const AssistantMessage: FC = () => {
+export const AssistantMessage: FC = () => {
   const isLoading = useAssistantState(({ message }) => {
     if (message.status?.type !== "running") return false;
     const hasTextContent = message.parts.some(
@@ -216,7 +95,7 @@ const AssistantMessage: FC = () => {
   );
 };
 
-const AssistantActionBar: FC = () => {
+export const AssistantActionBar: FC = () => {
   return (
     <ActionBarPrimitive.Root
       hideWhenRunning
@@ -264,7 +143,7 @@ const AssistantActionBar: FC = () => {
   );
 };
 
-const UserMessage: FC = () => {
+export const UserMessage: FC = () => {
   return (
     <MessagePrimitive.Root
       className="fade-in slide-in-from-bottom-2 flex animate-in flex-col items-end gap-2 py-4 duration-300"
@@ -283,7 +162,7 @@ const UserMessage: FC = () => {
   );
 };
 
-const UserActionBar: FC = () => {
+export const UserActionBar: FC = () => {
   return (
     <ActionBarPrimitive.Root
       hideWhenRunning
@@ -309,7 +188,7 @@ const UserActionBar: FC = () => {
   );
 };
 
-const EditComposer: FC = () => {
+export const EditComposer: FC = () => {
   return (
     <MessagePrimitive.Root className="flex justify-end py-4">
       <ComposerPrimitive.Root className="flex w-full max-w-[85%] flex-col rounded-2xl bg-muted">
@@ -332,7 +211,7 @@ const EditComposer: FC = () => {
   );
 };
 
-const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({
+export const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({
   className,
   ...rest
 }) => {

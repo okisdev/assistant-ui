@@ -211,7 +211,7 @@ function ChatsContent() {
     filteredChats?.filter((c) => c.status === "archived") ?? [];
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-8">
+    <div className="mx-auto w-full max-w-2xl px-4 pt-12 pb-8">
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="font-medium text-xl tracking-tight">Chats</h1>

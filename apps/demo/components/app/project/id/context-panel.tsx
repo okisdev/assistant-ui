@@ -509,11 +509,11 @@ function DocumentsSection({ projectId }: { projectId: string }) {
 
 export function ProjectContextPanel({ projectId }: { projectId: string }) {
   return (
-    <div className="flex h-full flex-col overflow-hidden pt-16">
+    <div className="flex h-full flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto">
         <div className="space-y-4">
-          <MemorySection projectId={projectId} />
           <InstructionsSection projectId={projectId} />
+          <MemorySection projectId={projectId} />
           <DocumentsSection projectId={projectId} />
         </div>
       </div>
