@@ -14,6 +14,7 @@ export type UserCapabilities = {
   personalization?: boolean;
   chatHistoryContext?: boolean;
   artifacts?: boolean;
+  defaultModel?: string;
 };
 
 export const user = pgTable("user", {
@@ -202,6 +203,7 @@ export const chat = pgTable(
     remoteId: text("remote_id"),
     title: text("title"),
     status: text("status").notNull().default("regular"),
+    model: text("model"),
     headMessageId: text("head_message_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")

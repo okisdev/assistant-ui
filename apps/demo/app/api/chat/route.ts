@@ -1,12 +1,37 @@
 import { openai } from "@ai-sdk/openai";
+import { xai } from "@ai-sdk/xai";
 import { frontendTools } from "@assistant-ui/react-ai-sdk";
-import { convertToModelMessages, streamText, stepCountIs } from "ai";
+import {
+  convertToModelMessages,
+  streamText,
+  stepCountIs,
+  type LanguageModel,
+} from "ai";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { database } from "@/lib/database";
-import { project, projectDocument, chat } from "@/lib/database/schema";
+import { project, projectDocument, chat, user } from "@/lib/database/schema";
+import { DEFAULT_MODEL_ID, isValidModelId } from "@/lib/models";
+import type { UserCapabilities } from "@/lib/database/schema";
 
 export const maxDuration = 30;
+
+type ModelFactory = () => LanguageModel;
+
+const MODEL_REGISTRY: Record<string, ModelFactory> = {
+  "gpt-4o": () => openai("gpt-4o"),
+  "gpt-4o-mini": () => openai("gpt-4o-mini"),
+  "grok-4": () => xai("grok-4"),
+};
+
+function getModel(modelId: string): LanguageModel {
+  const factory = MODEL_REGISTRY[modelId];
+  if (!factory) {
+    console.warn(`Unknown model: ${modelId}, falling back to default`);
+    return MODEL_REGISTRY[DEFAULT_MODEL_ID]!();
+  }
+  return factory();
+}
 
 async function getProjectContext(
   userId: string,
@@ -83,9 +108,52 @@ function buildSystemPrompt(
   return parts.join("\n\n");
 }
 
+async function resolveModel(
+  userId: string | undefined,
+  chatId: string | null,
+  requestModel: string | undefined,
+): Promise<string> {
+  // Priority: request body > chat setting > user default > global default
+  if (requestModel && isValidModelId(requestModel)) {
+    return requestModel;
+  }
+
+  if (userId && chatId) {
+    // Check chat-specific model
+    const chatResult = await database
+      .select({ model: chat.model })
+      .from(chat)
+      .where(and(eq(chat.id, chatId), eq(chat.userId, userId)))
+      .limit(1);
+
+    if (chatResult[0]?.model && isValidModelId(chatResult[0].model)) {
+      return chatResult[0].model;
+    }
+  }
+
+  if (userId) {
+    // Check user default model
+    const userResult = await database
+      .select({ capabilities: user.capabilities })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+
+    const capabilities = userResult[0]?.capabilities as UserCapabilities | null;
+    if (
+      capabilities?.defaultModel &&
+      isValidModelId(capabilities.defaultModel)
+    ) {
+      return capabilities.defaultModel;
+    }
+  }
+
+  return DEFAULT_MODEL_ID;
+}
+
 export async function POST(req: Request) {
   // The AI SDK sends `id` as the chat/thread identifier
-  const { messages, system, tools, id } = await req.json();
+  const { messages, system, tools, id, model: requestModel } = await req.json();
 
   // Get project context if user is authenticated and chat id is provided
   let projectContext: {
@@ -98,11 +166,14 @@ export async function POST(req: Request) {
     projectContext = await getProjectContext(session.user.id, id);
   }
 
+  // Resolve which model to use
+  const modelId = await resolveModel(session?.user?.id, id, requestModel);
+
   // Build the system prompt with project context
   const enhancedSystem = buildSystemPrompt(system, projectContext);
 
   const result = streamText({
-    model: openai("gpt-4o"),
+    model: getModel(modelId),
     messages: convertToModelMessages(messages),
     system: enhancedSystem || undefined,
     tools: {

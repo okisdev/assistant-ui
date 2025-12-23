@@ -21,9 +21,11 @@ import {
 import { useFeedbackAdapter } from "@/lib/adapters/feedback-adapter";
 import { BlobAttachmentAdapter } from "@/lib/adapters/blob-attachment-adapter";
 import { DatabaseMemoryStore } from "@/lib/adapters/database-memory-adapter";
+import { ModelChatTransport } from "@/lib/adapters/model-chat-transport";
 import { useAssistantMemory } from "@/hooks/use-assistant-memory";
 import { useMemoryTools } from "@/hooks/use-memory-tools";
 import { useArtifactTools } from "@/hooks/use-artifact-tools";
+import { ModelSelectionProvider } from "@/hooks/use-model-selection";
 import { ArtifactToolUI } from "@/components/assistant-ui/artifact-tool-ui";
 import {
   ArtifactProvider as ArtifactContextProvider,
@@ -176,13 +178,17 @@ function useDatabaseThreadListAdapter(
   }, [utils, projectId]);
 }
 
+// Singleton transport instance to maintain runtime reference across renders
+const modelTransport = new ModelChatTransport();
+
 function useCustomChatRuntime() {
   const feedback = useFeedbackAdapter();
   const attachments = useMemo(() => new BlobAttachmentAdapter(), []);
 
   return useChatRuntime({
-    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    transport: modelTransport,
     adapters: { feedback, attachments },
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
   });
 }
 
@@ -256,11 +262,13 @@ function RuntimeProviderInner({
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <MemoryProvider>
-        <ArtifactToolsProvider>
-          <ChatLayout>{children}</ChatLayout>
-        </ArtifactToolsProvider>
-      </MemoryProvider>
+      <ModelSelectionProvider>
+        <MemoryProvider>
+          <ArtifactToolsProvider>
+            <ChatLayout>{children}</ChatLayout>
+          </ArtifactToolsProvider>
+        </MemoryProvider>
+      </ModelSelectionProvider>
     </AssistantRuntimeProvider>
   );
 }

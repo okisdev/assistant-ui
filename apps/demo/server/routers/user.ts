@@ -3,7 +3,12 @@ import { eq, and, ne } from "drizzle-orm";
 
 import { user, account, type UserCapabilities } from "@/lib/database/schema";
 import { workTypeOptions } from "@/lib/constants";
+import { AVAILABLE_MODELS, DEFAULT_MODEL_ID, type ModelId } from "@/lib/models";
 import { protectedProcedure, createTRPCRouter } from "../trpc";
+
+const modelIdSchema = z.enum(
+  AVAILABLE_MODELS.map((m) => m.id) as [ModelId, ...ModelId[]],
+);
 
 const workTypeSchema = z.enum([
   workTypeOptions[0].value,
@@ -116,6 +121,7 @@ export const userRouter = createTRPCRouter({
       personalization: capabilities.personalization ?? true,
       chatHistoryContext: capabilities.chatHistoryContext ?? false,
       artifacts: capabilities.artifacts ?? true,
+      defaultModel: capabilities.defaultModel ?? DEFAULT_MODEL_ID,
     } satisfies Required<UserCapabilities>;
   }),
 
@@ -125,6 +131,7 @@ export const userRouter = createTRPCRouter({
         personalization: z.boolean().optional(),
         chatHistoryContext: z.boolean().optional(),
         artifacts: z.boolean().optional(),
+        defaultModel: modelIdSchema.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -148,6 +155,9 @@ export const userRouter = createTRPCRouter({
         }),
         ...(input.artifacts !== undefined && {
           artifacts: input.artifacts,
+        }),
+        ...(input.defaultModel !== undefined && {
+          defaultModel: input.defaultModel,
         }),
       };
 

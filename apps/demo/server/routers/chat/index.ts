@@ -2,8 +2,13 @@ import { z } from "zod";
 import { eq, desc, and, isNull } from "drizzle-orm";
 
 import { chat, chatMessage, chatVote, share } from "@/lib/database/schema";
+import { AVAILABLE_MODELS, type ModelId } from "@/lib/models";
 import { protectedProcedure, createTRPCRouter } from "../../trpc";
 import { voteRouter } from "./vote";
+
+const modelIdSchema = z.enum(
+  AVAILABLE_MODELS.map((m) => m.id) as [ModelId, ...ModelId[]],
+);
 
 export const chatRouter = createTRPCRouter({
   vote: voteRouter,
@@ -38,6 +43,7 @@ export const chatRouter = createTRPCRouter({
           remoteId: chat.remoteId,
           title: chat.title,
           status: chat.status,
+          model: chat.model,
           createdAt: chat.createdAt,
           updatedAt: chat.updatedAt,
         })
@@ -53,6 +59,7 @@ export const chatRouter = createTRPCRouter({
       z.object({
         id: z.string(),
         projectId: z.string().nullable().optional(),
+        model: modelIdSchema.nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -60,9 +67,14 @@ export const chatRouter = createTRPCRouter({
         id: input.id,
         userId: ctx.session.user.id,
         projectId: input.projectId ?? null,
+        model: input.model ?? null,
       });
 
-      return { id: input.id, projectId: input.projectId ?? null };
+      return {
+        id: input.id,
+        projectId: input.projectId ?? null,
+        model: input.model ?? null,
+      };
     }),
 
   update: protectedProcedure
@@ -71,6 +83,7 @@ export const chatRouter = createTRPCRouter({
         id: z.string(),
         title: z.string().optional(),
         status: z.enum(["regular", "archived"]).optional(),
+        model: modelIdSchema.nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -129,6 +142,7 @@ export const chatRouter = createTRPCRouter({
           remoteId: chat.remoteId,
           title: chat.title,
           status: chat.status,
+          model: chat.model,
           createdAt: chat.createdAt,
           updatedAt: chat.updatedAt,
         })
