@@ -1,6 +1,6 @@
 "use client";
 
-import { type FC, useMemo, useState } from "react";
+import { type FC, useMemo, useState, useSyncExternalStore } from "react";
 import {
   ActionBarPrimitive,
   AssistantIf,
@@ -37,6 +37,8 @@ import { UserMessageAttachments } from "@/components/assistant-ui/attachment";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { api } from "@/utils/trpc/client";
+import { modelTransport } from "@/app/(app)/(chat)/provider";
+import type { MessageTiming } from "@/lib/types/timing";
 
 export const ThreadScrollToBottom: FC = () => {
   return (
@@ -73,6 +75,24 @@ type WebSearchResult = {
   sources?: Array<{ type: string; url: string }>;
 };
 
+type ProgressItem =
+  | { type: "reasoning"; id: string; hasContent: boolean }
+  | {
+      type: "web_search";
+      id: string;
+      completed: boolean;
+      action?: WebSearchAction;
+      sourcesCount: number;
+    };
+
+function useMessageTiming(messageId: string): MessageTiming | undefined {
+  return useSyncExternalStore(
+    (callback) => modelTransport.subscribeToTimings(callback),
+    () => modelTransport.getTimingForMessage(messageId),
+    () => undefined,
+  );
+}
+
 const getHostname = (url: string): string => {
   try {
     return new URL(url).hostname;
@@ -81,101 +101,127 @@ const getHostname = (url: string): string => {
   }
 };
 
-const SearchItem: FC<{
-  action: WebSearchAction | undefined;
-  sourcesCount: number;
-}> = ({ action, sourcesCount }) => {
-  if (action?.type === "search" && action.query) {
-    return (
-      <>
-        Searched:{" "}
-        <span className="font-medium text-foreground/80">
-          &quot;{action.query}&quot;
-        </span>
-        {sourcesCount > 0 && (
-          <span className="text-muted-foreground/70">
-            {" "}
-            · {sourcesCount} sources
-          </span>
-        )}
-      </>
-    );
-  }
-
-  if (action?.type === "openPage" && action.url) {
-    return (
-      <>
-        Visited:{" "}
-        <span className="font-medium text-foreground/80">
-          {getHostname(action.url)}
-        </span>
-      </>
-    );
-  }
-
-  return null;
-};
-
-const WebSearchProgress: FC<{ isRunning: boolean }> = ({ isRunning }) => {
+const ActivityProgress: FC<{ isRunning: boolean }> = ({ isRunning }) => {
   const parts = useAssistantState(({ message }) => message.parts);
 
-  const { pending, completed } = useMemo(() => {
-    const pending: string[] = [];
-    const completed: Array<{
-      id: string;
-      action: WebSearchAction | undefined;
-      sourcesCount: number;
-    }> = [];
+  const items = useMemo(() => {
+    const result: ProgressItem[] = [];
 
     for (const part of parts) {
+      if (part.type === "reasoning") {
+        const hasContent =
+          "text" in part &&
+          typeof part.text === "string" &&
+          part.text.length > 0;
+        result.push({
+          type: "reasoning",
+          id: "id" in part ? String(part.id) : `reasoning-${result.length}`,
+          hasContent,
+        });
+      }
+
       if (part.type === "tool-call" && part.toolName === "web_search") {
-        const result = part.result as WebSearchResult | undefined;
-        if (result) {
-          completed.push({
-            id: part.toolCallId,
-            action: result.action,
-            sourcesCount: result.sources?.length ?? 0,
-          });
-        } else {
-          pending.push(part.toolCallId);
-        }
+        const webResult = part.result as WebSearchResult | undefined;
+        result.push({
+          type: "web_search",
+          id: part.toolCallId,
+          completed: !!webResult,
+          action: webResult?.action,
+          sourcesCount: webResult?.sources?.length ?? 0,
+        });
       }
     }
 
-    return { pending, completed };
+    return result;
   }, [parts]);
 
-  if (pending.length === 0 && completed.length === 0) {
+  if (items.length === 0) {
     return null;
   }
 
   return (
-    <div className="mb-4 space-y-2">
-      {isRunning && pending.length > 0 && (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <GlobeIcon className="size-4 animate-pulse" />
-          <span className="shimmer text-sm">Searching the web...</span>
-        </div>
-      )}
+    <div className="mb-4 space-y-1.5">
+      {items.map((item, index) => {
+        const isLast = index === items.length - 1;
 
-      {completed.length > 0 && (
-        <div className="space-y-1.5">
-          {completed.map((item) => (
+        if (item.type === "reasoning") {
+          if (!item.hasContent) {
+            if (isRunning && isLast) {
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-2 text-muted-foreground"
+                >
+                  <LoaderIcon className="size-4 animate-spin" />
+                  <span className="shimmer text-sm">Thinking...</span>
+                </div>
+              );
+            }
+            return null;
+          }
+          return null;
+        }
+
+        if (item.type === "web_search") {
+          if (!item.completed) {
+            if (isRunning) {
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-2 text-muted-foreground"
+                >
+                  <GlobeIcon className="size-4 animate-pulse" />
+                  <span className="shimmer text-sm">Searching the web...</span>
+                </div>
+              );
+            }
+            return null;
+          }
+
+          const { action, sourcesCount } = item;
+          let label: React.ReactNode = null;
+
+          if (action?.type === "search" && action.query) {
+            label = (
+              <>
+                Searched:{" "}
+                <span className="font-medium text-foreground/80">
+                  &quot;{action.query}&quot;
+                </span>
+                {sourcesCount > 0 && (
+                  <span className="text-muted-foreground/70">
+                    {" "}
+                    · {sourcesCount} sources
+                  </span>
+                )}
+              </>
+            );
+          } else if (action?.type === "openPage" && action.url) {
+            label = (
+              <>
+                Visited:{" "}
+                <span className="font-medium text-foreground/80">
+                  {getHostname(action.url)}
+                </span>
+              </>
+            );
+          }
+
+          if (!label) return null;
+
+          return (
             <div
               key={item.id}
               className="flex items-start gap-2 text-muted-foreground text-xs"
             >
               <CheckIcon className="mt-0.5 size-3 shrink-0 text-emerald-500" />
-              <span>
-                <SearchItem
-                  action={item.action}
-                  sourcesCount={item.sourcesCount}
-                />
-              </span>
+              <span>{label}</span>
             </div>
-          ))}
-        </div>
-      )}
+          );
+        }
+
+        return null;
+      })}
     </div>
   );
 };
@@ -189,10 +235,6 @@ export const AssistantMessage: FC = () => {
     message.parts.some((part) => part.type === "text" && part.text.length > 0),
   );
 
-  const hasReasoningPart = useAssistantState(({ message }) =>
-    message.parts.some((part) => part.type === "reasoning"),
-  );
-
   const hasReasoningContent = useAssistantState(({ message }) =>
     message.parts.some(
       (part) =>
@@ -203,11 +245,13 @@ export const AssistantMessage: FC = () => {
     ),
   );
 
-  const hasWebSearchCalls = useAssistantState(({ message }) => {
-    return message.parts.some(
-      (part) => part.type === "tool-call" && part.toolName === "web_search",
-    );
-  });
+  const hasActivityParts = useAssistantState(({ message }) =>
+    message.parts.some(
+      (part) =>
+        part.type === "reasoning" ||
+        (part.type === "tool-call" && part.toolName === "web_search"),
+    ),
+  );
 
   const hasSources = useAssistantState(({ message }) => {
     if (message.status?.type === "running") return false;
@@ -227,23 +271,22 @@ export const AssistantMessage: FC = () => {
     });
   });
 
-  const isThinking = isRunning && hasReasoningPart && !hasReasoningContent;
   const isLoading =
-    isRunning && !hasTextContent && !hasReasoningContent && !hasWebSearchCalls;
+    isRunning && !hasTextContent && !hasReasoningContent && !hasActivityParts;
 
   return (
     <MessagePrimitive.Root
       className="fade-in slide-in-from-bottom-2 animate-in py-4 duration-300"
       data-role="assistant"
     >
-      {isLoading || isThinking ? (
+      {isLoading ? (
         <div className="flex items-center gap-2 text-muted-foreground">
           <LoaderIcon className="size-4 animate-spin" />
           <span className="shimmer text-sm">Thinking...</span>
         </div>
       ) : (
         <div className="group/assistant relative">
-          {hasWebSearchCalls && <WebSearchProgress isRunning={isRunning} />}
+          {hasActivityParts && <ActivityProgress isRunning={isRunning} />}
 
           <div className="text-foreground leading-relaxed">
             <MessagePrimitive.Parts
@@ -332,6 +375,80 @@ const extractSources = (parts: readonly MessagePart[]): ExtractedSource[] => {
 };
 
 const COLLAPSED_SOURCES_COUNT = 3;
+
+const formatTime = (ms: number): string => {
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  return `${(ms / 1000).toFixed(2)}s`;
+};
+
+const formatMs = (ms: number): string => {
+  return `${Math.round(ms)}ms`;
+};
+
+const MessageTimingDisplay: FC = () => {
+  const messageId = useAssistantState(({ message }) => message.id);
+  const timing = useMessageTiming(messageId);
+
+  if (!timing || timing.totalStreamTime === undefined) return null;
+
+  const totalTimeText = formatTime(timing.totalStreamTime);
+  if (!totalTimeText) return null;
+
+  return (
+    <div className="group/timing relative flex items-center">
+      <button
+        type="button"
+        className="flex h-6 items-center justify-center rounded-md px-1.5 font-mono text-muted-foreground text-xs tabular-nums transition-colors hover:bg-accent hover:text-accent-foreground"
+      >
+        {totalTimeText}
+      </button>
+      <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 scale-95 rounded-lg bg-popover px-3 py-2 opacity-0 shadow-lg transition-all group-hover/timing:pointer-events-auto group-hover/timing:scale-100 group-hover/timing:opacity-100">
+        <div className="grid min-w-[140px] gap-1.5 text-xs">
+          {timing.timeToFirstChunk !== undefined && (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">First chunk</span>
+              <span className="font-mono text-foreground tabular-nums">
+                {formatMs(timing.timeToFirstChunk)}
+              </span>
+            </div>
+          )}
+          {timing.timeToFirstToken !== undefined && (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">First token</span>
+              <span className="font-mono text-foreground tabular-nums">
+                {formatMs(timing.timeToFirstToken)}
+              </span>
+            </div>
+          )}
+          {timing.totalStreamTime !== undefined && (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">Total</span>
+              <span className="font-mono text-foreground tabular-nums">
+                {formatMs(timing.totalStreamTime)}
+              </span>
+            </div>
+          )}
+          {timing.tokensPerSecond !== undefined && (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">Speed</span>
+              <span className="font-mono text-foreground tabular-nums">
+                {timing.tokensPerSecond.toFixed(1)} tok/s
+              </span>
+            </div>
+          )}
+          {timing.totalChunks !== undefined && (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">Chunks</span>
+              <span className="font-mono text-foreground tabular-nums">
+                {timing.totalChunks}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const SourcesDisplay: FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -477,6 +594,7 @@ export const AssistantActionBar: FC = () => {
           <ThumbsDownIcon />
         </TooltipIconButton>
       </ActionBarPrimitive.FeedbackNegative>
+      <MessageTimingDisplay />
     </ActionBarPrimitive.Root>
   );
 };

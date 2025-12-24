@@ -2,12 +2,21 @@ import { z } from "zod";
 import { eq, desc, and, isNull, isNotNull } from "drizzle-orm";
 
 import { chat, chatMessage, chatVote, share } from "@/lib/database/schema";
-import { AVAILABLE_MODELS, type ModelId } from "@/lib/ai/models";
+import {
+  AVAILABLE_MODELS,
+  isDeprecatedModel,
+  type ModelId,
+} from "@/lib/ai/models";
 import { protectedProcedure, createTRPCRouter } from "../../trpc";
 import { voteRouter } from "./vote";
 
 const modelIdSchema = z.enum(
   AVAILABLE_MODELS.map((m) => m.id) as [ModelId, ...ModelId[]],
+);
+
+const activeModelIdSchema = modelIdSchema.refine(
+  (id) => !isDeprecatedModel(id),
+  { message: "Deprecated models cannot be selected" },
 );
 
 export const chatRouter = createTRPCRouter({
@@ -24,20 +33,16 @@ export const chatRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const projectId = input?.projectId;
 
-      // Build the where condition - exclude deleted chats
       const conditions = [
         eq(chat.userId, ctx.session.user.id),
         isNull(chat.deletedAt),
       ];
 
       if (projectId === null) {
-        // Explicitly filter for chats with no project
         conditions.push(isNull(chat.projectId));
       } else if (projectId !== undefined) {
-        // Filter for specific project
         conditions.push(eq(chat.projectId, projectId));
       }
-      // If projectId is undefined, return all chats (no project filter)
 
       const chats = await ctx.db
         .select({
@@ -62,7 +67,7 @@ export const chatRouter = createTRPCRouter({
       z.object({
         id: z.string(),
         projectId: z.string().nullable().optional(),
-        model: modelIdSchema.nullable().optional(),
+        model: activeModelIdSchema.nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -86,7 +91,7 @@ export const chatRouter = createTRPCRouter({
         id: z.string(),
         title: z.string().optional(),
         status: z.enum(["regular", "archived"]).optional(),
-        model: modelIdSchema.nullable().optional(),
+        model: activeModelIdSchema.nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -116,7 +121,6 @@ export const chatRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // Delete associated shares when soft-deleting
       await ctx.db
         .delete(share)
         .where(
@@ -127,7 +131,6 @@ export const chatRouter = createTRPCRouter({
           ),
         );
 
-      // Soft delete: set deletedAt timestamp
       await ctx.db
         .update(chat)
         .set({ deletedAt: new Date() })
@@ -162,7 +165,6 @@ export const chatRouter = createTRPCRouter({
   getMessages: protectedProcedure
     .input(z.object({ chatId: z.string() }))
     .query(async ({ ctx, input }) => {
-      // First verify the user owns this chat
       const chatResult = await ctx.db
         .select({ id: chat.id })
         .from(chat)

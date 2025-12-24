@@ -81,19 +81,6 @@ function ThemeOption({
   );
 }
 
-function _ThemeSkeleton() {
-  return (
-    <div className="flex gap-4">
-      {["system", "light", "dark"].map((key) => (
-        <div key={key} className="flex flex-col items-center gap-2 p-2">
-          <div className="h-16 w-24 animate-pulse rounded-md bg-muted" />
-          <div className="h-4 w-12 animate-pulse rounded bg-muted" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export function AppearanceSection() {
   const { theme, setTheme } = useTheme();
 

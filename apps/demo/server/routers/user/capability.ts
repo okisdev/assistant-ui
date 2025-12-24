@@ -1,24 +1,24 @@
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 
-import {
-  user,
-  type UserCapabilities,
-  type ChainOfThoughtMode,
-} from "@/lib/database/schema";
-import type { ResolvedUserCapabilities } from "@/lib/database/types";
+import { user, type UserCapabilities } from "@/lib/database/schema";
 import {
   AVAILABLE_MODELS,
-  DEFAULT_MODEL_ID,
-  DEFAULT_ENABLED_MODEL_IDS,
+  isDeprecatedModel,
   type ModelId,
 } from "@/lib/ai/models";
+import { resolveCapabilities } from "@/lib/ai/capabilities";
 import { protectedProcedure, createTRPCRouter } from "../../trpc";
 
 const chainOfThoughtSchema = z.enum(["off", "zero-shot", "few-shot"] as const);
 
 const modelIdSchema = z.enum(
   AVAILABLE_MODELS.map((m) => m.id) as [ModelId, ...ModelId[]],
+);
+
+const activeModelIdSchema = modelIdSchema.refine(
+  (id) => !isDeprecatedModel(id),
+  { message: "Deprecated models cannot be set as default" },
 );
 
 export const capabilityRouter = createTRPCRouter({
@@ -29,32 +29,7 @@ export const capabilityRouter = createTRPCRouter({
       .where(eq(user.id, ctx.session.user.id))
       .limit(1);
 
-    const capabilities = result[0]?.capabilities ?? {};
-
-    return {
-      memory: {
-        personalization: capabilities.memory?.personalization ?? true,
-        chatHistoryContext: capabilities.memory?.chatHistoryContext ?? false,
-      },
-      tools: {
-        artifacts: capabilities.tools?.artifacts ?? true,
-        webSearch: capabilities.tools?.webSearch ?? false,
-      },
-      model: {
-        defaultId: capabilities.model?.defaultId ?? DEFAULT_MODEL_ID,
-        reasoningEnabled: capabilities.model?.reasoningEnabled ?? true,
-      },
-      models: {
-        enabledIds: capabilities.models?.enabledIds ?? [
-          ...DEFAULT_ENABLED_MODEL_IDS,
-        ],
-      },
-      prompting: {
-        chainOfThought:
-          (capabilities.prompting?.chainOfThought as ChainOfThoughtMode) ??
-          "off",
-      },
-    } satisfies ResolvedUserCapabilities;
+    return resolveCapabilities(result[0]?.capabilities);
   }),
 
   update: protectedProcedure
@@ -74,7 +49,7 @@ export const capabilityRouter = createTRPCRouter({
           .optional(),
         model: z
           .object({
-            defaultId: modelIdSchema.optional(),
+            defaultId: activeModelIdSchema.optional(),
             reasoningEnabled: z.boolean().optional(),
           })
           .optional(),
@@ -130,7 +105,10 @@ export const capabilityRouter = createTRPCRouter({
         models: {
           ...current.models,
           ...(input.models?.enabledIds !== undefined && {
-            enabledIds: input.models.enabledIds,
+            // Filter out deprecated models - they cannot be enabled
+            enabledIds: input.models.enabledIds.filter(
+              (id) => !isDeprecatedModel(id),
+            ),
           }),
         },
         prompting: {

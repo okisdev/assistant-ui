@@ -5,17 +5,14 @@ import {
   type ToolSet,
 } from "ai";
 import { openai } from "@ai-sdk/openai";
-import {
-  AVAILABLE_MODELS,
-  DEFAULT_MODEL_ID,
-  DEFAULT_ENABLED_MODEL_IDS,
-} from "@/lib/ai/models";
+import { AVAILABLE_MODELS } from "@/lib/ai/models";
 import type { ResolvedUserCapabilities } from "@/lib/database/types";
 import { getModel, resolveModel } from "@/lib/ai/providers";
 import { buildSystemPrompt } from "@/lib/ai/prompts";
 import { getUserContext, type UserContext } from "@/lib/ai/context";
 import { saveMemoryTool } from "@/lib/ai/tools/save-memory";
 import { createArtifactTool } from "@/lib/ai/tools/create-artifact";
+import { DEFAULT_CAPABILITIES } from "@/lib/ai/capabilities";
 
 export const maxDuration = 300;
 
@@ -35,23 +32,10 @@ export async function POST(req: Request) {
     capabilities = userContext.capabilities;
   } catch {
     capabilities = {
+      ...DEFAULT_CAPABILITIES,
       memory: {
+        ...DEFAULT_CAPABILITIES.memory,
         personalization: false,
-        chatHistoryContext: false,
-      },
-      tools: {
-        artifacts: true,
-        webSearch: false,
-      },
-      model: {
-        defaultId: DEFAULT_MODEL_ID,
-        reasoningEnabled: true,
-      },
-      models: {
-        enabledIds: [...DEFAULT_ENABLED_MODEL_IDS],
-      },
-      prompting: {
-        chainOfThought: "off",
       },
     };
   }

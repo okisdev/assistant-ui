@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { api } from "@/utils/trpc/client";
 import { workTypeOptions, type WorkType } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -16,36 +18,37 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from "@/components/ui/form";
 import { SettingHeader } from "@/components/dashboard/setting-header";
 
-function ProfileSkeleton() {
-  return (
-    <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-[1fr_10rem] gap-4">
-        <div className="flex flex-col gap-3">
-          <div className="h-4 w-16 animate-pulse rounded bg-muted" />
-          <div className="h-9 w-full animate-pulse rounded bg-muted" />
-        </div>
-        <div className="flex flex-col gap-3">
-          <div className="h-4 w-16 animate-pulse rounded bg-muted" />
-          <div className="h-9 w-full animate-pulse rounded bg-muted" />
-        </div>
-      </div>
-      <div className="flex flex-col gap-3">
-        <div className="h-4 w-40 animate-pulse rounded bg-muted" />
-        <div className="h-9 w-full animate-pulse rounded bg-muted" />
-      </div>
-    </div>
-  );
-}
+const profileSchema = z.object({
+  name: z.string().min(1, "Name cannot be empty").max(100),
+  nickname: z.string().max(50).optional(),
+  workType: z
+    .enum(workTypeOptions.map((o) => o.value) as [WorkType, ...WorkType[]])
+    .optional(),
+});
+
+type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export function ProfileSection() {
   const { data: profile, isPending } = api.user.profile.get.useQuery();
-  const [name, setName] = useState("");
-  const [nickname, setNickname] = useState("");
-  const [workType, setWorkType] = useState<WorkType | "">("");
-
   const utils = api.useUtils();
+
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      name: "",
+      nickname: "",
+      workType: undefined,
+    },
+  });
 
   const updateProfileMutation = api.user.profile.update.useMutation({
     onSuccess: () => {
@@ -59,100 +62,106 @@ export function ProfileSection() {
 
   useEffect(() => {
     if (profile) {
-      setName(profile.name);
-      setNickname(profile.nickname ?? "");
-      setWorkType((profile.workType as WorkType) ?? "");
+      form.reset({
+        name: profile.name,
+        nickname: profile.nickname ?? "",
+        workType: (profile.workType as WorkType) ?? undefined,
+      });
     }
-  }, [profile]);
+  }, [profile, form]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!name.trim()) {
-      toast.error("Name cannot be empty");
-      return;
-    }
-
+  const onSubmit = (values: ProfileFormValues) => {
     updateProfileMutation.mutate({
-      name: name.trim(),
-      nickname: nickname.trim() || null,
-      workType: workType || null,
+      name: values.name.trim(),
+      nickname: values.nickname?.trim() || null,
+      workType: values.workType ?? null,
     });
   };
 
-  const hasChanges =
-    name.trim() !== (profile?.name ?? "") ||
-    nickname.trim() !== (profile?.nickname ?? "") ||
-    workType !== ((profile?.workType as WorkType) ?? "");
+  const isDisabled = isPending || updateProfileMutation.isPending;
 
   return (
     <div className="flex flex-col gap-4">
       <SettingHeader title="Profile" />
 
-      {isPending ? (
-        <ProfileSkeleton />
-      ) : (
-        <form onSubmit={handleSubmit}>
-          <FieldGroup className="gap-5">
-            <div className="grid grid-cols-[1fr_10rem] gap-4">
-              <Field>
-                <FieldLabel htmlFor="name">Name</FieldLabel>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter your name"
-                />
-              </Field>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          <div className="grid grid-cols-[1fr_10rem] gap-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter your name"
+                      disabled={isDisabled}
+                      {...field}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-              <Field>
-                <FieldLabel htmlFor="nickname">Nickname</FieldLabel>
-                <Input
-                  id="nickname"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  placeholder="Nickname"
-                />
-              </Field>
-            </div>
+            <FormField
+              control={form.control}
+              name="nickname"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nickname</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Nickname"
+                      disabled={isDisabled}
+                      {...field}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
 
-            <Field>
-              <FieldLabel htmlFor="workType">
-                What best describes your work?
-              </FieldLabel>
-              <Select
-                value={workType}
-                onValueChange={(value) => setWorkType(value as WorkType)}
-              >
-                <SelectTrigger id="workType" className="w-full">
-                  <SelectValue placeholder="Select your work type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {workTypeOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-
-            {hasChanges && (
-              <div className="fade-in slide-in-from-bottom-2 flex animate-in justify-end duration-200">
-                <Button
-                  type="submit"
-                  disabled={updateProfileMutation.isPending}
+          <FormField
+            control={form.control}
+            name="workType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>What best describes your work?</FormLabel>
+                <Select
+                  value={field.value ?? ""}
+                  onValueChange={field.onChange}
+                  disabled={isDisabled}
                 >
-                  {updateProfileMutation.isPending && (
-                    <Loader2 className="size-4 animate-spin" />
-                  )}
-                  Save changes
-                </Button>
-              </div>
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select your work type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {workTypeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormItem>
             )}
-          </FieldGroup>
+          />
+
+          {form.formState.isDirty && (
+            <div className="fade-in slide-in-from-bottom-2 flex animate-in justify-end duration-200">
+              <Button type="submit" disabled={isDisabled}>
+                {updateProfileMutation.isPending && (
+                  <Loader2 className="size-4 animate-spin" />
+                )}
+                Save changes
+              </Button>
+            </div>
+          )}
         </form>
-      )}
+      </Form>
     </div>
   );
 }

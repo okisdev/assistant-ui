@@ -25,6 +25,7 @@ import { DatabaseMemoryStore } from "@/lib/adapters/database-memory-adapter";
 import { ModelChatTransport } from "@/lib/adapters/model-chat-transport";
 import { useMemoryTools } from "@/hooks/use-memory-tools";
 import { useArtifactTools } from "@/hooks/use-artifact-tools";
+import { useStreamingTiming } from "@/hooks/use-streaming-timing";
 import { ModelSelectionProvider } from "@/contexts/model-selection-provider";
 import {
   CapabilitiesProvider,
@@ -270,6 +271,13 @@ function useCustomChatRuntime() {
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     experimental_throttle: 100,
   });
+
+  const isRunning = chat.status === "submitted" || chat.status === "streaming";
+  const timings = useStreamingTiming(chat.messages, isRunning);
+
+  useEffect(() => {
+    modelTransport.setTimings(timings);
+  }, [timings]);
 
   const runtime = useAISDKRuntime(chat, {
     adapters: { feedback, attachments },

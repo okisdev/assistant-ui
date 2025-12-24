@@ -122,7 +122,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring/50 shadow-none;
   }
   html {
     @apply overscroll-y-none scroll-smooth;
@@ -130,10 +130,4 @@
   body {
     @apply bg-background text-foreground;
   }
-}
-
-[data-slot="input"]:focus-visible,
-[data-slot="textarea"]:focus-visible,
-[data-slot="select-trigger"]:focus-visible {
-  box-shadow: none;
 }

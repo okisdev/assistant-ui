@@ -1,6 +1,6 @@
 "use client";
 
-import { type FC, memo, useCallback, useRef, useState } from "react";
+import { type FC, memo, useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDownIcon, BrainIcon } from "lucide-react";
 import { useMessagePartReasoning, useScrollLock } from "@assistant-ui/react";
 import { cn } from "@/lib/utils";
@@ -13,33 +13,9 @@ import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 
 const ANIMATION_DURATION = 200;
 
-/**
- * Extracts a summary from the reasoning text for display in the collapsed state.
- * Takes the first sentence or first ~60 characters, whichever is shorter.
- */
-const extractSummary = (text: string): string | null => {
-  if (!text || text.trim().length === 0) return null;
-
-  const trimmed = text.trim();
-
-  // Try to get the first sentence (ending with . ! or ?)
-  const sentenceMatch = trimmed.match(/^[^.!?]+[.!?]/);
-  if (sentenceMatch && sentenceMatch[0].length <= 80) {
-    return sentenceMatch[0].trim();
-  }
-
-  // Otherwise, take first ~60 chars and add ellipsis
-  if (trimmed.length <= 60) {
-    return trimmed;
-  }
-
-  // Find a natural break point (space) near 60 chars
-  const breakPoint = trimmed.lastIndexOf(" ", 60);
-  if (breakPoint > 30) {
-    return `${trimmed.slice(0, breakPoint)}…`;
-  }
-
-  return `${trimmed.slice(0, 60)}…`;
+const formatThinkingDuration = (ms: number): string => {
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
 };
 
 const ReasoningContentImpl: FC = () => {
@@ -47,6 +23,21 @@ const ReasoningContentImpl: FC = () => {
   const collapsibleRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const lockScroll = useScrollLock(collapsibleRef, ANIMATION_DURATION);
+
+  const startTimeRef = useRef<number | null>(null);
+  const [duration, setDuration] = useState<number | null>(null);
+
+  const isStreaming = status?.type === "running";
+
+  useEffect(() => {
+    if (isStreaming && startTimeRef.current === null) {
+      startTimeRef.current = Date.now();
+      setDuration(null);
+    } else if (!isStreaming && startTimeRef.current !== null) {
+      const elapsed = Date.now() - startTimeRef.current;
+      setDuration(elapsed);
+    }
+  }, [isStreaming]);
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
@@ -61,9 +52,6 @@ const ReasoningContentImpl: FC = () => {
   if (!text || text.trim().length === 0) {
     return null;
   }
-
-  const summary = extractSummary(text);
-  const isStreaming = status?.type === "running";
 
   return (
     <Collapsible
@@ -92,13 +80,12 @@ const ReasoningContentImpl: FC = () => {
                 isStreaming && "shimmer motion-reduce:animate-none",
               )}
             >
-              Thinking
+              {isStreaming
+                ? "Thinking"
+                : duration !== null
+                  ? `Thought for ${formatThinkingDuration(duration)}`
+                  : "Thought"}
             </span>
-            {!isOpen && summary && (
-              <span className="truncate text-muted-foreground">
-                · {summary}
-              </span>
-            )}
           </div>
         </div>
         <ChevronDownIcon

@@ -8,59 +8,17 @@ import {
   type ReactNode,
 } from "react";
 import { api } from "@/utils/trpc/client";
-import type {
-  ResolvedUserCapabilities,
-  ChainOfThoughtMode,
-} from "@/lib/database/types";
-import { DEFAULT_MODEL_ID, DEFAULT_ENABLED_MODEL_IDS } from "@/lib/ai/models";
-
-type CapabilitiesInput = {
-  memory?: {
-    personalization?: boolean;
-    chatHistoryContext?: boolean;
-  };
-  tools?: {
-    artifacts?: boolean;
-  };
-  model?: {
-    defaultId?: string;
-    reasoningEnabled?: boolean;
-  };
-  models?: {
-    enabledIds?: string[];
-  };
-  prompting?: {
-    chainOfThought?: ChainOfThoughtMode;
-  };
-};
+import type { UserCapabilities } from "@/lib/database/schema";
+import type { ResolvedUserCapabilities } from "@/lib/database/types";
+import { DEFAULT_CAPABILITIES } from "@/lib/ai/capabilities";
 
 type CapabilitiesContextValue = {
   /** Resolved capabilities with default values (never undefined) */
   capabilities: ResolvedUserCapabilities;
   isLoading: boolean;
   /** Update capabilities */
-  updateCapabilities: (input: CapabilitiesInput) => Promise<void>;
+  updateCapabilities: (input: UserCapabilities) => Promise<void>;
   isUpdating: boolean;
-};
-
-const DEFAULT_CAPABILITIES: ResolvedUserCapabilities = {
-  memory: {
-    personalization: true,
-    chatHistoryContext: false,
-  },
-  tools: {
-    artifacts: true,
-  },
-  model: {
-    defaultId: DEFAULT_MODEL_ID,
-    reasoningEnabled: true,
-  },
-  models: {
-    enabledIds: [...DEFAULT_ENABLED_MODEL_IDS],
-  },
-  prompting: {
-    chainOfThought: "off",
-  },
 };
 
 const CapabilitiesContext = createContext<CapabilitiesContextValue | null>(
@@ -93,7 +51,7 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
   );
 
   const updateCapabilities = useCallback(
-    async (input: CapabilitiesInput) => {
+    async (input: UserCapabilities) => {
       await updateMutation.mutateAsync(input);
     },
     [updateMutation],
