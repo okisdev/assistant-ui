@@ -6,22 +6,22 @@ export type ModelProvider = "openai" | "xai";
 
 export type ModelCapability = "text" | "image" | "reasoning";
 
+export type ModelPricing = {
+  input: number;
+  output: number;
+};
+
 export type ModelDefinition = {
-  /** Full model ID in format: <provider>/<model_id> */
   id: string;
-  /** Model name for the provider API */
   modelName: string;
-  /** Display name */
   name: string;
-  /** Model family (e.g., gpt-5, grok-3) */
   family: string;
   provider: ModelProvider;
   description?: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
   capabilities: ModelCapability[];
-  /** Whether this model is deprecated */
+  pricing: ModelPricing;
   deprecated?: boolean;
-  /** Whether this model is enabled by default for new users */
   primary?: boolean;
 };
 
@@ -35,6 +35,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Most capable flagship model",
     icon: OpenAI,
     capabilities: ["text", "image", "reasoning"],
+    pricing: { input: 2.5, output: 10 },
     primary: true,
   },
   {
@@ -46,6 +47,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Faster, cost-effective GPT-5",
     icon: OpenAI,
     capabilities: ["text", "image", "reasoning"],
+    pricing: { input: 0.4, output: 1.6 },
   },
   {
     id: "openai/gpt-5-nano",
@@ -56,6 +58,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Fastest, most affordable GPT-5",
     icon: OpenAI,
     capabilities: ["text", "image"],
+    pricing: { input: 0.1, output: 0.4 },
   },
   {
     id: "openai/gpt-4.1",
@@ -66,6 +69,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Enhanced GPT-4, 1M context",
     icon: OpenAI,
     capabilities: ["text", "image", "reasoning"],
+    pricing: { input: 2, output: 8 },
   },
   {
     id: "openai/gpt-4.1-mini",
@@ -76,6 +80,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Balanced performance, 1M context",
     icon: OpenAI,
     capabilities: ["text", "image"],
+    pricing: { input: 0.4, output: 1.6 },
   },
   {
     id: "openai/gpt-4.1-nano",
@@ -86,6 +91,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Fast and cost-effective, 1M context",
     icon: OpenAI,
     capabilities: ["text", "image"],
+    pricing: { input: 0.1, output: 0.4 },
   },
   {
     id: "openai/gpt-4o",
@@ -96,6 +102,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Fast multimodal model, 128K context",
     icon: OpenAI,
     capabilities: ["text", "image"],
+    pricing: { input: 2.5, output: 10 },
     primary: true,
   },
   {
@@ -107,6 +114,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Affordable and fast, 128K context",
     icon: OpenAI,
     capabilities: ["text", "image"],
+    pricing: { input: 0.15, output: 0.6 },
   },
   {
     id: "openai/o3",
@@ -117,6 +125,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Most powerful reasoning model",
     icon: OpenAI,
     capabilities: ["text", "image", "reasoning"],
+    pricing: { input: 10, output: 40 },
   },
   {
     id: "openai/o3-mini",
@@ -127,6 +136,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Fast reasoning, 200K context",
     icon: OpenAI,
     capabilities: ["text", "reasoning"],
+    pricing: { input: 1.1, output: 4.4 },
   },
   {
     id: "openai/o4-mini",
@@ -137,6 +147,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Latest fast reasoning model",
     icon: OpenAI,
     capabilities: ["text", "image", "reasoning"],
+    pricing: { input: 1.1, output: 4.4 },
   },
   {
     id: "openai/gpt-4-turbo",
@@ -147,6 +158,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "High performance, 128K context",
     icon: OpenAI,
     capabilities: ["text", "image"],
+    pricing: { input: 10, output: 30 },
   },
   {
     id: "openai/o1",
@@ -157,6 +169,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Previous reasoning model",
     icon: OpenAI,
     capabilities: ["text", "reasoning"],
+    pricing: { input: 15, output: 60 },
     deprecated: true,
   },
   {
@@ -168,6 +181,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Previous fast reasoning model",
     icon: OpenAI,
     capabilities: ["text", "reasoning"],
+    pricing: { input: 1.1, output: 4.4 },
     deprecated: true,
   },
   {
@@ -179,6 +193,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Original GPT-4, 8K context",
     icon: OpenAI,
     capabilities: ["text", "image"],
+    pricing: { input: 30, output: 60 },
     deprecated: true,
   },
   {
@@ -190,6 +205,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Latest Grok with reasoning, 2M context",
     icon: Grok,
     capabilities: ["text", "reasoning"],
+    pricing: { input: 3, output: 15 },
   },
   {
     id: "xai/grok-4-1-fast-non-reasoning",
@@ -200,6 +216,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Latest Grok without reasoning, 2M context",
     icon: Grok,
     capabilities: ["text"],
+    pricing: { input: 3, output: 15 },
   },
   {
     id: "xai/grok-4-fast-reasoning",
@@ -210,6 +227,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Fast Grok 4 with reasoning, 2M context",
     icon: Grok,
     capabilities: ["text", "reasoning"],
+    pricing: { input: 3, output: 15 },
   },
   {
     id: "xai/grok-4-fast-non-reasoning",
@@ -220,6 +238,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Fast Grok 4 without reasoning, 2M context",
     icon: Grok,
     capabilities: ["text"],
+    pricing: { input: 3, output: 15 },
   },
   {
     id: "xai/grok-4-0709",
@@ -230,6 +249,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Full Grok 4 model, 256K context",
     icon: Grok,
     capabilities: ["text", "reasoning"],
+    pricing: { input: 3, output: 15 },
   },
   {
     id: "xai/grok-code-fast-1",
@@ -240,6 +260,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Optimized for coding tasks, 256K context",
     icon: Grok,
     capabilities: ["text"],
+    pricing: { input: 3, output: 15 },
   },
   {
     id: "xai/grok-3",
@@ -250,6 +271,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Capable model, 131K context",
     icon: Grok,
     capabilities: ["text"],
+    pricing: { input: 3, output: 15 },
     primary: true,
   },
   {
@@ -261,6 +283,7 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Fast and efficient, 131K context",
     icon: Grok,
     capabilities: ["text"],
+    pricing: { input: 0.3, output: 0.5 },
   },
   {
     id: "xai/grok-2-vision-1212",
@@ -271,33 +294,37 @@ export const AVAILABLE_MODELS: readonly ModelDefinition[] = [
     description: "Vision model, 32K context",
     icon: Grok,
     capabilities: ["text", "image"],
+    pricing: { input: 2, output: 10 },
     deprecated: true,
   },
 ];
 
-/** Union type of all available model IDs */
 export type ModelId = (typeof AVAILABLE_MODELS)[number]["id"];
 
 export const DEFAULT_MODEL_ID: ModelId = "openai/gpt-5";
 
-/** Get all non-deprecated models */
+export const DEFAULT_PRICING: ModelPricing = { input: 2, output: 8 };
+
 export const ACTIVE_MODELS = AVAILABLE_MODELS.filter((m) => !m.deprecated);
 
 export function getModelById(modelId: string): ModelDefinition | undefined {
   return AVAILABLE_MODELS.find((m) => m.id === modelId);
 }
 
+export function getModelPricing(modelId: string): ModelPricing {
+  const model = getModelById(modelId);
+  return model?.pricing ?? DEFAULT_PRICING;
+}
+
 export function isValidModelId(modelId: string): modelId is ModelId {
   return AVAILABLE_MODELS.some((m) => m.id === modelId);
 }
 
-/** Check if a model is deprecated */
 export function isDeprecatedModel(modelId: string): boolean {
   const model = getModelById(modelId);
   return model?.deprecated ?? false;
 }
 
-/** Parse model ID into provider and model name */
 export function parseModelId(modelId: string): {
   provider: string;
   modelName: string;
@@ -307,10 +334,8 @@ export function parseModelId(modelId: string): {
   return { provider: parts[0]!, modelName: parts[1]! };
 }
 
-/** Get primary models (enabled by default for new users) */
 export const PRIMARY_MODELS = AVAILABLE_MODELS.filter((m) => m.primary);
 
-/** Get default enabled model IDs for new users */
 export const DEFAULT_ENABLED_MODEL_IDS: readonly ModelId[] = PRIMARY_MODELS.map(
   (m) => m.id as ModelId,
 );

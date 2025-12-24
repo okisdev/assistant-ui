@@ -13,6 +13,7 @@ import {
 } from "@assistant-ui/react";
 import {
   ArrowDownIcon,
+  AudioLinesIcon,
   CheckIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -24,6 +25,7 @@ import {
   PencilIcon,
   RefreshCwIcon,
   Share2Icon,
+  StopCircleIcon,
   ThumbsDownIcon,
   ThumbsUpIcon,
 } from "lucide-react";
@@ -36,6 +38,7 @@ import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button
 import { UserMessageAttachments } from "@/components/assistant-ui/attachment";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { formatTime } from "@/lib/ai/utils";
 import { api } from "@/utils/trpc/client";
 import { modelTransport } from "@/app/(app)/(chat)/provider";
 import type { MessageTiming } from "@/lib/types/timing";
@@ -376,15 +379,6 @@ const extractSources = (parts: readonly MessagePart[]): ExtractedSource[] => {
 
 const COLLAPSED_SOURCES_COUNT = 3;
 
-const formatTime = (ms: number): string => {
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  return `${(ms / 1000).toFixed(2)}s`;
-};
-
-const formatMs = (ms: number): string => {
-  return `${Math.round(ms)}ms`;
-};
-
 const MessageTimingDisplay: FC = () => {
   const messageId = useAssistantState(({ message }) => message.id);
   const timing = useMessageTiming(messageId);
@@ -408,7 +402,7 @@ const MessageTimingDisplay: FC = () => {
             <div className="flex items-center justify-between gap-4">
               <span className="text-muted-foreground">First chunk</span>
               <span className="font-mono text-foreground tabular-nums">
-                {formatMs(timing.timeToFirstChunk)}
+                {formatTime(timing.timeToFirstChunk)}
               </span>
             </div>
           )}
@@ -416,7 +410,7 @@ const MessageTimingDisplay: FC = () => {
             <div className="flex items-center justify-between gap-4">
               <span className="text-muted-foreground">First token</span>
               <span className="font-mono text-foreground tabular-nums">
-                {formatMs(timing.timeToFirstToken)}
+                {formatTime(timing.timeToFirstToken)}
               </span>
             </div>
           )}
@@ -424,7 +418,7 @@ const MessageTimingDisplay: FC = () => {
             <div className="flex items-center justify-between gap-4">
               <span className="text-muted-foreground">Total</span>
               <span className="font-mono text-foreground tabular-nums">
-                {formatMs(timing.totalStreamTime)}
+                {formatTime(timing.totalStreamTime)}
               </span>
             </div>
           )}
@@ -557,6 +551,20 @@ export const AssistantActionBar: FC = () => {
       autohideFloat="single-branch"
       className="-ml-1 flex gap-1 text-muted-foreground"
     >
+      <AssistantIf condition={({ message }) => message.speech == null}>
+        <ActionBarPrimitive.Speak asChild>
+          <TooltipIconButton tooltip="Read aloud">
+            <AudioLinesIcon />
+          </TooltipIconButton>
+        </ActionBarPrimitive.Speak>
+      </AssistantIf>
+      <AssistantIf condition={({ message }) => message.speech != null}>
+        <ActionBarPrimitive.StopSpeaking asChild>
+          <TooltipIconButton tooltip="Stop reading">
+            <StopCircleIcon />
+          </TooltipIconButton>
+        </ActionBarPrimitive.StopSpeaking>
+      </AssistantIf>
       <ActionBarPrimitive.Copy asChild>
         <TooltipIconButton tooltip="Copy">
           <AssistantIf condition={({ message }) => message.isCopied}>

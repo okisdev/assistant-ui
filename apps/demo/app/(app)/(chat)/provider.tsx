@@ -7,6 +7,7 @@ import {
   RuntimeAdapterProvider,
   unstable_useRemoteThreadListRuntime as useRemoteThreadListRuntime,
   useAssistantState,
+  WebSpeechSynthesisAdapter,
   type unstable_RemoteThreadListAdapter as RemoteThreadListAdapter,
   type ThreadMessage,
 } from "@assistant-ui/react";
@@ -260,6 +261,8 @@ function useIncognitoThreadListAdapter(): RemoteThreadListAdapter {
 
 export const modelTransport = new ModelChatTransport();
 
+const speechAdapter = new WebSpeechSynthesisAdapter();
+
 function useCustomChatRuntime() {
   const feedback = useFeedbackAdapter();
   const attachments = useMemo(() => new BlobAttachmentAdapter(), []);
@@ -280,7 +283,7 @@ function useCustomChatRuntime() {
   }, [timings]);
 
   const runtime = useAISDKRuntime(chat, {
-    adapters: { feedback, attachments },
+    adapters: { feedback, attachments, speech: speechAdapter },
   });
 
   modelTransport.setRuntime(runtime);

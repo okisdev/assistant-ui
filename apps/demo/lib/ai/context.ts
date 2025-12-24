@@ -19,7 +19,8 @@ export type ProjectContext = {
 };
 
 export type UserContext = {
-  profile: UserProfile | null;
+  userId: string;
+  profile: UserProfile;
   memories: Memory[];
   capabilities: ResolvedUserCapabilities;
   projectContext: ProjectContext | null;
@@ -75,14 +76,17 @@ export async function getUserContext(
     }
   }
 
+  if (!profile?.id) {
+    throw new Error("User profile not found");
+  }
+
   return {
-    profile: profile
-      ? {
-          name: profile.name,
-          nickname: profile.nickname,
-          workType: profile.workType,
-        }
-      : null,
+    userId: profile.id,
+    profile: {
+      name: profile.name,
+      nickname: profile.nickname,
+      workType: profile.workType,
+    },
     memories,
     capabilities,
     projectContext,

@@ -11,6 +11,7 @@ import {
   chatVote,
   attachment,
   memory,
+  usage,
   member,
   invitation,
   organization,
@@ -26,6 +27,7 @@ export const userRelations = relations(user, ({ many }) => ({
   shares: many(share),
   attachments: many(attachment),
   memories: many(memory),
+  usageRecords: many(usage),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -157,3 +159,14 @@ export const projectDocumentRelations = relations(
     }),
   }),
 );
+
+export const usageRelations = relations(usage, ({ one }) => ({
+  user: one(user, {
+    fields: [usage.userId],
+    references: [user.id],
+  }),
+  chat: one(chat, {
+    fields: [usage.chatId],
+    references: [chat.id],
+  }),
+}));

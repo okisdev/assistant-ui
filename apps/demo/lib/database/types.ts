@@ -14,6 +14,7 @@ import {
   share,
   attachment,
   memory,
+  usage,
   type UserCapabilities,
   type ChainOfThoughtMode,
 } from "./schema";
@@ -38,3 +39,4 @@ export type Share = typeof share.$inferSelect;
 export type ChatVote = typeof chatVote.$inferSelect;
 export type Attachment = typeof attachment.$inferSelect;
 export type Memory = typeof memory.$inferSelect;
+export type Usage = typeof usage.$inferSelect;

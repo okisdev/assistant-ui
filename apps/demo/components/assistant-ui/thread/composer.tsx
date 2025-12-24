@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, type FC } from "react";
+import { useCallback, useState, type FC } from "react";
 import {
-  AssistantIf,
   ComposerPrimitive,
   ThreadPrimitive,
+  useAssistantApi,
   useAssistantState,
 } from "@assistant-ui/react";
 import {
   ArrowRight,
   LoaderIcon,
+  MicIcon,
   SquareIcon,
   UploadIcon,
   PenLine,
@@ -26,6 +27,8 @@ import {
   ReasoningToggle,
 } from "@/components/assistant-ui/model-selector";
 import { Button } from "@/components/ui/button";
+import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
+import { cn } from "@/lib/utils";
 
 const SUGGESTION_CATEGORIES = [
   {
@@ -69,12 +72,121 @@ type ComposerProps = {
   placeholder?: string;
 };
 
+type ComposerActionButtonProps = {
+  isListening: boolean;
+  isSpeechSupported: boolean;
+  hasUploadingAttachments: boolean;
+  startListening: () => void;
+  stopListening: () => void;
+};
+
+const ComposerActionButton: FC<ComposerActionButtonProps> = ({
+  isListening,
+  isSpeechSupported,
+  hasUploadingAttachments,
+  startListening,
+  stopListening,
+}) => {
+  const isRunning = useAssistantState(({ thread }) => thread.isRunning);
+  const hasText = useAssistantState(
+    ({ composer }) => composer.text.trim().length > 0,
+  );
+
+  if (isListening) {
+    return (
+      <Button
+        type="button"
+        size="icon"
+        className="shrink-0 rounded-full"
+        onClick={stopListening}
+      >
+        <SquareIcon className="size-3 animate-pulse fill-current" />
+      </Button>
+    );
+  }
+
+  if (isRunning) {
+    return (
+      <ComposerPrimitive.Cancel asChild>
+        <Button size="icon" className="shrink-0 rounded-full">
+          <SquareIcon className="size-3 fill-current" />
+        </Button>
+      </ComposerPrimitive.Cancel>
+    );
+  }
+
+  if (hasUploadingAttachments) {
+    return (
+      <Button size="icon" className="shrink-0 rounded-full" disabled>
+        <LoaderIcon className="size-4 animate-spin" />
+      </Button>
+    );
+  }
+
+  if (hasText) {
+    return (
+      <ComposerPrimitive.Send asChild>
+        <Button size="icon" className="shrink-0 rounded-full">
+          <ArrowRight className="size-4" />
+        </Button>
+      </ComposerPrimitive.Send>
+    );
+  }
+
+  if (isSpeechSupported) {
+    return (
+      <Button
+        type="button"
+        size="icon"
+        className="shrink-0 rounded-full"
+        onClick={startListening}
+      >
+        <MicIcon className="size-4" />
+      </Button>
+    );
+  }
+
+  return (
+    <ComposerPrimitive.Send asChild>
+      <Button size="icon" className="shrink-0 rounded-full">
+        <ArrowRight className="size-4" />
+      </Button>
+    </ComposerPrimitive.Send>
+  );
+};
+
 export const Composer: FC<ComposerProps> = ({
   placeholder = "Ask anything...",
 }) => {
+  const api = useAssistantApi();
   const hasUploadingAttachments = useAssistantState(({ composer }) =>
     composer.attachments.some((a) => a.status.type === "running"),
   );
+
+  const handleSpeechResult = useCallback(
+    (transcript: string) => {
+      const currentText = api.composer().getState().text;
+      const newText = currentText.trim()
+        ? `${currentText} ${transcript}`
+        : transcript;
+      api.composer().setText(newText);
+    },
+    [api],
+  );
+
+  const {
+    isSupported: isSpeechSupported,
+    isListening,
+    interimTranscript,
+    startListening,
+    stopListening,
+  } = useSpeechRecognition({
+    onResult: handleSpeechResult,
+  });
+
+  const displayPlaceholder = isListening
+    ? interimTranscript || "Listening..."
+    : placeholder;
 
   return (
     <div className="flex w-full flex-col gap-3">
@@ -90,36 +202,18 @@ export const Composer: FC<ComposerProps> = ({
           <div className="flex items-end gap-3">
             <ComposerAddAttachment />
             <ComposerPrimitive.Input
-              placeholder={placeholder}
+              placeholder={displayPlaceholder}
               className="peer max-h-40 flex-1 resize-none overflow-y-auto bg-transparent py-1.5 text-base outline-none placeholder:text-muted-foreground"
               rows={1}
               autoFocus
             />
-            <AssistantIf condition={({ thread }) => !thread.isRunning}>
-              <ComposerPrimitive.Send
-                asChild
-                disabled={hasUploadingAttachments}
-              >
-                <Button
-                  size="icon"
-                  className="shrink-0 rounded-full"
-                  disabled={hasUploadingAttachments}
-                >
-                  {hasUploadingAttachments ? (
-                    <LoaderIcon className="size-4 animate-spin" />
-                  ) : (
-                    <ArrowRight className="size-4" />
-                  )}
-                </Button>
-              </ComposerPrimitive.Send>
-            </AssistantIf>
-            <AssistantIf condition={({ thread }) => thread.isRunning}>
-              <ComposerPrimitive.Cancel asChild>
-                <Button size="icon" className="shrink-0 rounded-full">
-                  <SquareIcon className="size-3 fill-current" />
-                </Button>
-              </ComposerPrimitive.Cancel>
-            </AssistantIf>
+            <ComposerActionButton
+              isListening={isListening}
+              isSpeechSupported={isSpeechSupported}
+              hasUploadingAttachments={hasUploadingAttachments}
+              startListening={startListening}
+              stopListening={stopListening}
+            />
           </div>
           <div className="grid grid-rows-[0fr] opacity-0 transition-all duration-200 ease-out group-focus-within/composer:grid-rows-[1fr] group-focus-within/composer:opacity-100 group-has-[textarea:not(:placeholder-shown)]/composer:grid-rows-[1fr] group-has-data-[state=open]/composer:grid-rows-[1fr] group-has-[textarea:not(:placeholder-shown)]/composer:opacity-100 group-has-data-[state=open]/composer:opacity-100">
             <div className="overflow-hidden">
@@ -168,11 +262,12 @@ const CategorySuggestions: FC = () => {
               key={category.id}
               type="button"
               onClick={() => handleCategoryClick(category.id)}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-colors ${
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-colors",
                 isSelected
                   ? "bg-muted text-foreground"
-                  : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
+                  : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
             >
               <Icon className="size-3.5" />
               <span>{category.label}</span>

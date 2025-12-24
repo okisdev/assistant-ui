@@ -13,6 +13,7 @@ import { getUserContext, type UserContext } from "@/lib/ai/context";
 import { saveMemoryTool } from "@/lib/ai/tools/save-memory";
 import { createArtifactTool } from "@/lib/ai/tools/create-artifact";
 import { DEFAULT_CAPABILITIES } from "@/lib/ai/capabilities";
+import { recordUsage } from "@/lib/ai/usage";
 
 export const maxDuration = 300;
 
@@ -103,14 +104,34 @@ export async function POST(req: Request) {
     tools,
     stopWhen: stepCountIs(5),
     providerOptions,
+    onFinish: async ({ usage, finishReason }) => {
+      if (userContext?.userId && usage) {
+        const validChatId =
+          id && !id.includes("DEFAULT") && !id.includes("THREAD") ? id : null;
+
+        recordUsage({
+          userId: userContext.userId,
+          chatId: validChatId,
+          modelId,
+          inputTokens: usage.inputTokens ?? 0,
+          outputTokens: usage.outputTokens ?? 0,
+          reasoningTokens: usage.reasoningTokens,
+          totalTokens: usage.totalTokens ?? 0,
+          finishReason,
+        }).catch((error) => {
+          console.error("Failed to record usage:", error);
+        });
+      }
+    },
+    onError: ({ error }) => {
+      console.error("Stream error:", error);
+    },
   });
 
   return result.toUIMessageStreamResponse({
     sendReasoning: reasoningEnabled,
     headers: {
-      // Disable content encoding to prevent buffering in proxied environments
       "Content-Encoding": "none",
-      // Enable chunked transfer for proper streaming
       "Transfer-Encoding": "chunked",
       Connection: "keep-alive",
     },

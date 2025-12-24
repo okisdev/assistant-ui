@@ -340,3 +340,29 @@ export const memory = pgTable(
     index("memory_projectId_idx").on(table.projectId),
   ],
 );
+
+export const usage = pgTable(
+  "usage",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    chatId: text("chat_id").references(() => chat.id, { onDelete: "set null" }),
+    messageId: text("message_id"),
+    modelId: text("model_id").notNull(),
+    inputTokens: integer("input_tokens").notNull(),
+    outputTokens: integer("output_tokens").notNull(),
+    reasoningTokens: integer("reasoning_tokens"),
+    totalTokens: integer("total_tokens").notNull(),
+    estimatedCost: integer("estimated_cost"),
+    finishReason: text("finish_reason"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("usage_userId_idx").on(table.userId),
+    index("usage_chatId_idx").on(table.chatId),
+    index("usage_modelId_idx").on(table.modelId),
+    index("usage_createdAt_idx").on(table.createdAt),
+  ],
+);

@@ -7,6 +7,7 @@ import { shareRouter } from "./routers/share";
 import { projectRouter } from "./routers/project";
 import { memoryRouter } from "./routers/memory";
 import { attachmentRouter } from "./routers/attachment";
+import { usageRouter } from "./routers/usage";
 
 export const appRouter = createTRPCRouter({
   auth: authRouter,
@@ -16,6 +17,7 @@ export const appRouter = createTRPCRouter({
   project: projectRouter,
   memory: memoryRouter,
   attachment: attachmentRouter,
+  usage: usageRouter,
 });
 
 export type AppRouter = typeof appRouter;

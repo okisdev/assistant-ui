@@ -142,6 +142,17 @@ Use colors to indicate status, not borders:
 - **CTA links**: Include arrow icon with `group-hover:translate-x-0.5` animation
 - **Ghost buttons**: For secondary actions in headers
 
+### Composer Action Buttons
+- **Primary action button** (send/mic/stop/cancel): Use plain `Button` with `size="icon"` and `rounded-full`
+- **TooltipIconButton**: Only for secondary/auxiliary actions in action bars (copy, share, feedback, etc.)
+- Button states should be handled by a single component using conditional returns based on state priority:
+  1. `isListening` → stop button
+  2. `isRunning` → cancel button
+  3. `hasUploadingAttachments` → loading button
+  4. `hasText` → send button
+  5. `isSpeechSupported` → mic button
+  6. fallback → send button
+
 ### Loading States
 - Use inline skeleton patterns, not full-page loaders
 - Keep skeletons simple (animated divs with `bg-muted`)
