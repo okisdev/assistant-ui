@@ -1,6 +1,6 @@
 "use client";
 
-import type { FC } from "react";
+import { type FC, useMemo, useState } from "react";
 import {
   ActionBarPrimitive,
   AssistantIf,
@@ -14,23 +14,29 @@ import {
 import {
   ArrowDownIcon,
   CheckIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CopyIcon,
   DownloadIcon,
+  GlobeIcon,
   LoaderIcon,
   PencilIcon,
   RefreshCwIcon,
+  Share2Icon,
   ThumbsDownIcon,
   ThumbsUpIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 import { ReasoningContent } from "@/components/assistant-ui/reasoning-content";
+import { SourceContent } from "@/components/assistant-ui/source-content";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { UserMessageAttachments } from "@/components/assistant-ui/attachment";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { api } from "@/utils/trpc/client";
 
 export const ThreadScrollToBottom: FC = () => {
   return (
@@ -56,44 +62,373 @@ export const MessageError: FC = () => {
   );
 };
 
-export const AssistantMessage: FC = () => {
-  const isLoading = useAssistantState(({ message }) => {
-    if (message.status?.type !== "running") return false;
-    const hasTextContent = message.parts.some(
-      (part) => part.type === "text" && part.text.length > 0,
+type WebSearchAction = {
+  type: "search" | "openPage";
+  query?: string;
+  url?: string;
+};
+
+type WebSearchResult = {
+  action?: WebSearchAction;
+  sources?: Array<{ type: string; url: string }>;
+};
+
+const getHostname = (url: string): string => {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+};
+
+const SearchItem: FC<{
+  action: WebSearchAction | undefined;
+  sourcesCount: number;
+}> = ({ action, sourcesCount }) => {
+  if (action?.type === "search" && action.query) {
+    return (
+      <>
+        Searched:{" "}
+        <span className="font-medium text-foreground/80">
+          &quot;{action.query}&quot;
+        </span>
+        {sourcesCount > 0 && (
+          <span className="text-muted-foreground/70">
+            {" "}
+            · {sourcesCount} sources
+          </span>
+        )}
+      </>
     );
-    return !hasTextContent;
+  }
+
+  if (action?.type === "openPage" && action.url) {
+    return (
+      <>
+        Visited:{" "}
+        <span className="font-medium text-foreground/80">
+          {getHostname(action.url)}
+        </span>
+      </>
+    );
+  }
+
+  return null;
+};
+
+const WebSearchProgress: FC<{ isRunning: boolean }> = ({ isRunning }) => {
+  const parts = useAssistantState(({ message }) => message.parts);
+
+  const { pending, completed } = useMemo(() => {
+    const pending: string[] = [];
+    const completed: Array<{
+      id: string;
+      action: WebSearchAction | undefined;
+      sourcesCount: number;
+    }> = [];
+
+    for (const part of parts) {
+      if (part.type === "tool-call" && part.toolName === "web_search") {
+        const result = part.result as WebSearchResult | undefined;
+        if (result) {
+          completed.push({
+            id: part.toolCallId,
+            action: result.action,
+            sourcesCount: result.sources?.length ?? 0,
+          });
+        } else {
+          pending.push(part.toolCallId);
+        }
+      }
+    }
+
+    return { pending, completed };
+  }, [parts]);
+
+  if (pending.length === 0 && completed.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mb-4 space-y-2">
+      {isRunning && pending.length > 0 && (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <GlobeIcon className="size-4 animate-pulse" />
+          <span className="shimmer text-sm">Searching the web...</span>
+        </div>
+      )}
+
+      {completed.length > 0 && (
+        <div className="space-y-1.5">
+          {completed.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-start gap-2 text-muted-foreground text-xs"
+            >
+              <CheckIcon className="mt-0.5 size-3 shrink-0 text-emerald-500" />
+              <span>
+                <SearchItem
+                  action={item.action}
+                  sourcesCount={item.sourcesCount}
+                />
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const AssistantMessage: FC = () => {
+  const isRunning = useAssistantState(
+    ({ message }) => message.status?.type === "running",
+  );
+
+  const hasTextContent = useAssistantState(({ message }) =>
+    message.parts.some((part) => part.type === "text" && part.text.length > 0),
+  );
+
+  const hasReasoningPart = useAssistantState(({ message }) =>
+    message.parts.some((part) => part.type === "reasoning"),
+  );
+
+  const hasReasoningContent = useAssistantState(({ message }) =>
+    message.parts.some(
+      (part) =>
+        part.type === "reasoning" &&
+        "text" in part &&
+        typeof part.text === "string" &&
+        part.text.length > 0,
+    ),
+  );
+
+  const hasWebSearchCalls = useAssistantState(({ message }) => {
+    return message.parts.some(
+      (part) => part.type === "tool-call" && part.toolName === "web_search",
+    );
   });
+
+  const hasSources = useAssistantState(({ message }) => {
+    if (message.status?.type === "running") return false;
+    return message.parts.some((part) => {
+      if (part.type === "source") return true;
+      if (
+        part.type === "tool-call" &&
+        part.toolName === "web_search" &&
+        part.result
+      ) {
+        const result = part.result as {
+          sources?: Array<{ type: string; url: string }>;
+        };
+        return result.sources && result.sources.length > 0;
+      }
+      return false;
+    });
+  });
+
+  const isThinking = isRunning && hasReasoningPart && !hasReasoningContent;
+  const isLoading =
+    isRunning && !hasTextContent && !hasReasoningContent && !hasWebSearchCalls;
 
   return (
     <MessagePrimitive.Root
       className="fade-in slide-in-from-bottom-2 animate-in py-4 duration-300"
       data-role="assistant"
     >
-      {isLoading ? (
+      {isLoading || isThinking ? (
         <div className="flex items-center gap-2 text-muted-foreground">
           <LoaderIcon className="size-4 animate-spin" />
           <span className="shimmer text-sm">Thinking...</span>
         </div>
       ) : (
         <div className="group/assistant relative">
+          {hasWebSearchCalls && <WebSearchProgress isRunning={isRunning} />}
+
           <div className="text-foreground leading-relaxed">
             <MessagePrimitive.Parts
               components={{
                 Text: MarkdownText,
                 Reasoning: ReasoningContent,
+                Source: () => null,
               }}
             />
             <MessageError />
           </div>
 
-          <div className="absolute -bottom-1 left-0 flex translate-y-full items-center opacity-0 transition-opacity group-hover/assistant:opacity-100 data-floating:opacity-100">
+          {hasSources && <SourcesDisplay />}
+
+          <div className="absolute -bottom-2 left-0 flex translate-y-full items-center opacity-0 transition-opacity group-hover/assistant:opacity-100 data-floating:opacity-100">
             <BranchPicker />
             <AssistantActionBar />
           </div>
         </div>
       )}
     </MessagePrimitive.Root>
+  );
+};
+
+type ExtractedSource = {
+  id: string;
+  url: string;
+  title?: string;
+};
+
+type MessagePart = {
+  type: string;
+  id?: string;
+  url?: string;
+  title?: string;
+  toolName?: string;
+  toolCallId?: string;
+  result?: unknown;
+};
+
+const extractSources = (parts: readonly MessagePart[]): ExtractedSource[] => {
+  const extracted: ExtractedSource[] = [];
+  const seenUrls = new Set<string>();
+
+  for (const part of parts) {
+    if (part.type === "source" && part.url && part.id) {
+      if (!seenUrls.has(part.url)) {
+        seenUrls.add(part.url);
+        extracted.push({
+          id: part.id,
+          url: part.url,
+          title: part.title,
+        });
+      }
+    }
+
+    if (
+      part.type === "tool-call" &&
+      part.toolName === "web_search" &&
+      part.result &&
+      part.toolCallId
+    ) {
+      const result = part.result as {
+        sources?: Array<{ type: string; url: string; title?: string }>;
+      };
+      if (result.sources) {
+        for (const source of result.sources) {
+          if (
+            source.type === "url" &&
+            source.url &&
+            !seenUrls.has(source.url)
+          ) {
+            seenUrls.add(source.url);
+            extracted.push({
+              id: `${part.toolCallId}-${source.url}`,
+              url: source.url,
+              title: source.title,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return extracted;
+};
+
+const COLLAPSED_SOURCES_COUNT = 3;
+
+const SourcesDisplay: FC = () => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const parts = useAssistantState(({ message }) => message.parts);
+  const sources = useMemo(
+    () => extractSources(parts as readonly MessagePart[]),
+    [parts],
+  );
+
+  if (sources.length === 0) return null;
+
+  const hasMore = sources.length > COLLAPSED_SOURCES_COUNT;
+  const visibleSources = isExpanded
+    ? sources
+    : sources.slice(0, COLLAPSED_SOURCES_COUNT);
+  const hiddenCount = sources.length - COLLAPSED_SOURCES_COUNT;
+
+  return (
+    <div className="mt-3">
+      <div
+        className={cn(
+          "flex gap-1.5",
+          isExpanded ? "flex-wrap" : "flex-nowrap overflow-hidden",
+        )}
+      >
+        {visibleSources.map((source) => (
+          <SourceContent
+            key={source.id}
+            type="source"
+            sourceType="url"
+            id={source.id}
+            url={source.url}
+            title={source.title}
+            status={{ type: "complete" }}
+          />
+        ))}
+        {hasMore && (
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="inline-flex shrink-0 items-center gap-1 rounded-md bg-muted/50 px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground"
+          >
+            {isExpanded ? (
+              <>
+                <ChevronDownIcon className="size-3 rotate-180" />
+                Less
+              </>
+            ) : (
+              `+${hiddenCount} more`
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const MessageShareButton: FC = () => {
+  const chatId = useAssistantState(
+    ({ threadListItem }) => threadListItem.remoteId,
+  );
+  const messageId = useAssistantState(({ message }) => message.id);
+
+  const createShareMutation = api.share.create.useMutation({
+    onError: () => {
+      toast.error("Failed to create link");
+    },
+  });
+
+  if (!chatId || !messageId) return null;
+
+  const handleShare = async () => {
+    try {
+      const result = await createShareMutation.mutateAsync({
+        resourceType: "message",
+        resourceId: chatId,
+        messageId,
+        isPublic: true,
+      });
+      const url = `${window.location.origin}/share/${result.id}`;
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied");
+    } catch {}
+  };
+
+  return (
+    <TooltipIconButton
+      tooltip="Share"
+      onClick={handleShare}
+      disabled={createShareMutation.isPending}
+    >
+      {createShareMutation.isPending ? (
+        <LoaderIcon className="animate-spin" />
+      ) : (
+        <Share2Icon />
+      )}
+    </TooltipIconButton>
   );
 };
 
@@ -120,6 +455,7 @@ export const AssistantActionBar: FC = () => {
           <DownloadIcon />
         </TooltipIconButton>
       </ActionBarPrimitive.ExportMarkdown>
+      <MessageShareButton />
       <ActionBarPrimitive.Reload asChild>
         <TooltipIconButton tooltip="Refresh">
           <RefreshCwIcon />
@@ -152,11 +488,12 @@ export const UserMessage: FC = () => {
       data-role="user"
     >
       <UserMessageAttachments />
-      <div className="relative max-w-[85%]">
+      <div className="group/user relative max-w-[85%]">
         <div className="rounded-2xl bg-muted px-4 py-2.5 text-foreground">
           <MessagePrimitive.Parts />
         </div>
-        <div className="absolute top-1/2 left-0 -translate-x-full -translate-y-1/2 pr-2">
+        <div className="absolute right-0 -bottom-2 flex translate-y-full items-center opacity-0 transition-opacity group-hover/user:opacity-100 data-floating:opacity-100">
+          <BranchPicker />
           <UserActionBar />
         </div>
       </div>
@@ -169,7 +506,8 @@ export const UserActionBar: FC = () => {
     <ActionBarPrimitive.Root
       hideWhenRunning
       autohide="not-last"
-      className="flex items-center gap-1 text-muted-foreground"
+      autohideFloat="single-branch"
+      className="-mr-1 flex gap-1 text-muted-foreground"
     >
       <ActionBarPrimitive.Copy asChild>
         <TooltipIconButton tooltip="Copy">

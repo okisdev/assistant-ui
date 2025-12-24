@@ -10,6 +10,8 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
+export type ChainOfThoughtMode = "off" | "zero-shot" | "few-shot";
+
 export type UserCapabilities = {
   memory?: {
     personalization?: boolean;
@@ -17,6 +19,7 @@ export type UserCapabilities = {
   };
   tools?: {
     artifacts?: boolean;
+    webSearch?: boolean;
   };
   model?: {
     defaultId?: string;
@@ -24,6 +27,9 @@ export type UserCapabilities = {
   };
   models?: {
     enabledIds?: string[];
+  };
+  prompting?: {
+    chainOfThought?: ChainOfThoughtMode;
   };
 };
 
@@ -249,7 +255,7 @@ export const chatMessage = pgTable(
   ],
 );
 
-export type ShareResourceType = "chat";
+export type ShareResourceType = "chat" | "message";
 
 export const share = pgTable(
   "share",
@@ -264,11 +270,13 @@ export const share = pgTable(
     snapshotAt: timestamp("snapshot_at"),
     includeBranches: boolean("include_branches").default(false).notNull(),
     headMessageId: text("head_message_id"),
+    messageId: text("message_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
     index("share_resource_idx").on(table.resourceType, table.resourceId),
     index("share_userId_idx").on(table.userId),
+    index("share_messageId_idx").on(table.messageId),
   ],
 );
 

@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
+
 import { SettingHeader } from "@/components/dashboard/setting-header";
 import { ArchivedChatsList } from "@/components/dashboard/data/archived-chats-list";
+
+export const metadata: Metadata = {
+  title: "Archives",
+};
 
 export default function ArchivesPage() {
   return (

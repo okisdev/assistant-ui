@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
+
 import { SettingHeader } from "@/components/dashboard/setting-header";
 import { SharesList } from "@/components/dashboard/data/shares-list";
+
+export const metadata: Metadata = {
+  title: "Shares",
+};
 
 export default function SharesPage() {
   return (

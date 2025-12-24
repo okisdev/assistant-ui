@@ -1,4 +1,10 @@
-import { convertToModelMessages, streamText, stepCountIs } from "ai";
+import {
+  convertToModelMessages,
+  streamText,
+  stepCountIs,
+  type ToolSet,
+} from "ai";
+import { openai } from "@ai-sdk/openai";
 import {
   AVAILABLE_MODELS,
   DEFAULT_MODEL_ID,
@@ -35,6 +41,7 @@ export async function POST(req: Request) {
       },
       tools: {
         artifacts: true,
+        webSearch: false,
       },
       model: {
         defaultId: DEFAULT_MODEL_ID,
@@ -42,6 +49,9 @@ export async function POST(req: Request) {
       },
       models: {
         enabledIds: [...DEFAULT_ENABLED_MODEL_IDS],
+      },
+      prompting: {
+        chainOfThought: "off",
       },
     };
   }
@@ -51,25 +61,42 @@ export async function POST(req: Request) {
   const modelDef = AVAILABLE_MODELS.find((m) => m.id === modelId);
   const provider = modelDef?.provider;
 
+  const webSearchEnabled = capabilities.tools.webSearch;
+
   const providerOptions = reasoningEnabled
     ? {
         ...(provider === "openai" && {
           openai: {
-            reasoningSummary: "auto" as const,
+            reasoningSummary: "detailed" as const,
           },
         }),
         ...(provider === "xai" && {
           xai: {
-            reasoningEffort: "high" as const,
+            ...(webSearchEnabled && {
+              searchParameters: {
+                mode: "auto" as const,
+                returnCitations: true,
+                maxSearchResults: 5,
+                sources: [{ type: "web" as const }, { type: "news" as const }],
+              },
+            }),
           },
         }),
       }
-    : undefined;
+    : webSearchEnabled && provider === "xai"
+      ? {
+          xai: {
+            searchParameters: {
+              mode: "auto" as const,
+              returnCitations: true,
+              maxSearchResults: 5,
+              sources: [{ type: "web" as const }, { type: "news" as const }],
+            },
+          },
+        }
+      : undefined;
 
-  const tools: Record<
-    string,
-    { description: string; inputSchema: import("zod").ZodType }
-  > = {};
+  const tools: ToolSet = {};
 
   if (capabilities.memory.personalization) {
     tools.save_memory = saveMemoryTool;
@@ -77,6 +104,12 @@ export async function POST(req: Request) {
 
   if (capabilities.tools.artifacts) {
     tools.create_artifact = createArtifactTool;
+  }
+
+  if (webSearchEnabled && provider === "openai") {
+    tools.web_search = openai.tools.webSearch({
+      searchContextSize: "low",
+    });
   }
 
   const result = streamText({
@@ -90,5 +123,12 @@ export async function POST(req: Request) {
 
   return result.toUIMessageStreamResponse({
     sendReasoning: reasoningEnabled,
+    headers: {
+      // Disable content encoding to prevent buffering in proxied environments
+      "Content-Encoding": "none",
+      // Enable chunked transfer for proper streaming
+      "Transfer-Encoding": "chunked",
+      Connection: "keep-alive",
+    },
   });
 }

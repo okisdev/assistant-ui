@@ -5,21 +5,27 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
   useCallback,
   type ReactNode,
 } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useAssistantApi, useAssistantState } from "@assistant-ui/react";
 import { api } from "@/utils/trpc/client";
 import { useCapabilities } from "@/contexts/capabilities-provider";
-import {
-  ACTIVE_MODELS,
-  DEFAULT_MODEL_ID,
-  getModelById,
-  isValidModelId,
-  type ModelDefinition,
-} from "@/lib/ai/models";
+import { isValidModelId, type ModelDefinition } from "@/lib/ai/models";
 import { modelTransport } from "@/app/(app)/(chat)/provider";
+import {
+  sessionModelAtom,
+  chatModelAtom,
+  defaultModelAtom,
+  enabledModelIdsAtom,
+  serverReasoningEnabledAtom,
+  optimisticReasoningEnabledAtom,
+  effectiveModelAtom,
+  currentModelAtom,
+  effectiveReasoningEnabledAtom,
+  enabledModelsAtom,
+} from "@/lib/stores/model";
 
 type ModelSelectionContextValue = {
   modelId: string;
@@ -31,7 +37,6 @@ type ModelSelectionContextValue = {
   chatModel: string | null;
   reasoningEnabled: boolean;
   setReasoningEnabled: (enabled: boolean) => void;
-  /** Models that are enabled for the user */
   enabledModels: ModelDefinition[];
 };
 
@@ -49,6 +54,41 @@ export function useModelSelection(): ModelSelectionContextValue {
   return ctx;
 }
 
+function ModelSelectionSync({
+  chatModel,
+  defaultModel,
+  enabledIds,
+  serverReasoningEnabled,
+}: {
+  chatModel: string | null;
+  defaultModel: string;
+  enabledIds: string[];
+  serverReasoningEnabled: boolean;
+}) {
+  const setChatModel = useSetAtom(chatModelAtom);
+  const setDefaultModel = useSetAtom(defaultModelAtom);
+  const setEnabledIds = useSetAtom(enabledModelIdsAtom);
+  const setServerReasoning = useSetAtom(serverReasoningEnabledAtom);
+
+  useEffect(() => {
+    setChatModel(chatModel);
+  }, [chatModel, setChatModel]);
+
+  useEffect(() => {
+    setDefaultModel(defaultModel);
+  }, [defaultModel, setDefaultModel]);
+
+  useEffect(() => {
+    setEnabledIds(enabledIds);
+  }, [enabledIds, setEnabledIds]);
+
+  useEffect(() => {
+    setServerReasoning(serverReasoningEnabled);
+  }, [serverReasoningEnabled, setServerReasoning]);
+
+  return null;
+}
+
 export function ModelSelectionProvider({ children }: { children: ReactNode }) {
   const assistantApi = useAssistantApi();
   const { capabilities, updateCapabilities } = useCapabilities();
@@ -63,58 +103,26 @@ export function ModelSelectionProvider({ children }: { children: ReactNode }) {
     { enabled: !!chatId },
   );
 
-  const [sessionModel, setSessionModel] = useState<string | null>(null);
-  const [optimisticReasoningEnabled, setOptimisticReasoningEnabled] = useState<
-    boolean | null
-  >(null);
+  const setSessionModel = useSetAtom(sessionModelAtom);
+  const setOptimisticReasoning = useSetAtom(optimisticReasoningEnabledAtom);
 
-  const reasoningEnabled =
-    optimisticReasoningEnabled ?? capabilities.model.reasoningEnabled;
+  const effectiveModel = useAtomValue(effectiveModelAtom);
+  const currentModel = useAtomValue(currentModelAtom);
+  const effectiveReasoningEnabled = useAtomValue(effectiveReasoningEnabledAtom);
+  const enabledModels = useAtomValue(enabledModelsAtom);
 
   const setReasoningEnabled = useCallback(
     (enabled: boolean) => {
-      setOptimisticReasoningEnabled(enabled);
+      setOptimisticReasoning(enabled);
 
       updateCapabilities({ model: { reasoningEnabled: enabled } }).finally(
         () => {
-          setOptimisticReasoningEnabled(null);
+          setOptimisticReasoning(null);
         },
       );
     },
-    [updateCapabilities],
+    [updateCapabilities, setOptimisticReasoning],
   );
-
-  const effectiveModel = useMemo(() => {
-    if (sessionModel && isValidModelId(sessionModel)) {
-      return sessionModel;
-    }
-    if (chatData?.model && isValidModelId(chatData.model)) {
-      return chatData.model;
-    }
-    if (isValidModelId(capabilities.model.defaultId)) {
-      return capabilities.model.defaultId;
-    }
-    return DEFAULT_MODEL_ID;
-  }, [sessionModel, chatData?.model, capabilities.model.defaultId]);
-
-  const currentModel = useMemo(
-    () => getModelById(effectiveModel) ?? getModelById(DEFAULT_MODEL_ID)!,
-    [effectiveModel],
-  );
-
-  const enabledModels = useMemo(() => {
-    const enabledIds = new Set(capabilities.models.enabledIds);
-
-    // Filter to only show enabled models
-    const models = ACTIVE_MODELS.filter((m) => enabledIds.has(m.id));
-
-    // Always include the current model if it exists (even if disabled)
-    if (currentModel && !enabledIds.has(effectiveModel)) {
-      models.unshift(currentModel);
-    }
-
-    return models;
-  }, [capabilities.models.enabledIds, effectiveModel, currentModel]);
 
   const updateChatMutation = api.chat.update.useMutation({
     onSuccess: () => {
@@ -124,11 +132,14 @@ export function ModelSelectionProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  const setModel = useCallback((modelId: string) => {
-    if (isValidModelId(modelId)) {
-      setSessionModel(modelId);
-    }
-  }, []);
+  const setModel = useCallback(
+    (modelId: string) => {
+      if (isValidModelId(modelId)) {
+        setSessionModel(modelId);
+      }
+    },
+    [setSessionModel],
+  );
 
   const persistModel = useCallback(
     async (modelId: string) => {
@@ -139,12 +150,8 @@ export function ModelSelectionProvider({ children }: { children: ReactNode }) {
       });
       setSessionModel(null);
     },
-    [chatId, updateChatMutation],
+    [chatId, updateChatMutation, setSessionModel],
   );
-
-  const effectiveReasoningEnabled = useMemo(() => {
-    return currentModel.capabilities.includes("reasoning") && reasoningEnabled;
-  }, [currentModel.capabilities, reasoningEnabled]);
 
   useEffect(() => {
     modelTransport.reasoningEnabled = effectiveReasoningEnabled;
@@ -161,8 +168,10 @@ export function ModelSelectionProvider({ children }: { children: ReactNode }) {
   }, [assistantApi, effectiveModel]);
 
   useEffect(() => {
-    setSessionModel(null);
-  }, [chatId]);
+    if (chatData?.model && isValidModelId(chatData.model)) {
+      setSessionModel(null);
+    }
+  }, [chatId, chatData?.model, setSessionModel]);
 
   const value = useMemo<ModelSelectionContextValue>(
     () => ({
@@ -193,6 +202,12 @@ export function ModelSelectionProvider({ children }: { children: ReactNode }) {
 
   return (
     <ModelSelectionContext.Provider value={value}>
+      <ModelSelectionSync
+        chatModel={chatData?.model ?? null}
+        defaultModel={capabilities.model.defaultId}
+        enabledIds={capabilities.models.enabledIds}
+        serverReasoningEnabled={capabilities.model.reasoningEnabled}
+      />
       {children}
     </ModelSelectionContext.Provider>
   );

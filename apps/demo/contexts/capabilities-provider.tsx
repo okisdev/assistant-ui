@@ -8,7 +8,10 @@ import {
   type ReactNode,
 } from "react";
 import { api } from "@/utils/trpc/client";
-import type { ResolvedUserCapabilities } from "@/lib/database/types";
+import type {
+  ResolvedUserCapabilities,
+  ChainOfThoughtMode,
+} from "@/lib/database/types";
 import { DEFAULT_MODEL_ID, DEFAULT_ENABLED_MODEL_IDS } from "@/lib/ai/models";
 
 type CapabilitiesInput = {
@@ -25,6 +28,9 @@ type CapabilitiesInput = {
   };
   models?: {
     enabledIds?: string[];
+  };
+  prompting?: {
+    chainOfThought?: ChainOfThoughtMode;
   };
 };
 
@@ -51,6 +57,9 @@ const DEFAULT_CAPABILITIES: ResolvedUserCapabilities = {
   },
   models: {
     enabledIds: [...DEFAULT_ENABLED_MODEL_IDS],
+  },
+  prompting: {
+    chainOfThought: "off",
   },
 };
 

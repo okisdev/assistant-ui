@@ -1,7 +1,11 @@
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 
-import { user, type UserCapabilities } from "@/lib/database/schema";
+import {
+  user,
+  type UserCapabilities,
+  type ChainOfThoughtMode,
+} from "@/lib/database/schema";
 import type { ResolvedUserCapabilities } from "@/lib/database/types";
 import {
   AVAILABLE_MODELS,
@@ -10,6 +14,8 @@ import {
   type ModelId,
 } from "@/lib/ai/models";
 import { protectedProcedure, createTRPCRouter } from "../../trpc";
+
+const chainOfThoughtSchema = z.enum(["off", "zero-shot", "few-shot"] as const);
 
 const modelIdSchema = z.enum(
   AVAILABLE_MODELS.map((m) => m.id) as [ModelId, ...ModelId[]],
@@ -32,6 +38,7 @@ export const capabilityRouter = createTRPCRouter({
       },
       tools: {
         artifacts: capabilities.tools?.artifacts ?? true,
+        webSearch: capabilities.tools?.webSearch ?? false,
       },
       model: {
         defaultId: capabilities.model?.defaultId ?? DEFAULT_MODEL_ID,
@@ -41,6 +48,11 @@ export const capabilityRouter = createTRPCRouter({
         enabledIds: capabilities.models?.enabledIds ?? [
           ...DEFAULT_ENABLED_MODEL_IDS,
         ],
+      },
+      prompting: {
+        chainOfThought:
+          (capabilities.prompting?.chainOfThought as ChainOfThoughtMode) ??
+          "off",
       },
     } satisfies ResolvedUserCapabilities;
   }),
@@ -57,6 +69,7 @@ export const capabilityRouter = createTRPCRouter({
         tools: z
           .object({
             artifacts: z.boolean().optional(),
+            webSearch: z.boolean().optional(),
           })
           .optional(),
         model: z
@@ -68,6 +81,11 @@ export const capabilityRouter = createTRPCRouter({
         models: z
           .object({
             enabledIds: z.array(modelIdSchema).optional(),
+          })
+          .optional(),
+        prompting: z
+          .object({
+            chainOfThought: chainOfThoughtSchema.optional(),
           })
           .optional(),
       }),
@@ -96,6 +114,9 @@ export const capabilityRouter = createTRPCRouter({
           ...(input.tools?.artifacts !== undefined && {
             artifacts: input.tools.artifacts,
           }),
+          ...(input.tools?.webSearch !== undefined && {
+            webSearch: input.tools.webSearch,
+          }),
         },
         model: {
           ...current.model,
@@ -110,6 +131,12 @@ export const capabilityRouter = createTRPCRouter({
           ...current.models,
           ...(input.models?.enabledIds !== undefined && {
             enabledIds: input.models.enabledIds,
+          }),
+        },
+        prompting: {
+          ...current.prompting,
+          ...(input.prompting?.chainOfThought !== undefined && {
+            chainOfThought: input.prompting.chainOfThought,
           }),
         },
       };

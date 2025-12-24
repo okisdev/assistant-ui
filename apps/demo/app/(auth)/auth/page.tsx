@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
+
 import { AuthForm } from "@/components/auth/form";
+
+export const metadata: Metadata = {
+  title: "Sign In",
+};
 
 export default async function AuthPage(props: {
   searchParams: Promise<{ redirect?: string }>;

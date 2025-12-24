@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
+
 import { ModelsSection } from "@/components/dashboard/models/models-section";
+
+export const metadata: Metadata = {
+  title: "Models",
+};
 
 export default function ModelsPage() {
   return (

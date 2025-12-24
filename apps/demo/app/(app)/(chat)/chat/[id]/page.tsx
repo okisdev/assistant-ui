@@ -1,9 +1,21 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 import { api } from "@/utils/trpc/server";
 import { ChatPageSetter } from "@/components/app/chat/chat-page-setter";
+
+export async function generateMetadata(
+  props: PageProps<"/chat/[id]">,
+): Promise<Metadata> {
+  const { id } = await props.params;
+  const chat = await api.chat.get({ id });
+
+  return {
+    title: chat?.title || "New Chat",
+  };
+}
 
 export default async function ChatPage(props: PageProps<"/chat/[id]">) {
   const { id } = await props.params;

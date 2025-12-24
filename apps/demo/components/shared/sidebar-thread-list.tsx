@@ -82,15 +82,21 @@ const ThreadListSkeleton: FC = () => {
 };
 
 const ThreadListFallback: FC = () => (
-  <SidebarGroup className="flex-1 overflow-y-auto group-data-[collapsible=icon]:hidden">
-    <SidebarGroupLabel className="flex w-full items-center">
-      Conversations
-      <ChevronDown className="ml-auto" />
-    </SidebarGroupLabel>
-    <SidebarGroupContent>
-      <ThreadListSkeleton />
-    </SidebarGroupContent>
-  </SidebarGroup>
+  <Collapsible defaultOpen className="group/collapsible">
+    <SidebarGroup className="flex-1 overflow-y-auto group-data-[collapsible=icon]:hidden">
+      <SidebarGroupLabel asChild>
+        <CollapsibleTrigger className="flex w-full items-center">
+          Conversations
+          <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+        </CollapsibleTrigger>
+      </SidebarGroupLabel>
+      <CollapsibleContent>
+        <SidebarGroupContent>
+          <ThreadListSkeleton />
+        </SidebarGroupContent>
+      </CollapsibleContent>
+    </SidebarGroup>
+  </Collapsible>
 );
 
 const SidebarThreadListContent: FC = () => {

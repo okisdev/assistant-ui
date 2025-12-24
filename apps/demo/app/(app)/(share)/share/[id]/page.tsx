@@ -1,11 +1,36 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { MessagesSquare, ArrowRight } from "lucide-react";
 
 import { api } from "@/utils/trpc/server";
-import { SharedThread } from "@/components/app/share/id/thread";
+import {
+  SharedThread,
+  SharedSingleMessage,
+} from "@/components/app/share/id/thread";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+export async function generateMetadata(
+  props: PageProps<"/share/[id]">,
+): Promise<Metadata> {
+  const { id } = await props.params;
+  const data = await api.share.getPublic({ id });
+
+  if (
+    !data ||
+    (data.resource.type !== "chat" && data.resource.type !== "message")
+  ) {
+    return { title: "Share" };
+  }
+
+  const isMessageShare = data.resource.type === "message";
+  const title = isMessageShare
+    ? "Shared Response"
+    : data.resource.chat.title || "Shared Chat";
+
+  return { title };
+}
 
 export default async function SharePage(props: PageProps<"/share/[id]">) {
   const { id } = await props.params;
@@ -18,11 +43,14 @@ export default async function SharePage(props: PageProps<"/share/[id]">) {
 
   const { share, sharer, resource } = data;
 
-  if (resource.type !== "chat") {
+  if (resource.type !== "chat" && resource.type !== "message") {
     notFound();
   }
 
-  const title = resource.chat.title || "Shared Chat";
+  const isMessageShare = resource.type === "message";
+  const title = isMessageShare
+    ? "Shared Response"
+    : resource.chat.title || "Shared Chat";
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background">
@@ -59,7 +87,11 @@ export default async function SharePage(props: PageProps<"/share/[id]">) {
       </div>
 
       <main className="min-h-0 flex-1 overflow-y-auto">
-        <SharedThread messages={resource.messages} />
+        {isMessageShare ? (
+          <SharedSingleMessage message={resource.message} />
+        ) : (
+          <SharedThread messages={resource.messages} />
+        )}
       </main>
 
       <footer className="shrink-0 py-4">

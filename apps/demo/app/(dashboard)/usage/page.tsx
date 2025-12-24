@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import { BarChart3 } from "lucide-react";
 
 import { SettingHeader } from "@/components/dashboard/setting-header";
+
+export const metadata: Metadata = {
+  title: "Usage",
+};
 
 export default function UsagePage() {
   return (

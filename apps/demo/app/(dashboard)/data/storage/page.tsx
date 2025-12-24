@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
+
 import { SettingHeader } from "@/components/dashboard/setting-header";
 import { StorageUsage } from "@/components/dashboard/data/storage-usage";
+
+export const metadata: Metadata = {
+  title: "Storage",
+};
 
 export default function StoragePage() {
   return (

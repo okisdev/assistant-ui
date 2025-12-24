@@ -144,9 +144,11 @@
   - [ ] Custom tool UI (makeAssistantToolUI)
   - [ ] Human-in-the-loop tools (confirmation before execution)
   - [ ] Tool result display
-- [ ] Suggestions
+- [x] Suggestions
+  - [x] Category-based suggestion buttons (Write, Learn, Create)
+  - [x] Expandable suggestion lists per category
   - [ ] AI-generated follow-up suggestions (SuggestionAdapter)
-  - [ ] Dynamic suggestion chips based on context
+  - [ ] AI word suggestions (inline completion while typing)
 - [ ] Advanced
   - [ ] Token usage display
   - [ ] Cost estimation

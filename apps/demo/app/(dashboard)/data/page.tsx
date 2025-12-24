@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { HardDrive, Archive, Share2, Trash, Download } from "lucide-react";
 
 import { SettingHeader } from "@/components/dashboard/setting-header";
@@ -5,6 +6,10 @@ import {
   SettingRowLink,
   SettingRowStatic,
 } from "@/components/dashboard/setting-row";
+
+export const metadata: Metadata = {
+  title: "Data",
+};
 
 export default function DataPage() {
   return (

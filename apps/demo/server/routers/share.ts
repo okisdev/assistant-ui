@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc, lte, inArray } from "drizzle-orm";
+import { eq, and, desc, lte, inArray, isNull } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import {
@@ -12,13 +12,17 @@ import {
 import { protectedProcedure, publicProcedure, createTRPCRouter } from "../trpc";
 import { TRPCError } from "@trpc/server";
 
-const resourceTypeSchema = z.enum(["chat"]) as z.ZodType<ShareResourceType>;
+const resourceTypeSchema = z.enum([
+  "chat",
+  "message",
+]) as z.ZodType<ShareResourceType>;
 
 async function verifyResourceOwnership(
   db: typeof import("@/lib/database").database,
   userId: string,
   resourceType: ShareResourceType,
   resourceId: string,
+  messageId?: string,
 ): Promise<boolean> {
   switch (resourceType) {
     case "chat": {
@@ -26,6 +30,23 @@ async function verifyResourceOwnership(
         .select({ id: chat.id })
         .from(chat)
         .where(and(eq(chat.id, resourceId), eq(chat.userId, userId)))
+        .limit(1);
+      return result.length > 0;
+    }
+    case "message": {
+      // For message type, resourceId is chatId and we verify the message belongs to the user's chat
+      if (!messageId) return false;
+      const result = await db
+        .select({ id: chatMessage.id })
+        .from(chatMessage)
+        .innerJoin(chat, eq(chatMessage.chatId, chat.id))
+        .where(
+          and(
+            eq(chatMessage.id, messageId),
+            eq(chat.id, resourceId),
+            eq(chat.userId, userId),
+          ),
+        )
         .limit(1);
       return result.length > 0;
     }
@@ -71,6 +92,7 @@ async function loadResourceData(
     snapshotAt?: Date | null;
     includeBranches?: boolean;
     headMessageId?: string | null;
+    messageId?: string | null;
   },
 ) {
   switch (resourceType) {
@@ -130,6 +152,51 @@ async function loadResourceData(
         messages,
       };
     }
+    case "message": {
+      if (!options?.messageId) {
+        return null;
+      }
+
+      const chatResult = await db
+        .select({
+          id: chat.id,
+          title: chat.title,
+          createdAt: chat.createdAt,
+        })
+        .from(chat)
+        .where(eq(chat.id, resourceId))
+        .limit(1);
+
+      if (!chatResult[0]) {
+        return null;
+      }
+
+      const messageResult = await db
+        .select({
+          id: chatMessage.id,
+          chatId: chatMessage.chatId,
+          parentId: chatMessage.parentId,
+          role: chatMessage.role,
+          format: chatMessage.format,
+          content: chatMessage.content,
+          status: chatMessage.status,
+          metadata: chatMessage.metadata,
+          createdAt: chatMessage.createdAt,
+        })
+        .from(chatMessage)
+        .where(eq(chatMessage.id, options.messageId))
+        .limit(1);
+
+      if (!messageResult[0]) {
+        return null;
+      }
+
+      return {
+        type: "message" as const,
+        chat: chatResult[0],
+        message: messageResult[0],
+      };
+    }
     default:
       return null;
   }
@@ -141,6 +208,7 @@ export const shareRouter = createTRPCRouter({
       z.object({
         resourceType: resourceTypeSchema,
         resourceId: z.string(),
+        messageId: z.string().optional(),
         isPublic: z.boolean().optional(),
         includesFutureMessages: z.boolean().optional(),
         includeBranches: z.boolean().optional(),
@@ -153,6 +221,7 @@ export const shareRouter = createTRPCRouter({
         ctx.session.user.id,
         input.resourceType,
         input.resourceId,
+        input.messageId,
       );
 
       if (!hasAccess) {
@@ -162,23 +231,30 @@ export const shareRouter = createTRPCRouter({
         });
       }
 
+      // For message shares, check if this specific message is already shared
+      const existingConditions = [
+        eq(share.resourceType, input.resourceType),
+        eq(share.resourceId, input.resourceId),
+        eq(share.userId, ctx.session.user.id),
+      ];
+
+      if (input.resourceType === "message" && input.messageId) {
+        existingConditions.push(eq(share.messageId, input.messageId));
+      } else {
+        existingConditions.push(isNull(share.messageId));
+      }
+
       const existing = await ctx.db
         .select({ id: share.id })
         .from(share)
-        .where(
-          and(
-            eq(share.resourceType, input.resourceType),
-            eq(share.resourceId, input.resourceId),
-            eq(share.userId, ctx.session.user.id),
-          ),
-        )
+        .where(and(...existingConditions))
         .limit(1);
 
       if (existing[0]) {
         return { id: existing[0].id, isNew: false };
       }
 
-      // Get current head message ID for branch tracking
+      // Get current head message ID for branch tracking (only for chat shares)
       let headMessageId: string | null = null;
       if (input.resourceType === "chat" && !input.includeBranches) {
         const chatResult = await ctx.db
@@ -199,6 +275,7 @@ export const shareRouter = createTRPCRouter({
         id: shareId,
         resourceType: input.resourceType,
         resourceId: input.resourceId,
+        messageId: input.messageId ?? null,
         userId: ctx.session.user.id,
         isPublic,
         snapshotAt,
@@ -314,6 +391,7 @@ export const shareRouter = createTRPCRouter({
           id: share.id,
           resourceType: share.resourceType,
           resourceId: share.resourceId,
+          messageId: share.messageId,
           isPublic: share.isPublic,
           snapshotAt: share.snapshotAt,
           includeBranches: share.includeBranches,
@@ -327,7 +405,7 @@ export const shareRouter = createTRPCRouter({
         shares.map(async (s) => {
           let title: string | null = null;
 
-          if (s.resourceType === "chat") {
+          if (s.resourceType === "chat" || s.resourceType === "message") {
             const chatResult = await ctx.db
               .select({ title: chat.title })
               .from(chat)
@@ -380,6 +458,7 @@ export const shareRouter = createTRPCRouter({
           id: share.id,
           resourceType: share.resourceType,
           resourceId: share.resourceId,
+          messageId: share.messageId,
           userId: share.userId,
           isPublic: share.isPublic,
           snapshotAt: share.snapshotAt,
@@ -419,6 +498,7 @@ export const shareRouter = createTRPCRouter({
           snapshotAt: shareData.snapshotAt,
           includeBranches: shareData.includeBranches,
           headMessageId: shareData.headMessageId,
+          messageId: shareData.messageId,
         },
       );
 
@@ -434,5 +514,33 @@ export const shareRouter = createTRPCRouter({
         sharer: userResult[0] ?? { name: "Unknown", image: null },
         resource: resourceData,
       };
+    }),
+
+  getByMessage: protectedProcedure
+    .input(
+      z.object({
+        chatId: z.string(),
+        messageId: z.string(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const result = await ctx.db
+        .select({
+          id: share.id,
+          isPublic: share.isPublic,
+          createdAt: share.createdAt,
+        })
+        .from(share)
+        .where(
+          and(
+            eq(share.resourceType, "message"),
+            eq(share.resourceId, input.chatId),
+            eq(share.messageId, input.messageId),
+            eq(share.userId, ctx.session.user.id),
+          ),
+        )
+        .limit(1);
+
+      return result[0] ?? null;
     }),
 });

@@ -15,10 +15,13 @@ import {
   attachment,
   memory,
   type UserCapabilities,
+  type ChainOfThoughtMode,
 } from "./schema";
 import type { DeepRequired } from "./utils";
 
 export type ResolvedUserCapabilities = DeepRequired<UserCapabilities>;
+
+export type { ChainOfThoughtMode };
 
 export type User = typeof user.$inferSelect;
 export type Session = typeof session.$inferSelect;

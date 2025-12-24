@@ -123,6 +123,40 @@ function getLinearPath(
   return path;
 }
 
+type SharedSingleMessageProps = {
+  message: SharedMessage;
+};
+
+export const SharedSingleMessage: FC<SharedSingleMessageProps> = ({
+  message,
+}) => {
+  const role = getMessageRole(message);
+  const content = parseContent(message);
+
+  if (role !== "assistant") {
+    return (
+      <div className="flex flex-1 items-center justify-center text-muted-foreground">
+        Invalid message type
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-3xl px-8 py-6">
+      <div
+        className="fade-in slide-in-from-bottom-2 animate-in py-4 duration-300"
+        data-role="assistant"
+      >
+        <div className="text-foreground leading-relaxed">
+          {content.map((part, index) => (
+            <MessagePartRenderer key={index} part={part} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const SharedThread: FC<SharedThreadProps> = ({ messages }) => {
   const [branchSelections, setBranchSelections] = useState<BranchSelections>(
     new Map(),

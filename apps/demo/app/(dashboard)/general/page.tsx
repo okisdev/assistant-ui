@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
+
 import { AppearanceSection } from "@/components/dashboard/general/appearance-section";
 import { ModelSection } from "@/components/dashboard/general/model-section";
 import { ProfileSection } from "@/components/dashboard/general/profile-section";
+
+export const metadata: Metadata = {
+  title: "General",
+};
 
 export default function GeneralPage() {
   return (

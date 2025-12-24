@@ -77,15 +77,21 @@ const ProjectListSkeleton: FC = () => {
 };
 
 const ProjectListFallback: FC = () => (
-  <SidebarGroup className="flex-1 overflow-y-auto group-data-[collapsible=icon]:hidden">
-    <SidebarGroupLabel className="flex w-full items-center">
-      Projects
-      <ChevronDown className="ml-auto" />
-    </SidebarGroupLabel>
-    <SidebarGroupContent>
-      <ProjectListSkeleton />
-    </SidebarGroupContent>
-  </SidebarGroup>
+  <Collapsible defaultOpen className="group/collapsible">
+    <SidebarGroup className="flex-1 overflow-y-auto group-data-[collapsible=icon]:hidden">
+      <SidebarGroupLabel asChild>
+        <CollapsibleTrigger className="flex w-full items-center">
+          Projects
+          <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+        </CollapsibleTrigger>
+      </SidebarGroupLabel>
+      <CollapsibleContent>
+        <SidebarGroupContent>
+          <ProjectListSkeleton />
+        </SidebarGroupContent>
+      </CollapsibleContent>
+    </SidebarGroup>
+  </Collapsible>
 );
 
 type ProjectData = {

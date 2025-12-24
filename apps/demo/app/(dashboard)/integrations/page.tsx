@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
+
 import { IntegrationsSection } from "@/components/dashboard/integrations/integrations-section";
+
+export const metadata: Metadata = {
+  title: "Integrations",
+};
 
 export default function IntegrationsPage() {
   return (

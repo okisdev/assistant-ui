@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
+
 import { AccountInfo } from "@/components/dashboard/account/account-info";
 import { ConnectedAccounts } from "@/components/dashboard/account/connected-accounts";
 import { SessionList } from "@/components/dashboard/account/session-list";
+
+export const metadata: Metadata = {
+  title: "Account",
+};
 
 export default function AccountPage() {
   return (

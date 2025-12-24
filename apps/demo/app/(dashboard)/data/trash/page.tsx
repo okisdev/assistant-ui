@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
+
 import { SettingHeader } from "@/components/dashboard/setting-header";
 import { DeletedChatsList } from "@/components/dashboard/data/deleted-chats-list";
+
+export const metadata: Metadata = {
+  title: "Trash",
+};
 
 export default function TrashPage() {
   return (
