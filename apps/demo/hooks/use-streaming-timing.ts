@@ -86,6 +86,12 @@ function calculateTiming(
     for (const part of message.parts) {
       if (part.type === "text") {
         tokenCount += Math.ceil(part.text.length / 4);
+      } else if (part.type === "reasoning") {
+        const text = (part as { text?: string }).text ?? "";
+        tokenCount += Math.ceil(text.length / 4);
+      } else if (part.type === "tool-call") {
+        const argsText = (part as { argsText?: string }).argsText ?? "";
+        tokenCount += Math.ceil(argsText.length / 4);
       }
     }
   }

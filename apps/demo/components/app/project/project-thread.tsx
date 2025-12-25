@@ -11,6 +11,7 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
+  Star,
 } from "lucide-react";
 import {
   AssistantIf,
@@ -49,6 +50,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAutoGenerateTitle } from "@/hooks/ai/use-auto-generate-title";
 import { useSyncFeedback } from "@/hooks/use-sync-feedback";
 import { api } from "@/utils/trpc/client";
+import { cn } from "@/lib/utils";
 import { ProjectEditDialog } from "./id/edit-dialog";
 
 type ProjectThreadProps = {
@@ -164,6 +166,21 @@ function ProjectContentHeader({
     },
   });
 
+  const toggleStarMutation = api.project.toggleStar.useMutation({
+    onSuccess: (data) => {
+      utils.project.get.invalidate({ id: projectId });
+      utils.project.list.invalidate();
+      toast.success(data.isStarred ? "Project starred" : "Project unstarred");
+    },
+    onError: () => {
+      toast.error("Failed to update star");
+    },
+  });
+
+  const handleToggleStar = () => {
+    toggleStarMutation.mutate({ id: projectId });
+  };
+
   const handleEditInstructions = () => {
     setDraft(project?.instructions || "");
     setIsEditing(true);
@@ -195,42 +212,58 @@ function ProjectContentHeader({
             <p className="font-medium">Projects</p>
           </Link>
         </Button>
-        <AlertDialog>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8">
-                <MoreVertical className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
-                <Pencil className="size-4" />
-                Edit
-              </DropdownMenuItem>
-              <AlertDialogTrigger asChild>
-                <DropdownMenuItem className="text-destructive focus:text-destructive">
-                  <Trash2 className="size-4" />
-                  Delete
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            onClick={handleToggleStar}
+            disabled={toggleStarMutation.isPending}
+          >
+            <Star
+              className={cn(
+                "size-4",
+                project?.isStarred && "fill-amber-400 text-amber-400",
+              )}
+            />
+          </Button>
+          <AlertDialog>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="size-8">
+                  <MoreVertical className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
+                  <Pencil className="size-4" />
+                  Edit
                 </DropdownMenuItem>
-              </AlertDialogTrigger>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete this project?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the
-                project, all its chats, and all its documents.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete}>
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem className="text-destructive focus:text-destructive">
+                    <Trash2 className="size-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this project?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the
+                  project, all its chats, and all its documents.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete}>
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
 
       {/* Title + Description */}

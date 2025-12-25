@@ -35,11 +35,14 @@ import { toast } from "sonner";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 import { ReasoningContent } from "@/components/assistant-ui/reasoning-content";
 import { SourceContent } from "@/components/assistant-ui/source-content";
+import { TextWithChainOfThought } from "@/components/assistant-ui/text-with-chain-of-thought";
+import { useCapabilities } from "@/contexts/capabilities-provider";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { UserMessageAttachments } from "@/components/assistant-ui/attachment";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatTime } from "@/lib/ai/utils";
+import { hasChainOfThought } from "@/lib/ai/parse-chain-of-thought";
 import { api } from "@/utils/trpc/client";
 import { modelTransport } from "@/app/(app)/(chat)/provider";
 import type { MessageTiming } from "@/lib/types/timing";
@@ -81,6 +84,7 @@ type WebSearchResult = {
 
 type ProgressItem =
   | { type: "reasoning"; id: string; hasContent: boolean }
+  | { type: "chain_of_thought"; id: string; hasContent: boolean }
   | {
       type: "web_search";
       id: string;
@@ -91,6 +95,12 @@ type ProgressItem =
   | {
       type: "generate_image";
       id: string;
+      completed: boolean;
+    }
+  | {
+      type: "mcp_tool";
+      id: string;
+      toolName: string;
       completed: boolean;
     };
 
@@ -110,7 +120,10 @@ const getHostname = (url: string): string => {
   }
 };
 
-const ActivityProgress: FC<{ isRunning: boolean }> = ({ isRunning }) => {
+const ActivityProgress: FC<{ isRunning: boolean; cotEnabled?: boolean }> = ({
+  isRunning,
+  cotEnabled = false,
+}) => {
   const parts = useAssistantState(({ message }) => message.parts);
 
   const items = useMemo(() => {
@@ -127,6 +140,22 @@ const ActivityProgress: FC<{ isRunning: boolean }> = ({ isRunning }) => {
           id: "id" in part ? String(part.id) : `reasoning-${result.length}`,
           hasContent,
         });
+      }
+
+      // Check for chain of thought in text content (from prompt-based CoT)
+      if (part.type === "text" && cotEnabled) {
+        const text =
+          "text" in part && typeof part.text === "string" ? part.text : "";
+        if (hasChainOfThought(text)) {
+          // Check if thinking is still in progress (no closing tag yet)
+          const isThinkingInProgress =
+            text.includes("<thinking>") && !text.includes("</thinking>");
+          result.push({
+            type: "chain_of_thought",
+            id: `cot-${result.length}`,
+            hasContent: !isThinkingInProgress,
+          });
+        }
       }
 
       if (part.type === "tool-call" && part.toolName === "web_search") {
@@ -147,10 +176,24 @@ const ActivityProgress: FC<{ isRunning: boolean }> = ({ isRunning }) => {
           completed: !!part.result,
         });
       }
+
+      if (
+        part.type === "tool-call" &&
+        part.toolName.startsWith("mcp_") &&
+        part.toolName !== "web_search" &&
+        part.toolName !== "generate_image"
+      ) {
+        result.push({
+          type: "mcp_tool",
+          id: part.toolCallId,
+          toolName: part.toolName,
+          completed: !!part.result,
+        });
+      }
     }
 
     return result;
-  }, [parts]);
+  }, [parts, cotEnabled]);
 
   if (items.length === 0) {
     return null;
@@ -175,6 +218,23 @@ const ActivityProgress: FC<{ isRunning: boolean }> = ({ isRunning }) => {
               );
             }
             return null;
+          }
+          return null;
+        }
+
+        if (item.type === "chain_of_thought") {
+          if (!item.hasContent && isRunning) {
+            return (
+              <div
+                key={item.id}
+                className="flex items-center gap-2 text-amber-600 dark:text-amber-500"
+              >
+                <LoaderIcon className="size-4 animate-spin" />
+                <span className="shimmer text-sm">
+                  Reasoning step by step...
+                </span>
+              </div>
+            );
           }
           return null;
         }
@@ -252,6 +312,41 @@ const ActivityProgress: FC<{ isRunning: boolean }> = ({ isRunning }) => {
           return null;
         }
 
+        if (item.type === "mcp_tool") {
+          const toolParts = item.toolName.replace(/^mcp_/, "").split("_");
+          const serverName = toolParts[0] || "MCP";
+          const toolNameDisplay = toolParts.slice(1).join("_") || item.toolName;
+
+          if (!item.completed && isRunning) {
+            return (
+              <div
+                key={item.id}
+                className="flex items-center gap-2 text-blue-600 dark:text-blue-400"
+              >
+                <LoaderIcon className="size-4 animate-spin" />
+                <span className="shimmer text-sm">
+                  Using {serverName}: {toolNameDisplay}...
+                </span>
+              </div>
+            );
+          }
+
+          return (
+            <div
+              key={item.id}
+              className="flex items-start gap-2 text-muted-foreground text-xs"
+            >
+              <CheckIcon className="mt-0.5 size-3 shrink-0 text-emerald-500" />
+              <span>
+                Used {serverName}:{" "}
+                <span className="font-medium text-foreground/80">
+                  {toolNameDisplay}
+                </span>
+              </span>
+            </div>
+          );
+        }
+
         return null;
       })}
     </div>
@@ -259,6 +354,7 @@ const ActivityProgress: FC<{ isRunning: boolean }> = ({ isRunning }) => {
 };
 
 export const AssistantMessage: FC = () => {
+  const { capabilities } = useCapabilities();
   const isRunning = useAssistantState(
     ({ message }) => message.status?.type === "running",
   );
@@ -277,15 +373,32 @@ export const AssistantMessage: FC = () => {
     ),
   );
 
+  const cotMode = capabilities.prompting.chainOfThought;
+
   const hasActivityParts = useAssistantState(({ message }) =>
     message.parts.some(
       (part) =>
         part.type === "reasoning" ||
         (part.type === "tool-call" &&
           (part.toolName === "web_search" ||
-            part.toolName === "generate_image")),
+            part.toolName === "generate_image" ||
+            part.toolName.startsWith("mcp_"))),
     ),
   );
+
+  const hasChainOfThoughtInProgress = useAssistantState(({ message }) => {
+    if (cotMode === "off") return false;
+    return message.parts.some(
+      (part) =>
+        part.type === "text" &&
+        "text" in part &&
+        typeof part.text === "string" &&
+        hasChainOfThought(part.text) &&
+        !part.text.includes("</thinking>"),
+    );
+  });
+
+  const showActivityProgress = hasActivityParts || hasChainOfThoughtInProgress;
 
   const hasSources = useAssistantState(({ message }) => {
     if (message.status?.type === "running") return false;
@@ -306,7 +419,15 @@ export const AssistantMessage: FC = () => {
   });
 
   const isLoading =
-    isRunning && !hasTextContent && !hasReasoningContent && !hasActivityParts;
+    isRunning &&
+    !hasTextContent &&
+    !hasReasoningContent &&
+    !showActivityProgress;
+
+  const useCotTextComponent = cotMode !== "off" && !hasReasoningContent;
+  const TextComponent = useCotTextComponent
+    ? TextWithChainOfThought
+    : MarkdownText;
 
   return (
     <MessagePrimitive.Root
@@ -320,12 +441,17 @@ export const AssistantMessage: FC = () => {
         </div>
       ) : (
         <div className="group/assistant relative">
-          {hasActivityParts && <ActivityProgress isRunning={isRunning} />}
+          {showActivityProgress && (
+            <ActivityProgress
+              isRunning={isRunning}
+              cotEnabled={cotMode !== "off"}
+            />
+          )}
 
           <div className="text-foreground leading-relaxed">
             <MessagePrimitive.Parts
               components={{
-                Text: MarkdownText,
+                Text: TextComponent,
                 Reasoning: ReasoningContent,
                 Source: () => null,
               }}

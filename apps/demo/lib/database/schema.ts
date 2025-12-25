@@ -10,7 +10,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-export type ChainOfThoughtMode = "off" | "zero-shot" | "few-shot";
+export type ChainOfThoughtMode = "off" | "auto" | "always";
 
 export type UserCapabilities = {
   memory?: {
@@ -175,6 +175,7 @@ export const project = pgTable(
     name: text("name").notNull(),
     instructions: text("instructions"),
     color: text("color"),
+    isStarred: boolean("is_starred").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -367,4 +368,39 @@ export const usage = pgTable(
     index("usage_modelId_idx").on(table.modelId),
     index("usage_createdAt_idx").on(table.createdAt),
   ],
+);
+
+export type MCPTransportType = "http" | "sse";
+
+export const mcpServer = pgTable(
+  "mcp_server",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    url: text("url").notNull(),
+    transportType: text("transport_type")
+      .$type<MCPTransportType>()
+      .notNull()
+      .default("http"),
+    headers: jsonb("headers").$type<Record<string, string>>(),
+    enabled: boolean("enabled").default(false).notNull(),
+    oauthClientId: text("oauth_client_id"),
+    oauthClientSecret: text("oauth_client_secret"),
+    oauthAuthorizationUrl: text("oauth_authorization_url"),
+    oauthTokenUrl: text("oauth_token_url"),
+    oauthScope: text("oauth_scope"),
+    oauthAccessToken: text("oauth_access_token"),
+    oauthRefreshToken: text("oauth_refresh_token"),
+    oauthTokenExpiresAt: timestamp("oauth_token_expires_at"),
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [index("mcp_server_userId_idx").on(table.userId)],
 );

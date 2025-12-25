@@ -24,14 +24,14 @@ const COT_OPTIONS: Array<{
     description: "No chain of thought prompting",
   },
   {
-    value: "zero-shot",
-    label: "Zero-Shot",
-    description: "Simple step-by-step thinking instruction",
+    value: "auto",
+    label: "Auto",
+    description: "AI decides when to show reasoning",
   },
   {
-    value: "few-shot",
-    label: "Few-Shot",
-    description: "Includes reasoning examples",
+    value: "always",
+    label: "Always",
+    description: "Always show step-by-step reasoning",
   },
 ];
 
@@ -99,9 +99,9 @@ export function ChainOfThoughtSection() {
 
       <p className="text-muted-foreground text-xs">
         Chain of Thought prompting improves AI reasoning by guiding the model to
-        break down complex problems into steps. Zero-Shot adds a simple
-        instruction, while Few-Shot includes worked examples for better
-        guidance.
+        break down problems into steps. <strong>Auto</strong> lets the AI decide
+        when reasoning is helpful. <strong>Always</strong> forces step-by-step
+        thinking for every response.
       </p>
     </div>
   );

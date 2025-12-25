@@ -10,6 +10,7 @@ import {
   Trash2,
   Pencil,
   ChevronDown,
+  Star,
 } from "lucide-react";
 import type { FC } from "react";
 
@@ -98,6 +99,7 @@ type ProjectData = {
   id: string;
   name: string;
   color: string | null;
+  isStarred: boolean;
 };
 
 const ProjectListEmpty: FC = () => {
@@ -198,6 +200,16 @@ const SidebarProjectListItem: FC<{
     },
   });
 
+  const toggleStarMutation = api.project.toggleStar.useMutation({
+    onSuccess: (data) => {
+      utils.project.list.invalidate();
+      toast.success(data.isStarred ? "Project starred" : "Project unstarred");
+    },
+    onError: () => {
+      toast.error("Failed to update star");
+    },
+  });
+
   const handleRenameOpen = () => {
     setRenameValue(project.name);
     setRenameOpen(true);
@@ -214,6 +226,10 @@ const SidebarProjectListItem: FC<{
 
   const handleDelete = () => {
     deleteMutation.mutate({ id: project.id });
+  };
+
+  const handleToggleStar = () => {
+    toggleStarMutation.mutate({ id: project.id });
   };
 
   return (
@@ -233,6 +249,9 @@ const SidebarProjectListItem: FC<{
             style={{ backgroundColor: project.color || "#3b82f6" }}
           />
           <span className="truncate">{project.name}</span>
+          {project.isStarred && (
+            <Star className="size-3 shrink-0 fill-amber-400 text-amber-400" />
+          )}
         </Link>
         <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
           <AlertDialog>
@@ -247,6 +266,15 @@ const SidebarProjectListItem: FC<{
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" side="right">
+                <DropdownMenuItem onSelect={handleToggleStar}>
+                  <Star
+                    className={cn(
+                      "size-4",
+                      project.isStarred && "fill-amber-400 text-amber-400",
+                    )}
+                  />
+                  {project.isStarred ? "Unstar" : "Star"}
+                </DropdownMenuItem>
                 <DialogTrigger asChild>
                   <DropdownMenuItem onSelect={handleRenameOpen}>
                     <Pencil className="size-4" />

@@ -4,6 +4,7 @@ import { type FC, memo } from "react";
 import { ExternalLinkIcon, GlobeIcon } from "lucide-react";
 import type { SourceMessagePartProps } from "@assistant-ui/react";
 import { cn } from "@/lib/utils";
+import { getFaviconUrl } from "@/utils/image";
 
 const extractDomain = (url: string): string => {
   try {
@@ -11,15 +12,6 @@ const extractDomain = (url: string): string => {
     return urlObj.hostname.replace(/^www\./, "");
   } catch {
     return url;
-  }
-};
-
-const getFaviconUrl = (url: string): string => {
-  try {
-    const urlObj = new URL(url);
-    return `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=32`;
-  } catch {
-    return "";
   }
 };
 

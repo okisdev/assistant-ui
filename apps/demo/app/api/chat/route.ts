@@ -15,6 +15,7 @@ import { createArtifactTool } from "@/lib/ai/tools/create-artifact";
 import { generateImageTool } from "@/lib/ai/tools/generate-image";
 import { DEFAULT_CAPABILITIES } from "@/lib/ai/capabilities";
 import { recordUsage } from "@/lib/ai/usage";
+import { getMCPTools, closeMCPClients } from "@/lib/ai/mcp";
 import type { ComposerMode } from "@/contexts/composer-mode-provider";
 
 export const maxDuration = 300;
@@ -45,7 +46,6 @@ export async function POST(req: Request) {
   }
 
   const modelId = await resolveModel(id, requestModel);
-  const systemPrompt = userContext ? buildSystemPrompt(userContext) : "";
   const modelDef = AVAILABLE_MODELS.find((m) => m.id === modelId);
   const provider = modelDef?.provider;
 
@@ -107,6 +107,17 @@ export async function POST(req: Request) {
     });
   }
 
+  const {
+    tools: mcpTools,
+    clients: mcpClients,
+    toolInfos: mcpToolInfos,
+  } = await getMCPTools();
+  Object.assign(tools, mcpTools);
+
+  const systemPrompt = userContext
+    ? buildSystemPrompt(userContext, mcpToolInfos)
+    : "";
+
   const result = streamText({
     model: getModel(modelId),
     messages: convertToModelMessages(messages),
@@ -116,9 +127,11 @@ export async function POST(req: Request) {
       composerMode === "image-generation"
         ? { type: "tool", toolName: "generate_image" }
         : undefined,
-    stopWhen: stepCountIs(5),
+    stopWhen: stepCountIs(20),
     providerOptions,
     onFinish: async ({ usage, finishReason }) => {
+      await closeMCPClients(mcpClients);
+
       if (userContext?.userId && usage) {
         const validChatId =
           id && !id.includes("DEFAULT") && !id.includes("THREAD") ? id : null;

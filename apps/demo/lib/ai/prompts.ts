@@ -1,4 +1,5 @@
 import type { UserContext } from "./context";
+import type { MCPToolInfo } from "./mcp";
 
 export const SAVE_MEMORY_INSTRUCTIONS = `<memory_capability>
 <tool>save_memory</tool>
@@ -48,87 +49,87 @@ Use create_artifact when the user asks to create, build, or generate:
 </guidelines>
 </artifact_capability>`;
 
-export const ZERO_SHOT_COT_INSTRUCTIONS = `<chain_of_thought>
+export const AUTO_COT_INSTRUCTIONS = `<chain_of_thought>
 <purpose>
-Step-by-step reasoning improves accuracy for complex problems by making your thought process explicit, catching errors early, and ensuring thorough analysis before conclusions.
+Step-by-step reasoning improves accuracy and helps catch errors. Use <thinking> tags to show your reasoning process before providing answers.
 </purpose>
 
 <instruction>
-When answering complex questions, solving problems, or making decisions:
+Before answering, think through the problem in <thinking> tags. This applies to most questions including:
+- Any question requiring calculation or analysis
+- Questions with multiple parts or considerations
+- Technical questions about code, systems, or processes
+- Questions requiring comparison or evaluation
+- Creative tasks that benefit from planning
 
-1. Begin with "Let me think through this step by step:" or similar phrasing
-2. Break down the problem into clear, numbered steps
-3. Show your work for each step, explaining your reasoning
-4. Consider edge cases or potential issues
-5. State your conclusion clearly, summarizing how you arrived at it
-
-Apply this approach to: math problems, logic puzzles, code debugging, decision analysis, and any multi-step reasoning tasks.
+Only skip <thinking> for truly trivial responses like greetings or single-fact lookups.
 </instruction>
 
 <format>
-Structure your response with visible reasoning:
-- Use numbered steps (1, 2, 3...) for sequential reasoning
-- Explicitly state assumptions and constraints
-- Show intermediate results before final answers
-- End with a clear "Conclusion:" or "Answer:" section
+<thinking>
+[Your reasoning process - break down the problem, consider factors, reach conclusion]
+</thinking>
+
+[Your final answer]
 </format>
+
+<example>
+User: What's 15% of 80?
+
+<thinking>
+1. Convert 15% to decimal: 0.15
+2. Multiply: 0.15 × 80 = 12
+</thinking>
+
+The answer is **12**.
+</example>
 </chain_of_thought>`;
 
-export const FEW_SHOT_COT_INSTRUCTIONS = `<chain_of_thought>
+export const ALWAYS_COT_INSTRUCTIONS = `<chain_of_thought>
 <purpose>
-Step-by-step reasoning improves accuracy for complex problems by making your thought process explicit. The examples below demonstrate the expected reasoning pattern.
+You must always think step-by-step before answering. This is a strict requirement.
 </purpose>
 
+<instruction>
+ALWAYS begin your response with <thinking> tags. No exceptions.
+
+Think before you answer in <thinking> tags, then provide your response after </thinking>.
+</instruction>
+
+<format>
+<thinking>
+[Your step-by-step reasoning - required for EVERY response]
+</thinking>
+
+[Your final answer]
+</format>
+
 <examples>
-<example type="math">
-<question>What is 15% of 80?</question>
-<reasoning>
-Let me think through this step by step:
-1. Convert percentage to decimal: 15% = 15/100 = 0.15
-2. Multiply by the base value: 0.15 × 80
-3. Calculate: 0.15 × 80 = 12
-</reasoning>
-<answer>The answer is 12.</answer>
+<example>
+User: What's 15% of 80?
+
+<thinking>
+1. Convert percentage to decimal: 15% = 0.15
+2. Multiply by the value: 0.15 × 80 = 12
+</thinking>
+
+The answer is **12**.
 </example>
 
-<example type="logic">
-<question>If all roses are flowers and some flowers fade quickly, can we conclude that some roses fade quickly?</question>
-<reasoning>
-Let me analyze this step by step:
-1. Premise 1: All roses are flowers (roses ⊆ flowers)
-2. Premise 2: Some flowers fade quickly (∃ flowers that fade quickly)
-3. The flowers that fade quickly could be any flowers - daisies, tulips, etc.
-4. Nothing guarantees roses are among the flowers that fade quickly
-5. This is a logical fallacy called "undistributed middle"
-</reasoning>
-<answer>No, we cannot conclude that some roses fade quickly. The premises don't establish any connection between roses specifically and the property of fading quickly.</answer>
-</example>
+<example>
+User: Hello, how are you?
 
-<example type="decision">
-<question>Should I use a database index for a column that is rarely queried?</question>
-<reasoning>
-Let me consider the trade-offs step by step:
-1. Benefits of indexing:
-   - Faster SELECT queries on the indexed column
-   - O(log n) lookup instead of O(n) table scan
-2. Costs of indexing:
-   - Additional storage space for the index structure
-   - Slower INSERT operations (must update index)
-   - Slower UPDATE operations on indexed column
-   - Slower DELETE operations (must update index)
-3. Analysis: If queries are rare, benefits are minimal. But write penalties apply to ALL write operations.
-4. The cost-benefit ratio is unfavorable when read frequency is low.
-</reasoning>
-<answer>No, adding an index for a rarely queried column is generally not recommended. The constant write overhead outweighs the occasional read benefit.</answer>
+<thinking>
+The user is greeting me. I should respond warmly and offer to help.
+</thinking>
+
+Hello! I'm doing well, thank you for asking. How can I help you today?
 </example>
 </examples>
 
-<instruction>
-Apply this step-by-step reasoning pattern to all complex problems:
-1. Start with "Let me think through this step by step:" or similar
-2. Use numbered steps showing your reasoning process
-3. State your conclusion clearly after the reasoning
-</instruction>
+<reminder>
+You MUST include <thinking> tags in EVERY response. This is mandatory.
+</reminder>
 </chain_of_thought>`;
 
 function formatUserInfo(
@@ -169,15 +170,50 @@ ${lines.join("\n")}
 </user_memories>`;
 }
 
-export function buildSystemPrompt(context: UserContext): string {
+function formatMCPTools(toolInfos: MCPToolInfo[]): string {
+  if (toolInfos.length === 0) return "";
+
+  const byServer = toolInfos.reduce(
+    (acc, tool) => {
+      if (!acc[tool.serverName]) {
+        acc[tool.serverName] = [];
+      }
+      acc[tool.serverName].push(tool);
+      return acc;
+    },
+    {} as Record<string, MCPToolInfo[]>,
+  );
+
+  const serverBlocks = Object.entries(byServer).map(([serverName, tools]) => {
+    const toolLines = tools
+      .map(
+        (t) =>
+          `  <tool name="${t.prefixedName}">${t.description || t.toolName}</tool>`,
+      )
+      .join("\n");
+    return `<server name="${serverName}">\n${toolLines}\n</server>`;
+  });
+
+  return `<mcp_tools>
+<purpose>You have access to external tools from MCP (Model Context Protocol) servers. Use these tools when the user's request matches their capabilities.</purpose>
+<available_servers>
+${serverBlocks.join("\n")}
+</available_servers>
+<instruction>When a user asks about something that could be handled by an MCP tool, use the appropriate tool based on its description. The tool names are prefixed with "mcp_" followed by the server name. Follow the tool descriptions to understand the correct workflow and parameters.</instruction>
+</mcp_tools>`;
+}
+
+export function buildSystemPrompt(
+  context: UserContext,
+  mcpToolInfos?: MCPToolInfo[],
+): string {
   const parts: string[] = [];
 
-  // Chain of Thought instructions (added first for prominence)
   const cotMode = context.capabilities.prompting.chainOfThought;
-  if (cotMode === "zero-shot") {
-    parts.push(ZERO_SHOT_COT_INSTRUCTIONS);
-  } else if (cotMode === "few-shot") {
-    parts.push(FEW_SHOT_COT_INSTRUCTIONS);
+  if (cotMode === "auto") {
+    parts.push(AUTO_COT_INSTRUCTIONS);
+  } else if (cotMode === "always") {
+    parts.push(ALWAYS_COT_INSTRUCTIONS);
   }
 
   if (context.projectContext?.instructions) {
@@ -192,6 +228,10 @@ export function buildSystemPrompt(context: UserContext): string {
 
   if (context.capabilities.tools.artifacts) {
     parts.push(ARTIFACT_INSTRUCTIONS);
+  }
+
+  if (mcpToolInfos && mcpToolInfos.length > 0) {
+    parts.push(formatMCPTools(mcpToolInfos));
   }
 
   const userInfo = formatUserInfo(context.profile);

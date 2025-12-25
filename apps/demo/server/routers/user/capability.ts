@@ -12,7 +12,7 @@ import {
 import { resolveCapabilities } from "@/lib/ai/capabilities";
 import { protectedProcedure, createTRPCRouter } from "../../trpc";
 
-const chainOfThoughtSchema = z.enum(["off", "zero-shot", "few-shot"] as const);
+const chainOfThoughtSchema = z.enum(["off", "auto", "always"] as const);
 
 const modelIdSchema = z.enum(
   AVAILABLE_MODELS.map((m) => m.id) as [ModelId, ...ModelId[]],

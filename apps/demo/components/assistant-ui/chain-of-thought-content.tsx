@@ -1,43 +1,29 @@
 "use client";
 
-import { type FC, memo, useCallback, useEffect, useRef, useState } from "react";
-import { ChevronDownIcon, BrainIcon } from "lucide-react";
-import { useMessagePartReasoning, useScrollLock } from "@assistant-ui/react";
+import { type FC, memo, useCallback, useRef, useState } from "react";
+import { ChevronDownIcon, SparklesIcon } from "lucide-react";
+import { useScrollLock } from "@assistant-ui/react";
 import { cn } from "@/lib/utils";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 
 const ANIMATION_DURATION = 200;
 
-const formatThinkingDuration = (ms: number): string => {
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
+type ChainOfThoughtContentProps = {
+  text: string;
+  isStreaming?: boolean;
 };
 
-const ReasoningContentImpl: FC = () => {
-  const { text, status } = useMessagePartReasoning();
+const ChainOfThoughtContentImpl: FC<ChainOfThoughtContentProps> = ({
+  text,
+  isStreaming = false,
+}) => {
   const collapsibleRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const lockScroll = useScrollLock(collapsibleRef, ANIMATION_DURATION);
-
-  const startTimeRef = useRef<number | null>(null);
-  const [duration, setDuration] = useState<number | null>(null);
-
-  const isStreaming = status?.type === "running";
-
-  useEffect(() => {
-    if (isStreaming && startTimeRef.current === null) {
-      startTimeRef.current = Date.now();
-      setDuration(null);
-    } else if (!isStreaming && startTimeRef.current !== null) {
-      const elapsed = Date.now() - startTimeRef.current;
-      setDuration(elapsed);
-    }
-  }, [isStreaming]);
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
@@ -67,30 +53,26 @@ const ReasoningContentImpl: FC = () => {
     >
       <CollapsibleTrigger
         className={cn(
-          "group/trigger flex w-full items-start gap-2.5 bg-muted/40 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/60",
-          isOpen && "bg-muted/50",
+          "group/trigger flex w-full items-start gap-2.5 bg-amber-500/5 px-3 py-2.5 text-left text-sm transition-colors hover:bg-amber-500/10",
+          isOpen && "bg-amber-500/8",
         )}
       >
-        <BrainIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        <SparklesIcon className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-500" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span
               className={cn(
-                "font-medium text-foreground",
+                "font-medium text-amber-700 dark:text-amber-400",
                 isStreaming && "shimmer motion-reduce:animate-none",
               )}
             >
-              {isStreaming
-                ? "Thinking"
-                : duration !== null
-                  ? `Thought for ${formatThinkingDuration(duration)}`
-                  : "Thought"}
+              {isStreaming ? "Thinking..." : "Chain of Thought"}
             </span>
           </div>
         </div>
         <ChevronDownIcon
           className={cn(
-            "mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform duration-(--animation-duration) ease-out",
+            "mt-0.5 size-4 shrink-0 text-amber-600 transition-transform duration-(--animation-duration) ease-out dark:text-amber-500",
             isOpen ? "rotate-0" : "-rotate-90",
           )}
         />
@@ -99,7 +81,7 @@ const ReasoningContentImpl: FC = () => {
       <CollapsibleContent
         className={cn(
           "group/content relative overflow-hidden",
-          "bg-muted/50",
+          "bg-amber-500/5",
           "data-[state=closed]:animate-collapsible-up",
           "data-[state=open]:animate-collapsible-down",
           "data-[state=closed]:fill-mode-forwards",
@@ -109,7 +91,7 @@ const ReasoningContentImpl: FC = () => {
       >
         <div
           className={cn(
-            "relative z-0 p-3 pl-[38px] text-muted-foreground text-sm leading-relaxed",
+            "relative z-0 p-3 pl-[38px] text-amber-800 text-sm leading-relaxed dark:text-amber-200/80",
             "transform-gpu transition-[transform,opacity]",
             "group-data-[state=open]/content:animate-in",
             "group-data-[state=closed]/content:animate-out",
@@ -121,13 +103,12 @@ const ReasoningContentImpl: FC = () => {
             "group-data-[state=closed]/content:duration-(--animation-duration)",
           )}
         >
-          <MarkdownText />
+          <ChainOfThoughtMarkdown text={text} />
         </div>
-        {/* Gradient fade at the bottom for better visual transition */}
         <div
           className={cn(
             "pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8",
-            "bg-linear-to-t from-muted/50 to-transparent",
+            "bg-linear-to-t from-amber-500/5 to-transparent",
             "opacity-0",
             "group-data-[state=closed]/content:opacity-100",
             "transition-opacity duration-(--animation-duration)",
@@ -138,4 +119,38 @@ const ReasoningContentImpl: FC = () => {
   );
 };
 
-export const ReasoningContent = memo(ReasoningContentImpl);
+const ChainOfThoughtMarkdown: FC<{ text: string }> = ({ text }) => {
+  const lines = text.split("\n");
+
+  return (
+    <div className="space-y-1">
+      {lines.map((line, index) => {
+        const trimmed = line.trim();
+
+        if (/^\d+\.\s/.test(trimmed)) {
+          return (
+            <p key={index} className="pl-2">
+              {trimmed}
+            </p>
+          );
+        }
+
+        if (trimmed.startsWith("- ") || trimmed.startsWith("• ")) {
+          return (
+            <p key={index} className="pl-4">
+              {trimmed}
+            </p>
+          );
+        }
+
+        if (!trimmed) {
+          return <div key={index} className="h-2" />;
+        }
+
+        return <p key={index}>{trimmed}</p>;
+      })}
+    </div>
+  );
+};
+
+export const ChainOfThoughtContent = memo(ChainOfThoughtContentImpl);

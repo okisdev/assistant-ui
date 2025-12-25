@@ -10,6 +10,7 @@ import {
   Trash2,
   Pencil,
   Search,
+  Star,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -44,6 +45,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/utils/trpc/client";
+import { cn } from "@/lib/utils";
 
 const PROJECT_COLORS = [
   { value: "#ef4444", label: "Red" },
@@ -65,6 +67,7 @@ type ProjectData = {
   id: string;
   name: string;
   color: string | null;
+  isStarred: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -95,6 +98,16 @@ function ProjectItem({ project }: { project: ProjectData }) {
     },
   });
 
+  const toggleStarMutation = api.project.toggleStar.useMutation({
+    onSuccess: (data) => {
+      utils.project.list.invalidate();
+      toast.success(data.isStarred ? "Project starred" : "Project unstarred");
+    },
+    onError: () => {
+      toast.error("Failed to update star");
+    },
+  });
+
   const handleRenameOpen = () => {
     setRenameValue(project.name);
     setRenameOpen(true);
@@ -113,8 +126,12 @@ function ProjectItem({ project }: { project: ProjectData }) {
     deleteMutation.mutate({ id: project.id });
   };
 
+  const handleToggleStar = () => {
+    toggleStarMutation.mutate({ id: project.id });
+  };
+
   return (
-    <div className="group flex items-center gap-4 rounded-lg bg-muted/50 px-4 py-3 transition-colors hover:bg-muted">
+    <div className="group flex items-center gap-1 rounded-lg bg-muted/50 px-4 py-3 transition-colors hover:bg-muted">
       <Link
         href={`/project/${project.id}`}
         className="flex flex-1 items-center gap-4"
@@ -127,7 +144,12 @@ function ProjectItem({ project }: { project: ProjectData }) {
           />
         </div>
         <div className="min-w-0 flex-1">
-          <span className="truncate font-medium text-sm">{project.name}</span>
+          <div className="flex items-center gap-2">
+            <span className="truncate font-medium text-sm">{project.name}</span>
+            {project.isStarred && (
+              <Star className="size-3.5 shrink-0 fill-amber-400 text-amber-400" />
+            )}
+          </div>
           <div className="text-muted-foreground text-xs">
             updated{" "}
             {formatDistanceToNow(new Date(project.updatedAt), {
@@ -136,6 +158,26 @@ function ProjectItem({ project }: { project: ProjectData }) {
           </div>
         </div>
       </Link>
+
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className={cn(
+          "text-muted-foreground transition-opacity",
+          project.isStarred
+            ? "opacity-100"
+            : "opacity-0 group-hover:opacity-100",
+        )}
+        onClick={handleToggleStar}
+        disabled={toggleStarMutation.isPending}
+      >
+        <Star
+          className={cn(
+            "size-4",
+            project.isStarred && "fill-amber-400 text-amber-400",
+          )}
+        />
+      </Button>
 
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
         <AlertDialog>
@@ -150,6 +192,15 @@ function ProjectItem({ project }: { project: ProjectData }) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" side="right">
+              <DropdownMenuItem onSelect={handleToggleStar}>
+                <Star
+                  className={cn(
+                    "size-4",
+                    project.isStarred && "fill-amber-400 text-amber-400",
+                  )}
+                />
+                {project.isStarred ? "Unstar" : "Star"}
+              </DropdownMenuItem>
               <DialogTrigger asChild>
                 <DropdownMenuItem onSelect={handleRenameOpen}>
                   <Pencil className="size-4" />

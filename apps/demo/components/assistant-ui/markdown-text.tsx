@@ -16,11 +16,69 @@ import { CheckIcon, CopyIcon } from "lucide-react";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { cn } from "@/lib/utils";
 
+function preprocessNestedCodeBlocks(text: string): string {
+  const lines = text.split("\n");
+  const result: string[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const openMatch = line.match(/^(`{3,})(\w*)$/);
+
+    if (openMatch) {
+      const fenceLength = openMatch[1].length;
+      const language = openMatch[2];
+      const blockLines: string[] = [];
+      let maxNestedFence = 0;
+      let j = i + 1;
+
+      while (j < lines.length) {
+        const innerLine = lines[j];
+        const closeMatch = innerLine.match(/^(`{3,})$/);
+
+        if (closeMatch && closeMatch[1].length >= fenceLength) {
+          break;
+        }
+
+        const nestedFenceMatch = innerLine.match(/^(`{3,})/);
+        if (nestedFenceMatch) {
+          maxNestedFence = Math.max(maxNestedFence, nestedFenceMatch[1].length);
+        }
+
+        blockLines.push(innerLine);
+        j++;
+      }
+
+      if (maxNestedFence >= fenceLength) {
+        const newFenceLength = maxNestedFence + 1;
+        const newFence = "`".repeat(newFenceLength);
+        result.push(`${newFence}${language}`);
+        result.push(...blockLines);
+        result.push(newFence);
+      } else {
+        result.push(line);
+        result.push(...blockLines);
+        if (j < lines.length) {
+          result.push(lines[j]);
+        }
+      }
+
+      i = j + 1;
+    } else {
+      result.push(line);
+      i++;
+    }
+  }
+
+  return result.join("\n");
+}
+
 const MarkdownTextImpl = () => {
   return (
     <MarkdownTextPrimitive
       remarkPlugins={[remarkGfm]}
       components={defaultComponents}
+      preprocess={preprocessNestedCodeBlocks}
     />
   );
 };

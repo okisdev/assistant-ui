@@ -24,7 +24,7 @@ export function ProjectIdContent({
   return (
     <AppLayout>
       <div className="flex min-h-0 flex-1 justify-center px-4">
-        <div className="flex min-h-0 w-full max-w-6xl gap-6">
+        <div className="flex min-h-0 w-full max-w-5xl gap-6">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-start pt-12">
             <ProjectThread projectId={projectId} projectName={projectName} />
           </div>

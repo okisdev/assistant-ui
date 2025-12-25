@@ -13,12 +13,13 @@ export const projectRouter = createTRPCRouter({
         name: project.name,
         instructions: project.instructions,
         color: project.color,
+        isStarred: project.isStarred,
         createdAt: project.createdAt,
         updatedAt: project.updatedAt,
       })
       .from(project)
       .where(eq(project.userId, ctx.session.user.id))
-      .orderBy(desc(project.updatedAt));
+      .orderBy(desc(project.isStarred), desc(project.updatedAt));
 
     return projects;
   }),
@@ -48,6 +49,7 @@ export const projectRouter = createTRPCRouter({
           name: project.name,
           instructions: project.instructions,
           color: project.color,
+          isStarred: project.isStarred,
           createdAt: project.createdAt,
           updatedAt: project.updatedAt,
         })
@@ -136,6 +138,7 @@ export const projectRouter = createTRPCRouter({
           name: project.name,
           instructions: project.instructions,
           color: project.color,
+          isStarred: project.isStarred,
           createdAt: project.createdAt,
           updatedAt: project.updatedAt,
         })
@@ -149,6 +152,39 @@ export const projectRouter = createTRPCRouter({
         .limit(1);
 
       return result[0] ?? null;
+    }),
+
+  toggleStar: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // First get the current star status
+      const [current] = await ctx.db
+        .select({ isStarred: project.isStarred })
+        .from(project)
+        .where(
+          and(
+            eq(project.id, input.id),
+            eq(project.userId, ctx.session.user.id),
+          ),
+        )
+        .limit(1);
+
+      if (!current) {
+        throw new Error("Project not found");
+      }
+
+      // Toggle the star status
+      await ctx.db
+        .update(project)
+        .set({ isStarred: !current.isStarred })
+        .where(
+          and(
+            eq(project.id, input.id),
+            eq(project.userId, ctx.session.user.id),
+          ),
+        );
+
+      return { success: true, isStarred: !current.isStarred };
     }),
 
   // Document management

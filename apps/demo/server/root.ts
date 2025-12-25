@@ -8,6 +8,7 @@ import { projectRouter } from "./routers/project";
 import { memoryRouter } from "./routers/memory";
 import { attachmentRouter } from "./routers/attachment";
 import { usageRouter } from "./routers/usage";
+import { mcpServerRouter } from "./routers/mcp-server";
 
 export const appRouter = createTRPCRouter({
   auth: authRouter,
@@ -18,6 +19,7 @@ export const appRouter = createTRPCRouter({
   memory: memoryRouter,
   attachment: attachmentRouter,
   usage: usageRouter,
+  mcpServer: mcpServerRouter,
 });
 
 export type AppRouter = typeof appRouter;

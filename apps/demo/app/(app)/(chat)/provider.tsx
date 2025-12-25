@@ -275,7 +275,7 @@ function useCustomChatRuntime() {
     id,
     transport: modelTransport,
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
-    experimental_throttle: 100,
+    experimental_throttle: 0,
   });
 
   const isRunning = chat.status === "submitted" || chat.status === "streaming";

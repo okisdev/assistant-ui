@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 
 import { cn } from "@/lib/utils";
@@ -82,7 +83,12 @@ function ThemeOption({
 }
 
 export function AppearanceSection() {
+  const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const themeOptions: { value: ThemeValue; label: string }[] = [
     { value: "system", label: "System" },
@@ -100,7 +106,7 @@ export function AppearanceSection() {
             key={option.value}
             value={option.value}
             label={option.label}
-            selected={theme === option.value}
+            selected={mounted && theme === option.value}
             onSelect={() => setTheme(option.value)}
           />
         ))}

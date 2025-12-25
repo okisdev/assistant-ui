@@ -46,7 +46,7 @@ export function ImageGenerationSection() {
     <div className="flex flex-col gap-4">
       <SettingHeader title="Image Generation" />
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
         <SettingRowSwitch
           title="Image generation"
           description="AI can generate images based on your text descriptions"

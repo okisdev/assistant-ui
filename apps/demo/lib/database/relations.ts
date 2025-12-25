@@ -15,6 +15,7 @@ import {
   member,
   invitation,
   organization,
+  mcpServer,
 } from "./schema";
 
 export const userRelations = relations(user, ({ many }) => ({
@@ -28,6 +29,7 @@ export const userRelations = relations(user, ({ many }) => ({
   attachments: many(attachment),
   memories: many(memory),
   usageRecords: many(usage),
+  mcpServers: many(mcpServer),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -168,5 +170,12 @@ export const usageRelations = relations(usage, ({ one }) => ({
   chat: one(chat, {
     fields: [usage.chatId],
     references: [chat.id],
+  }),
+}));
+
+export const mcpServerRelations = relations(mcpServer, ({ one }) => ({
+  user: one(user, {
+    fields: [mcpServer.userId],
+    references: [user.id],
   }),
 }));

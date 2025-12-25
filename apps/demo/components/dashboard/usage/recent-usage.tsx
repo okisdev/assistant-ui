@@ -97,7 +97,7 @@ function UsageItemRow({ item }: { item: UsageItem }) {
   const Icon = model?.icon ?? MessageSquare;
 
   return (
-    <div className="group flex items-center gap-4 rounded-lg bg-muted/50 px-4 py-3 transition-colors hover:bg-muted">
+    <div className="group flex items-center gap-1 rounded-lg bg-muted/50 px-4 py-3 transition-colors hover:bg-muted">
       <div className="flex size-10 items-center justify-center rounded-full bg-muted/50">
         <Icon className="size-5 text-muted-foreground" />
       </div>

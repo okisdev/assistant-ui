@@ -119,11 +119,15 @@ Instead of borders, use these patterns:
 - **Inactive elements**: `bg-muted/30` for subtle distinction
 - **Interactive elements**: Use `hover:bg-muted` or `hover:bg-accent` for clear hover feedback
 
-### Status Indication
-Use colors to indicate status, not borders:
+### Status & Semantic Colors
+Use semantic colors to indicate meaning and differentiate features:
 - **Active/Success**: Green tint (`bg-emerald-500/10`, `text-emerald-500`)
 - **Inactive/Default**: Muted (`bg-muted`, `text-muted-foreground`)
 - **Destructive**: Red tint (`bg-destructive/10`, `text-destructive`)
+- **Reasoning/Thinking**: Amber tint (`bg-amber-500/5`, `text-amber-600`) - for AI thinking processes
+- **Info/Highlight**: Blue tint (`bg-blue-500/10`, `text-blue-500`) - for informational callouts
+
+Use semantic colors sparingly to differentiate distinct feature areas (e.g., CoT vs native reasoning). Default to muted for general UI elements.
 
 ### Component Choices
 - **Popover** for quick actions (share link, quick settings)

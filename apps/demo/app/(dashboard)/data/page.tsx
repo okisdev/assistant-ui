@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
-import { HardDrive, Archive, Share2, Trash, Download } from "lucide-react";
+import {
+  HardDrive,
+  Archive,
+  Share2,
+  Trash,
+  Download,
+  Brain,
+} from "lucide-react";
 
 import { SettingHeader } from "@/components/dashboard/setting-header";
 import {
@@ -14,7 +21,7 @@ export const metadata: Metadata = {
 export default function DataPage() {
   return (
     <div className="flex flex-1 flex-col gap-10 px-4 py-8 md:px-8">
-      <div className="flex w-full max-w-3xl flex-col gap-10">
+      <div className="flex w-full flex-col gap-10">
         <div className="flex flex-col gap-4">
           <SettingHeader title="Data" />
 
@@ -24,6 +31,12 @@ export default function DataPage() {
               title="Storage"
               description="View your storage usage and uploaded files"
               href="/data/storage"
+            />
+            <SettingRowLink
+              icon={Brain}
+              title="Memories"
+              description="View and manage AI memories about you"
+              href="/data/memories"
             />
             <SettingRowLink
               icon={Archive}

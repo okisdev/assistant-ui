@@ -3,6 +3,8 @@
 
 @import "tw-shimmer";
 
+@plugin "tailwind-scrollbar";
+
 @import "./animate.css";
 @import "./sugar-high.css";
 
