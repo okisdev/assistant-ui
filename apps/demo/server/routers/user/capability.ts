@@ -4,7 +4,9 @@ import { eq } from "drizzle-orm";
 import { user, type UserCapabilities } from "@/lib/database/schema";
 import {
   AVAILABLE_MODELS,
+  IMAGE_MODELS,
   isDeprecatedModel,
+  type ImageModelId,
   type ModelId,
 } from "@/lib/ai/models";
 import { resolveCapabilities } from "@/lib/ai/capabilities";
@@ -19,6 +21,10 @@ const modelIdSchema = z.enum(
 const activeModelIdSchema = modelIdSchema.refine(
   (id) => !isDeprecatedModel(id),
   { message: "Deprecated models cannot be set as default" },
+);
+
+const imageModelIdSchema = z.enum(
+  IMAGE_MODELS.map((m) => m.id) as [ImageModelId, ...ImageModelId[]],
 );
 
 export const capabilityRouter = createTRPCRouter({
@@ -45,6 +51,8 @@ export const capabilityRouter = createTRPCRouter({
           .object({
             artifacts: z.boolean().optional(),
             webSearch: z.boolean().optional(),
+            imageGeneration: z.boolean().optional(),
+            defaultImageModel: imageModelIdSchema.optional(),
           })
           .optional(),
         model: z
@@ -91,6 +99,12 @@ export const capabilityRouter = createTRPCRouter({
           }),
           ...(input.tools?.webSearch !== undefined && {
             webSearch: input.tools.webSearch,
+          }),
+          ...(input.tools?.imageGeneration !== undefined && {
+            imageGeneration: input.tools.imageGeneration,
+          }),
+          ...(input.tools?.defaultImageModel !== undefined && {
+            defaultImageModel: input.tools.defaultImageModel,
           }),
         },
         model: {

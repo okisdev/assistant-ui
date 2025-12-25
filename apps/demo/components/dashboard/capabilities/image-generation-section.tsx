@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { IMAGE_MODELS } from "@/lib/ai/models";
+import { IMAGE_MODELS, type ImageModelId } from "@/lib/ai/models";
 import { api } from "@/utils/trpc/client";
 
 export function ImageGenerationSection() {
@@ -33,7 +33,7 @@ export function ImageGenerationSection() {
     updateCapabilitiesMutation.mutate({ tools: { imageGeneration: enabled } });
   };
 
-  const handleModelChange = (modelId: string) => {
+  const handleModelChange = (modelId: ImageModelId) => {
     updateCapabilitiesMutation.mutate({
       tools: { defaultImageModel: modelId },
     });

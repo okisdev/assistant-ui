@@ -7,17 +7,19 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
+import type { RouterInputs } from "@/server";
 import { api } from "@/utils/trpc/client";
-import type { UserCapabilities } from "@/lib/database/schema";
 import type { ResolvedUserCapabilities } from "@/lib/database/types";
 import { DEFAULT_CAPABILITIES } from "@/lib/ai/capabilities";
+
+type CapabilityUpdateInput = RouterInputs["user"]["capability"]["update"];
 
 type CapabilitiesContextValue = {
   /** Resolved capabilities with default values (never undefined) */
   capabilities: ResolvedUserCapabilities;
   isLoading: boolean;
   /** Update capabilities */
-  updateCapabilities: (input: UserCapabilities) => Promise<void>;
+  updateCapabilities: (input: CapabilityUpdateInput) => Promise<void>;
   isUpdating: boolean;
 };
 
@@ -51,7 +53,7 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
   );
 
   const updateCapabilities = useCallback(
-    async (input: UserCapabilities) => {
+    async (input: CapabilityUpdateInput) => {
       await updateMutation.mutateAsync(input);
     },
     [updateMutation],
