@@ -26,6 +26,7 @@ import { DatabaseMemoryStore } from "@/lib/adapters/database-memory-adapter";
 import { ModelChatTransport } from "@/lib/adapters/model-chat-transport";
 import { useMemoryTools } from "@/hooks/use-memory-tools";
 import { useArtifactTools } from "@/hooks/use-artifact-tools";
+import { useImageTools } from "@/hooks/use-image-tools";
 import { useStreamingTiming } from "@/hooks/use-streaming-timing";
 import { ModelSelectionProvider } from "@/contexts/model-selection-provider";
 import {
@@ -33,10 +34,8 @@ import {
   useCapabilities,
 } from "@/contexts/capabilities-provider";
 import { ArtifactToolUI } from "@/components/assistant-ui/artifact-tool-ui";
-import {
-  ArtifactProvider as ArtifactContextProvider,
-  useArtifact,
-} from "@/lib/artifact-context";
+import { ImageToolUI } from "@/components/assistant-ui/image-tool-ui";
+import { SidePanelProvider, useSidePanel } from "@/lib/side-panel-context";
 import { ChatLayout } from "@/components/assistant-ui/chat-layout";
 import { ChatContent } from "@/components/app/chat/chat-content";
 import { ProjectContext, type ProjectContextValue } from "@/hooks/use-project";
@@ -306,10 +305,9 @@ function MemoryProvider({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-function ArtifactToolsProvider({ children }: { children: ReactNode }) {
+function ToolsProvider({ children }: { children: ReactNode }) {
   const { capabilities } = useCapabilities();
-  const artifactsEnabled = capabilities.tools.artifacts;
-  const { closeArtifact } = useArtifact();
+  const { closePanel } = useSidePanel();
 
   const threadId = useAssistantState(
     ({ threadListItem }) => threadListItem.remoteId,
@@ -324,16 +322,19 @@ function ArtifactToolsProvider({ children }: { children: ReactNode }) {
     }
 
     if (prevThreadIdRef.current !== threadId) {
-      closeArtifact();
+      closePanel();
       prevThreadIdRef.current = threadId;
     }
-  }, [threadId, closeArtifact]);
+  }, [threadId, closePanel]);
 
-  useArtifactTools({ enabled: artifactsEnabled });
+  // Register tools
+  useArtifactTools({ enabled: capabilities.tools.artifacts });
+  useImageTools({ enabled: capabilities.tools.imageGeneration });
 
   return (
     <>
-      {artifactsEnabled && <ArtifactToolUI />}
+      {capabilities.tools.artifacts && <ArtifactToolUI />}
+      {capabilities.tools.imageGeneration && <ImageToolUI />}
       {children}
     </>
   );
@@ -404,11 +405,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     <ProjectContext.Provider value={projectContextValue}>
       <ChatPageProvider>
         <IncognitoProvider>
-          <ArtifactContextProvider>
+          <SidePanelProvider>
             <ChatProviderInner projectId={currentProjectId}>
               {children}
             </ChatProviderInner>
-          </ArtifactContextProvider>
+          </SidePanelProvider>
         </IncognitoProvider>
       </ChatPageProvider>
     </ProjectContext.Provider>
@@ -421,21 +422,21 @@ export function ChatUI() {
 
   if (isIncognito) {
     return (
-      <ArtifactToolsProvider>
+      <ToolsProvider>
         <ChatLayout>
           <ChatContent />
         </ChatLayout>
-      </ArtifactToolsProvider>
+      </ToolsProvider>
     );
   }
 
   return (
     <MemoryProvider>
-      <ArtifactToolsProvider>
+      <ToolsProvider>
         <ChatLayout>
           <ChatContent />
         </ChatLayout>
-      </ArtifactToolsProvider>
+      </ToolsProvider>
     </MemoryProvider>
   );
 }

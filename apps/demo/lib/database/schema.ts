@@ -20,6 +20,8 @@ export type UserCapabilities = {
   tools?: {
     artifacts?: boolean;
     webSearch?: boolean;
+    imageGeneration?: boolean;
+    defaultImageModel?: string;
   };
   model?: {
     defaultId?: string;

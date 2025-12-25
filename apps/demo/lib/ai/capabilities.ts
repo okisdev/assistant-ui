@@ -14,6 +14,8 @@ export const DEFAULT_CAPABILITIES: ResolvedUserCapabilities = {
   tools: {
     artifacts: true,
     webSearch: false,
+    imageGeneration: true,
+    defaultImageModel: "dall-e-2",
   },
   model: {
     defaultId: DEFAULT_MODEL_ID,
@@ -50,6 +52,12 @@ export function resolveCapabilities(
         capabilities.tools?.artifacts ?? DEFAULT_CAPABILITIES.tools.artifacts,
       webSearch:
         capabilities.tools?.webSearch ?? DEFAULT_CAPABILITIES.tools.webSearch,
+      imageGeneration:
+        capabilities.tools?.imageGeneration ??
+        DEFAULT_CAPABILITIES.tools.imageGeneration,
+      defaultImageModel:
+        capabilities.tools?.defaultImageModel ??
+        DEFAULT_CAPABILITIES.tools.defaultImageModel,
     },
     model: {
       defaultId:

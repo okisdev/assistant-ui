@@ -8,6 +8,10 @@ import {
   FileText,
   LoaderIcon,
   AlertCircleIcon,
+  Eye,
+  FileCode,
+  File,
+  Image as ImageIcon,
 } from "lucide-react";
 import {
   AttachmentPrimitive,
@@ -30,6 +34,7 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { useModelSelection } from "@/contexts/model-selection-provider";
+import { useSidePanel } from "@/lib/side-panel-context";
 import { cn } from "@/lib/utils";
 
 const useFileSrc = (file: File | undefined) => {
@@ -71,6 +76,42 @@ const useAttachmentSrc = () => {
 
 type AttachmentPreviewProps = {
   src: string;
+};
+
+const getFileIcon = (mimeType: string) => {
+  if (mimeType === "application/pdf") {
+    return <FileText className="size-4 text-muted-foreground" />;
+  }
+  if (mimeType.startsWith("image/")) {
+    return <ImageIcon className="size-4 text-muted-foreground" />;
+  }
+  if (
+    mimeType.startsWith("text/") ||
+    mimeType === "application/json" ||
+    mimeType === "application/xml"
+  ) {
+    return <FileCode className="size-4 text-muted-foreground" />;
+  }
+  return <File className="size-4 text-muted-foreground" />;
+};
+
+const getFileTypeLabel = (mimeType: string): string => {
+  if (mimeType === "application/pdf") return "PDF";
+  if (mimeType.startsWith("image/")) {
+    const subtype = mimeType.split("/")[1]?.toUpperCase();
+    return subtype || "Image";
+  }
+  if (mimeType.startsWith("text/")) {
+    const subtype = mimeType.split("/")[1];
+    if (subtype === "plain") return "TXT";
+    if (subtype === "markdown") return "MD";
+    if (subtype === "csv") return "CSV";
+    if (subtype === "html") return "HTML";
+    return subtype?.toUpperCase() || "Text";
+  }
+  if (mimeType === "application/json") return "JSON";
+  if (mimeType === "application/xml") return "XML";
+  return "";
 };
 
 const AttachmentPreview: FC<AttachmentPreviewProps> = ({ src }) => {
@@ -160,12 +201,70 @@ const AttachmentStatusOverlay: FC = () => {
   return null;
 };
 
+const FileAttachmentCard: FC = () => {
+  const { openPanel } = useSidePanel();
+  const attachmentName = useAssistantState(({ attachment }) => attachment.name);
+  const attachmentContentType = useAssistantState(
+    ({ attachment }) => attachment.contentType,
+  );
+  const attachmentContent = useAssistantState(
+    ({ attachment }) => attachment.content,
+  );
+
+  const getFileUrl = (): string | undefined => {
+    if (!attachmentContent || attachmentContent.length === 0) return undefined;
+    const content = attachmentContent[0];
+    if (content.type === "file" && "data" in content) {
+      return content.data as string;
+    }
+    return undefined;
+  };
+
+  const handleClick = () => {
+    const fileUrl = getFileUrl();
+    if (!fileUrl || !attachmentName || !attachmentContentType) return;
+
+    openPanel({
+      type: "file-preview",
+      title: attachmentName,
+      url: fileUrl,
+      mimeType: attachmentContentType,
+    });
+  };
+
+  const fileTypeLabel = getFileTypeLabel(attachmentContentType ?? "");
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className="flex items-center gap-2.5 rounded-lg bg-muted/50 px-3 py-2 text-left transition-colors hover:bg-muted"
+    >
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted/50">
+        {getFileIcon(attachmentContentType ?? "")}
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate text-sm">{attachmentName}</span>
+        {fileTypeLabel && (
+          <span className="text-muted-foreground text-xs">{fileTypeLabel}</span>
+        )}
+      </div>
+      <div className="flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
+        <Eye className="size-3.5" />
+      </div>
+    </button>
+  );
+};
+
 const AttachmentUI: FC = () => {
   const api = useAssistantApi();
   const isComposer = api.attachment.source === "composer";
 
   const isImage = useAssistantState(
     ({ attachment }) => attachment.type === "image",
+  );
+  const attachmentStatus = useAssistantState(
+    ({ attachment }) => attachment.status,
   );
   const typeLabel = useAssistantState(({ attachment }) => {
     const type = attachment.type;
@@ -181,6 +280,13 @@ const AttachmentUI: FC = () => {
         throw new Error(`Unknown attachment type: ${_exhaustiveCheck}`);
     }
   });
+
+  const isCompleteFile =
+    !isImage && attachmentStatus.type === "complete" && !isComposer;
+
+  if (isCompleteFile) {
+    return <FileAttachmentCard />;
+  }
 
   return (
     <Tooltip>
@@ -231,7 +337,7 @@ const AttachmentRemove: FC = () => {
 
 export const UserMessageAttachments: FC = () => {
   return (
-    <div className="flex w-full flex-row justify-end gap-2 empty:hidden">
+    <div className="flex w-full flex-row flex-wrap justify-end gap-2 empty:hidden">
       <MessagePrimitive.Attachments components={{ Attachment: AttachmentUI }} />
     </div>
   );

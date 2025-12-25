@@ -21,6 +21,7 @@ import {
   CopyIcon,
   DownloadIcon,
   GlobeIcon,
+  ImageIcon,
   LoaderIcon,
   PencilIcon,
   RefreshCwIcon,
@@ -86,6 +87,11 @@ type ProgressItem =
       completed: boolean;
       action?: WebSearchAction;
       sourcesCount: number;
+    }
+  | {
+      type: "generate_image";
+      id: string;
+      completed: boolean;
     };
 
 function useMessageTiming(messageId: string): MessageTiming | undefined {
@@ -131,6 +137,14 @@ const ActivityProgress: FC<{ isRunning: boolean }> = ({ isRunning }) => {
           completed: !!webResult,
           action: webResult?.action,
           sourcesCount: webResult?.sources?.length ?? 0,
+        });
+      }
+
+      if (part.type === "tool-call" && part.toolName === "generate_image") {
+        result.push({
+          type: "generate_image",
+          id: part.toolCallId,
+          completed: !!part.result,
         });
       }
     }
@@ -223,6 +237,21 @@ const ActivityProgress: FC<{ isRunning: boolean }> = ({ isRunning }) => {
           );
         }
 
+        if (item.type === "generate_image") {
+          if (!item.completed && isRunning) {
+            return (
+              <div
+                key={item.id}
+                className="flex items-center gap-2 text-muted-foreground"
+              >
+                <ImageIcon className="size-4 animate-pulse" />
+                <span className="shimmer text-sm">Generating image...</span>
+              </div>
+            );
+          }
+          return null;
+        }
+
         return null;
       })}
     </div>
@@ -252,7 +281,9 @@ export const AssistantMessage: FC = () => {
     message.parts.some(
       (part) =>
         part.type === "reasoning" ||
-        (part.type === "tool-call" && part.toolName === "web_search"),
+        (part.type === "tool-call" &&
+          (part.toolName === "web_search" ||
+            part.toolName === "generate_image")),
     ),
   );
 

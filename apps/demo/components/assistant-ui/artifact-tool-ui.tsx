@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { makeAssistantToolUI } from "@assistant-ui/react";
 import { ArtifactCard } from "./artifact-card";
-import { useArtifact } from "@/lib/artifact-context";
+import { useSidePanel } from "@/lib/side-panel-context";
 
 type ArtifactArgs = {
   title: string;
@@ -23,10 +23,10 @@ export const ArtifactToolUI = makeAssistantToolUI<ArtifactArgs, ArtifactResult>(
   {
     toolName: "create_artifact",
     render: function ArtifactToolRender({ args, result, status }) {
-      const { openArtifact } = useArtifact();
+      const { openPanel } = useSidePanel();
       const prevStatusRef = useRef<string | null>(null);
-      const openArtifactRef = useRef(openArtifact);
-      openArtifactRef.current = openArtifact;
+      const openPanelRef = useRef(openPanel);
+      openPanelRef.current = openPanel;
 
       const isLoading = status.type === "running";
       const title = result?.title ?? args.title ?? "Artifact";
@@ -38,7 +38,12 @@ export const ArtifactToolUI = makeAssistantToolUI<ArtifactArgs, ArtifactResult>(
         const isNowComplete = status.type !== "running";
 
         if (wasRunning && isNowComplete && content) {
-          openArtifactRef.current({ title, content, type });
+          openPanelRef.current({
+            type: "artifact",
+            title,
+            content,
+            artifactType: type,
+          });
         }
 
         prevStatusRef.current = status.type;

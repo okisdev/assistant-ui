@@ -1,9 +1,9 @@
 import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
-import { ChatUI } from "./provider";
+import { ChatProvider } from "./(chat)/provider";
 
-export default async function ChatLayout({
+export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -13,12 +13,7 @@ export default async function ChatLayout({
   });
 
   if (session?.user) {
-    return (
-      <>
-        <ChatUI />
-        {children}
-      </>
-    );
+    return <ChatProvider>{children}</ChatProvider>;
   }
 
   return children;

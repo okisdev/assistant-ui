@@ -12,6 +12,7 @@ import { buildSystemPrompt } from "@/lib/ai/prompts";
 import { getUserContext, type UserContext } from "@/lib/ai/context";
 import { saveMemoryTool } from "@/lib/ai/tools/save-memory";
 import { createArtifactTool } from "@/lib/ai/tools/create-artifact";
+import { generateImageTool } from "@/lib/ai/tools/generate-image";
 import { DEFAULT_CAPABILITIES } from "@/lib/ai/capabilities";
 import { recordUsage } from "@/lib/ai/usage";
 
@@ -89,6 +90,10 @@ export async function POST(req: Request) {
 
   if (capabilities.tools.artifacts) {
     tools.create_artifact = createArtifactTool;
+  }
+
+  if (capabilities.tools.imageGeneration) {
+    tools.generate_image = generateImageTool;
   }
 
   if (webSearchEnabled && provider === "openai") {

@@ -339,3 +339,45 @@ export const PRIMARY_MODELS = AVAILABLE_MODELS.filter((m) => m.primary);
 export const DEFAULT_ENABLED_MODEL_IDS: readonly ModelId[] = PRIMARY_MODELS.map(
   (m) => m.id as ModelId,
 );
+
+export type ImageModelId = "dall-e-2" | "dall-e-3" | "grok-2-image";
+
+export type ImageModelDefinition = {
+  id: ImageModelId;
+  name: string;
+  provider: ModelProvider;
+  sizes: readonly string[];
+  defaultSize: string;
+};
+
+export const IMAGE_MODELS: readonly ImageModelDefinition[] = [
+  {
+    id: "dall-e-2",
+    name: "DALL-E 2",
+    provider: "openai",
+    sizes: ["256x256", "512x512", "1024x1024"],
+    defaultSize: "512x512",
+  },
+  {
+    id: "dall-e-3",
+    name: "DALL-E 3",
+    provider: "openai",
+    sizes: ["1024x1024", "1792x1024", "1024x1792"],
+    defaultSize: "1024x1024",
+  },
+  {
+    id: "grok-2-image",
+    name: "Grok 2 Image",
+    provider: "xai",
+    sizes: ["1024x768"],
+    defaultSize: "1024x768",
+  },
+] as const;
+
+export const DEFAULT_IMAGE_MODEL_ID: ImageModelId = "dall-e-2";
+
+export function getImageModelById(
+  modelId: string,
+): ImageModelDefinition | undefined {
+  return IMAGE_MODELS.find((m) => m.id === modelId);
+}

@@ -2,7 +2,7 @@
 
 import type { FC } from "react";
 import { Sparkles, Eye, Loader2 } from "lucide-react";
-import { useArtifact, type Artifact } from "@/lib/artifact-context";
+import { useSidePanel } from "@/lib/side-panel-context";
 
 type ArtifactCardProps = {
   title: string;
@@ -17,12 +17,16 @@ export const ArtifactCard: FC<ArtifactCardProps> = ({
   type,
   isLoading = false,
 }) => {
-  const { openArtifact } = useArtifact();
+  const { openPanel } = useSidePanel();
 
   const handleView = () => {
     if (isLoading || !content) return;
-    const artifact: Artifact = { title, content, type };
-    openArtifact(artifact);
+    openPanel({
+      type: "artifact",
+      title,
+      content,
+      artifactType: type,
+    });
   };
 
   return (

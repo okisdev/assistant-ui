@@ -58,7 +58,7 @@ const ReasoningContentImpl: FC = () => {
       ref={collapsibleRef}
       open={isOpen}
       onOpenChange={handleOpenChange}
-      className="my-3 w-full"
+      className="my-3 w-full overflow-hidden rounded-lg"
       style={
         {
           "--animation-duration": `${ANIMATION_DURATION}ms`,
@@ -67,8 +67,8 @@ const ReasoningContentImpl: FC = () => {
     >
       <CollapsibleTrigger
         className={cn(
-          "group/trigger flex w-full items-start gap-2.5 rounded-lg bg-muted/40 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/60",
-          isOpen && "rounded-b-none bg-muted/50",
+          "group/trigger flex w-full items-start gap-2.5 bg-muted/40 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/60",
+          isOpen && "bg-muted/50",
         )}
       >
         <BrainIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
@@ -99,7 +99,7 @@ const ReasoningContentImpl: FC = () => {
       <CollapsibleContent
         className={cn(
           "group/content relative overflow-hidden",
-          "rounded-b-lg bg-muted/50",
+          "bg-muted/50",
           "data-[state=closed]:animate-collapsible-up",
           "data-[state=open]:animate-collapsible-down",
           "data-[state=closed]:fill-mode-forwards",

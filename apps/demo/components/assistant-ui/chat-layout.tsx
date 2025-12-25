@@ -6,15 +6,15 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import { useArtifact } from "@/lib/artifact-context";
-import { ArtifactSidePanel } from "./artifact-side-panel";
+import { useSidePanel } from "@/lib/side-panel-context";
+import { SidePanel } from "./side-panel";
 
 type ChatLayoutProps = {
   children: ReactNode;
 };
 
 export const ChatLayout: FC<ChatLayoutProps> = ({ children }) => {
-  const { isOpen } = useArtifact();
+  const { isOpen } = useSidePanel();
 
   if (!isOpen) {
     return <>{children}</>;
@@ -27,7 +27,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ children }) => {
       </ResizablePanel>
       <ResizableHandle withHandle />
       <ResizablePanel defaultSize={50} minSize={30}>
-        <ArtifactSidePanel />
+        <SidePanel />
       </ResizablePanel>
     </ResizablePanelGroup>
   );
