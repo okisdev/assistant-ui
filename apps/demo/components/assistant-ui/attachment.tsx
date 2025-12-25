@@ -4,14 +4,10 @@ import { PropsWithChildren, useEffect, useState, type FC } from "react";
 import Image from "next/image";
 import {
   XIcon,
-  PlusIcon,
   FileText,
   LoaderIcon,
   AlertCircleIcon,
   Eye,
-  FileCode,
-  File,
-  Image as ImageIcon,
 } from "lucide-react";
 import {
   AttachmentPrimitive,
@@ -32,9 +28,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
-import { useModelSelection } from "@/contexts/model-selection-provider";
-import { useSidePanel } from "@/lib/side-panel-context";
+import { useSidePanel } from "@/contexts/side-panel-provider";
+import { getFileIcon, getFileTypeLabel } from "@/utils/file";
 import { cn } from "@/lib/utils";
 
 const useFileSrc = (file: File | undefined) => {
@@ -78,42 +73,6 @@ type AttachmentPreviewProps = {
   src: string;
 };
 
-const getFileIcon = (mimeType: string) => {
-  if (mimeType === "application/pdf") {
-    return <FileText className="size-4 text-muted-foreground" />;
-  }
-  if (mimeType.startsWith("image/")) {
-    return <ImageIcon className="size-4 text-muted-foreground" />;
-  }
-  if (
-    mimeType.startsWith("text/") ||
-    mimeType === "application/json" ||
-    mimeType === "application/xml"
-  ) {
-    return <FileCode className="size-4 text-muted-foreground" />;
-  }
-  return <File className="size-4 text-muted-foreground" />;
-};
-
-const getFileTypeLabel = (mimeType: string): string => {
-  if (mimeType === "application/pdf") return "PDF";
-  if (mimeType.startsWith("image/")) {
-    const subtype = mimeType.split("/")[1]?.toUpperCase();
-    return subtype || "Image";
-  }
-  if (mimeType.startsWith("text/")) {
-    const subtype = mimeType.split("/")[1];
-    if (subtype === "plain") return "TXT";
-    if (subtype === "markdown") return "MD";
-    if (subtype === "csv") return "CSV";
-    if (subtype === "html") return "HTML";
-    return subtype?.toUpperCase() || "Text";
-  }
-  if (mimeType === "application/json") return "JSON";
-  if (mimeType === "application/xml") return "XML";
-  return "";
-};
-
 const AttachmentPreview: FC<AttachmentPreviewProps> = ({ src }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   return (
@@ -140,18 +99,15 @@ const AttachmentPreviewDialog: FC<PropsWithChildren> = ({ children }) => {
 
   return (
     <Dialog>
-      <DialogTrigger
-        className="cursor-pointer transition-colors hover:bg-accent"
-        asChild
-      >
+      <DialogTrigger className="cursor-pointer" asChild>
         {children}
       </DialogTrigger>
       <DialogContent
-        className="p-2 sm:max-w-3xl [&>button]:rounded-full [&>button]:bg-foreground/60 [&>button]:p-1 [&>button]:opacity-100 [&>button]:ring-0! [&_svg]:text-background [&>button]:hover:[&_svg]:text-destructive"
+        className="rounded-2xl p-2 sm:max-w-3xl [&>button]:rounded-full [&>button]:bg-foreground/60 [&>button]:p-1.5 [&>button]:opacity-100 [&>button]:ring-0! [&_svg]:text-background [&>button]:hover:[&_svg]:text-destructive"
         showCloseButton
       >
         <DialogTitle className="sr-only">Image Attachment Preview</DialogTitle>
-        <div className="relative mx-auto flex max-h-[80dvh] w-full items-center justify-center overflow-hidden bg-background">
+        <div className="relative mx-auto flex max-h-[80dvh] w-full items-center justify-center overflow-hidden rounded-xl bg-background">
           <AttachmentPreview src={src} />
         </div>
       </DialogContent>
@@ -166,14 +122,17 @@ const AttachmentThumb: FC = () => {
   const src = useAttachmentSrc();
 
   return (
-    <Avatar className="h-full w-full rounded-none">
+    <Avatar className="size-full rounded-none">
       <AvatarImage
         src={src}
         alt="Attachment preview"
         className="object-cover"
       />
-      <AvatarFallback delayMs={isImage ? 200 : 0}>
-        <FileText className="size-8 text-muted-foreground" />
+      <AvatarFallback
+        delayMs={isImage ? 200 : 0}
+        className="rounded-none bg-transparent"
+      >
+        <FileText className="size-6 text-muted-foreground" />
       </AvatarFallback>
     </Avatar>
   );
@@ -184,16 +143,16 @@ const AttachmentStatusOverlay: FC = () => {
 
   if (status.type === "running") {
     return (
-      <div className="absolute inset-0 flex items-center justify-center rounded-[14px] bg-background/80">
-        <LoaderIcon className="size-5 animate-spin text-muted-foreground" />
+      <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+        <LoaderIcon className="size-4 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   if (status.type === "incomplete" && status.reason === "error") {
     return (
-      <div className="absolute inset-0 flex items-center justify-center rounded-[14px] bg-destructive/20">
-        <AlertCircleIcon className="size-5 text-destructive" />
+      <div className="absolute inset-0 flex items-center justify-center bg-destructive/10">
+        <AlertCircleIcon className="size-4 text-destructive" />
       </div>
     );
   }
@@ -238,21 +197,33 @@ const FileAttachmentCard: FC = () => {
     <button
       type="button"
       onClick={handleClick}
-      className="flex items-center gap-2.5 rounded-lg bg-muted/50 px-3 py-2 text-left transition-colors hover:bg-muted"
+      className="flex items-center gap-3 rounded-xl bg-muted/50 px-3.5 py-2.5 text-left transition-colors hover:bg-muted"
     >
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted/50">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background/80">
         {getFileIcon(attachmentContentType ?? "")}
       </div>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-sm">{attachmentName}</span>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="truncate text-[13px]">{attachmentName}</span>
         {fileTypeLabel && (
           <span className="text-muted-foreground text-xs">{fileTypeLabel}</span>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
-        <Eye className="size-3.5" />
-      </div>
+      <Eye className="size-4 shrink-0 text-muted-foreground" />
     </button>
+  );
+};
+
+const AttachmentRemove: FC = () => {
+  return (
+    <AttachmentPrimitive.Remove asChild>
+      <button
+        type="button"
+        className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-foreground text-background shadow-sm transition-colors hover:bg-foreground/80"
+        aria-label="Remove attachment"
+      >
+        <XIcon className="size-3" />
+      </button>
+    </AttachmentPrimitive.Remove>
   );
 };
 
@@ -293,19 +264,19 @@ const AttachmentUI: FC = () => {
       <AttachmentPrimitive.Root
         className={cn(
           "relative",
-          isImage && "only-[&>#attachment-tile]:size-24",
+          isImage && "only-[&>#attachment-tile]:size-20",
         )}
       >
         <AttachmentPreviewDialog>
           <TooltipTrigger asChild>
             <div
-              className={cn(
-                "relative size-14 cursor-pointer overflow-hidden rounded-[14px] bg-muted/50 transition-opacity hover:opacity-75",
-                isComposer && "border-foreground/10",
-              )}
-              role="button"
               id="attachment-tile"
+              role="button"
               aria-label={`${typeLabel} attachment`}
+              className={cn(
+                "relative size-12 cursor-pointer overflow-hidden rounded-xl bg-muted/50 transition-opacity hover:opacity-80",
+                isComposer && "ring-1 ring-foreground/5",
+              )}
             >
               <AttachmentThumb />
               {isComposer && <AttachmentStatusOverlay />}
@@ -314,24 +285,10 @@ const AttachmentUI: FC = () => {
         </AttachmentPreviewDialog>
         {isComposer && <AttachmentRemove />}
       </AttachmentPrimitive.Root>
-      <TooltipContent side="top">
+      <TooltipContent side="top" className="rounded-lg">
         <AttachmentPrimitive.Name />
       </TooltipContent>
     </Tooltip>
-  );
-};
-
-const AttachmentRemove: FC = () => {
-  return (
-    <AttachmentPrimitive.Remove asChild>
-      <TooltipIconButton
-        tooltip="Remove file"
-        className="absolute top-1.5 right-1.5 size-4 rounded-full bg-foreground/80 text-background opacity-100 shadow-sm hover:bg-foreground! [&_svg]:size-3"
-        side="top"
-      >
-        <XIcon />
-      </TooltipIconButton>
-    </AttachmentPrimitive.Remove>
   );
 };
 
@@ -345,44 +302,10 @@ export const UserMessageAttachments: FC = () => {
 
 export const ComposerAttachments: FC = () => {
   return (
-    <div className="flex w-full flex-row items-center gap-2 overflow-x-auto px-1 pt-0.5 pb-1 empty:hidden">
+    <div className="flex w-full flex-row items-center gap-3 pb-2 empty:hidden">
       <ComposerPrimitive.Attachments
         components={{ Attachment: AttachmentUI }}
       />
     </div>
-  );
-};
-
-export const ComposerAddAttachment: FC = () => {
-  const { model } = useModelSelection();
-  const supportsAttachments = model.capabilities.includes("image");
-
-  if (!supportsAttachments) {
-    return (
-      <TooltipIconButton
-        tooltip="Attachments not supported by this model"
-        side="top"
-        variant="ghost"
-        className="size-9 cursor-not-allowed rounded-full text-muted-foreground/50"
-        aria-label="Attachments not supported"
-        disabled
-      >
-        <PlusIcon className="size-5" />
-      </TooltipIconButton>
-    );
-  }
-
-  return (
-    <ComposerPrimitive.AddAttachment asChild>
-      <TooltipIconButton
-        tooltip="Add Attachment"
-        side="top"
-        variant="ghost"
-        className="size-9 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-        aria-label="Add Attachment"
-      >
-        <PlusIcon className="size-5" />
-      </TooltipIconButton>
-    </ComposerPrimitive.AddAttachment>
   );
 };

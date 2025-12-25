@@ -6,6 +6,22 @@ import type {
 } from "@assistant-ui/react";
 import { generateId } from "ai";
 
+type ExistingAttachmentMeta = {
+  url: string;
+  name: string;
+  contentType: string;
+};
+
+const EXISTING_ATTACHMENT_META = "__existingAttachmentMeta";
+
+export const createExistingAttachmentFile = (meta: ExistingAttachmentMeta) => {
+  const file = new File([], meta.name, { type: meta.contentType });
+  (file as File & { [EXISTING_ATTACHMENT_META]: ExistingAttachmentMeta })[
+    EXISTING_ATTACHMENT_META
+  ] = meta;
+  return file;
+};
+
 export class BlobAttachmentAdapter implements AttachmentAdapter {
   public accept =
     "image/*, text/plain, text/html, text/markdown, text/csv, application/pdf";
@@ -19,6 +35,23 @@ export class BlobAttachmentAdapter implements AttachmentAdapter {
   }): AsyncGenerator<PendingAttachment, void> {
     const id = generateId();
     const type = file.type.startsWith("image/") ? "image" : "file";
+
+    const existingMeta = (
+      file as File & { [EXISTING_ATTACHMENT_META]?: ExistingAttachmentMeta }
+    )[EXISTING_ATTACHMENT_META];
+
+    if (existingMeta) {
+      this.uploadedUrls.set(id, existingMeta.url);
+      yield {
+        id,
+        type,
+        name: existingMeta.name,
+        contentType: existingMeta.contentType,
+        file,
+        status: { type: "requires-action", reason: "composer-send" },
+      };
+      return;
+    }
 
     let attachment: PendingAttachment = {
       id,

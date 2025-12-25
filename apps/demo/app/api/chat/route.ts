@@ -15,6 +15,7 @@ import { createArtifactTool } from "@/lib/ai/tools/create-artifact";
 import { generateImageTool } from "@/lib/ai/tools/generate-image";
 import { DEFAULT_CAPABILITIES } from "@/lib/ai/capabilities";
 import { recordUsage } from "@/lib/ai/usage";
+import type { ComposerMode } from "@/contexts/composer-mode-provider";
 
 export const maxDuration = 300;
 
@@ -24,6 +25,7 @@ export async function POST(req: Request) {
     id,
     model: requestModel,
     reasoningEnabled = true,
+    composerMode = "default" as ComposerMode,
   } = await req.json();
 
   let userContext: UserContext | null = null;
@@ -92,7 +94,10 @@ export async function POST(req: Request) {
     tools.create_artifact = createArtifactTool;
   }
 
-  if (capabilities.tools.imageGeneration) {
+  if (
+    capabilities.tools.imageGeneration ||
+    composerMode === "image-generation"
+  ) {
     tools.generate_image = generateImageTool;
   }
 
@@ -107,6 +112,10 @@ export async function POST(req: Request) {
     messages: convertToModelMessages(messages),
     system: systemPrompt || undefined,
     tools,
+    toolChoice:
+      composerMode === "image-generation"
+        ? { type: "tool", toolName: "generate_image" }
+        : undefined,
     stopWhen: stepCountIs(5),
     providerOptions,
     onFinish: async ({ usage, finishReason }) => {

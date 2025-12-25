@@ -30,6 +30,25 @@ export const attachmentRouter = createTRPCRouter({
       return { id: input.id };
     }),
 
+  recent: protectedProcedure
+    .input(z.object({ limit: z.number().min(1).max(10).default(3) }).optional())
+    .query(async ({ ctx, input }) => {
+      const limit = input?.limit ?? 3;
+      return ctx.db
+        .select({
+          id: attachment.id,
+          url: attachment.url,
+          pathname: attachment.pathname,
+          contentType: attachment.contentType,
+          size: attachment.size,
+          createdAt: attachment.createdAt,
+        })
+        .from(attachment)
+        .where(eq(attachment.userId, ctx.session.user.id))
+        .orderBy(desc(attachment.createdAt))
+        .limit(limit);
+    }),
+
   getStorageUsage: protectedProcedure.query(async ({ ctx }) => {
     // Get total attachment size
     const attachmentResult = await ctx.db

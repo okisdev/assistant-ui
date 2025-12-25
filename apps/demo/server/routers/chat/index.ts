@@ -92,6 +92,7 @@ export const chatRouter = createTRPCRouter({
         title: z.string().optional(),
         status: z.enum(["regular", "archived"]).optional(),
         model: activeModelIdSchema.nullable().optional(),
+        projectId: z.string().nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

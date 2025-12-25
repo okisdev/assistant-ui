@@ -62,7 +62,7 @@ export function ImageGenerationSection() {
             <div className="flex flex-col gap-0.5">
               <Label className="font-medium text-sm">Default model</Label>
               <p className="text-muted-foreground text-xs">
-                Select the default image generation model
+                Select the default image generation
               </p>
             </div>
             <Select

@@ -33,9 +33,12 @@ import {
   CapabilitiesProvider,
   useCapabilities,
 } from "@/contexts/capabilities-provider";
-import { ArtifactToolUI } from "@/components/assistant-ui/artifact-tool-ui";
+import { ArtifactToolUI } from "@/components/assistant-ui/artifact";
 import { ImageToolUI } from "@/components/assistant-ui/image-tool-ui";
-import { SidePanelProvider, useSidePanel } from "@/lib/side-panel-context";
+import {
+  SidePanelProvider,
+  useSidePanel,
+} from "@/contexts/side-panel-provider";
 import { ChatLayout } from "@/components/assistant-ui/chat-layout";
 import { ChatContent } from "@/components/app/chat/chat-content";
 import { ProjectContext, type ProjectContextValue } from "@/hooks/use-project";
@@ -45,6 +48,7 @@ import {
   useIncognito,
   useIncognitoOptional,
 } from "@/contexts/incognito-provider";
+import { ComposerModeProvider } from "@/contexts/composer-mode-provider";
 
 function HistoryProvider({ children }: { children?: ReactNode }) {
   const threadListItem = useAssistantState(
@@ -406,9 +410,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       <ChatPageProvider>
         <IncognitoProvider>
           <SidePanelProvider>
-            <ChatProviderInner projectId={currentProjectId}>
-              {children}
-            </ChatProviderInner>
+            <ComposerModeProvider>
+              <ChatProviderInner projectId={currentProjectId}>
+                {children}
+              </ChatProviderInner>
+            </ComposerModeProvider>
           </SidePanelProvider>
         </IncognitoProvider>
       </ChatPageProvider>

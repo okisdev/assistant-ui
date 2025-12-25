@@ -20,6 +20,8 @@ type TextPart = {
 type ToolCallPart = {
   type: "tool-call";
   toolName?: string;
+  toolCallId?: string;
+  result?: unknown;
 };
 
 type FilePart = {
@@ -142,7 +144,7 @@ export const SharedSingleMessage: FC<SharedSingleMessageProps> = ({
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-8 py-6">
+    <div className="mx-auto w-full max-w-3xl px-6 py-8">
       <div
         className="fade-in slide-in-from-bottom-2 animate-in py-4 duration-300"
         data-role="assistant"
@@ -192,7 +194,7 @@ export const SharedThread: FC<SharedThreadProps> = ({ messages }) => {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-8 py-6">
+    <div className="mx-auto w-full max-w-3xl px-6 py-8">
       {currentPath.map((node) => {
         const role = getMessageRole(node);
         const parentId = node.parentId;
@@ -258,23 +260,23 @@ const BranchPicker: FC<BranchPickerProps> = ({
   onNext,
 }) => {
   return (
-    <div className="inline-flex items-center text-muted-foreground text-xs">
+    <div className="inline-flex items-center gap-0.5 rounded-full bg-muted/50 px-1 text-muted-foreground">
       <Button
         variant="ghost"
-        size="icon-sm"
-        className="size-6"
+        size="icon"
+        className="size-6 rounded-full hover:bg-muted"
         onClick={onPrev}
         disabled={currentIndex === 0}
       >
         <ChevronLeftIcon className="size-3.5" />
       </Button>
-      <span className="min-w-[3ch] text-center font-medium">
-        {currentIndex + 1} / {totalBranches}
+      <span className="min-w-[3ch] text-center text-xs tabular-nums">
+        {currentIndex + 1}/{totalBranches}
       </span>
       <Button
         variant="ghost"
-        size="icon-sm"
-        className="size-6"
+        size="icon"
+        className="size-6 rounded-full hover:bg-muted"
         onClick={onNext}
         disabled={currentIndex === totalBranches - 1}
       >
@@ -294,7 +296,7 @@ const AssistantMessage: FC<MessageProps> = ({ message, branchPicker }) => {
 
   return (
     <div
-      className="fade-in slide-in-from-bottom-2 animate-in py-4 duration-300"
+      className="fade-in slide-in-from-bottom-2 animate-in duration-300"
       data-role="assistant"
     >
       <div className="group/assistant relative">
@@ -305,7 +307,7 @@ const AssistantMessage: FC<MessageProps> = ({ message, branchPicker }) => {
         </div>
 
         {branchPicker && (
-          <div className="mt-1 flex items-center opacity-0 transition-opacity group-hover/assistant:opacity-100">
+          <div className="mt-2 flex items-center opacity-0 transition-opacity group-hover/assistant:opacity-100">
             {branchPicker}
           </div>
         )}
@@ -321,11 +323,11 @@ const UserMessage: FC<MessageProps> = ({ message, branchPicker }) => {
 
   return (
     <div
-      className="fade-in slide-in-from-bottom-2 flex animate-in flex-col items-end gap-2 py-4 duration-300"
+      className="fade-in slide-in-from-bottom-2 flex animate-in flex-col items-end gap-2.5 py-1 duration-300"
       data-role="user"
     >
       {fileParts.length > 0 && (
-        <div className="flex max-w-[85%] flex-wrap justify-end gap-2">
+        <div className="flex max-w-[85%] flex-wrap justify-end gap-2.5">
           {fileParts.map((part, index) => (
             <UserAttachment key={index} part={part as FilePart} />
           ))}
@@ -333,13 +335,13 @@ const UserMessage: FC<MessageProps> = ({ message, branchPicker }) => {
       )}
       {textParts.length > 0 && (
         <div className="group/user relative max-w-[85%]">
-          <div className="rounded-2xl bg-muted px-4 py-2.5 text-foreground">
+          <div className="rounded-2xl bg-muted/50 px-4 py-3 text-foreground">
             {textParts.map((part, index) => (
               <MessagePartRenderer key={index} part={part} />
             ))}
           </div>
           {branchPicker && (
-            <div className="mt-1 flex justify-end opacity-0 transition-opacity group-hover/user:opacity-100">
+            <div className="mt-2 flex justify-end opacity-0 transition-opacity group-hover/user:opacity-100">
               {branchPicker}
             </div>
           )}
@@ -349,40 +351,51 @@ const UserMessage: FC<MessageProps> = ({ message, branchPicker }) => {
   );
 };
 
+const ImagePreviewDialog: FC<{
+  src: string;
+  alt: string;
+  children: ReactNode;
+}> = ({ src, alt, children }) => {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent
+        className="rounded-2xl p-2 sm:max-w-3xl [&>button]:rounded-full [&>button]:bg-foreground/60 [&>button]:p-1.5 [&>button]:opacity-100 [&>button]:ring-0! [&_svg]:text-background [&>button]:hover:[&_svg]:text-destructive"
+        showCloseButton
+      >
+        <DialogTitle className="sr-only">{alt}</DialogTitle>
+        <div className="relative mx-auto flex max-h-[80dvh] w-full items-center justify-center overflow-hidden rounded-xl bg-background">
+          <img
+            src={src}
+            alt={alt}
+            className="block h-auto max-h-[80vh] w-auto max-w-full object-contain"
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const UserAttachment: FC<{ part: FilePart }> = ({ part }) => {
   const isImage = part.mediaType?.startsWith("image/");
 
   if (isImage) {
     return (
-      <Dialog>
-        <DialogTrigger asChild>
-          <button
-            type="button"
-            className="cursor-pointer overflow-hidden rounded-lg transition-opacity hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-          >
-            <img
-              src={part.url}
-              alt={part.filename ?? "Attached image"}
-              className="max-h-48 max-w-48 rounded-lg object-cover"
-            />
-          </button>
-        </DialogTrigger>
-        <DialogContent
-          className="p-2 sm:max-w-3xl [&>button]:rounded-full [&>button]:bg-foreground/60 [&>button]:p-1 [&>button]:opacity-100 [&>button]:ring-0! [&_svg]:text-background [&>button]:hover:[&_svg]:text-destructive"
-          showCloseButton
+      <ImagePreviewDialog
+        src={part.url}
+        alt={part.filename ?? "Attached image"}
+      >
+        <button
+          type="button"
+          className="cursor-pointer overflow-hidden rounded-xl transition-opacity hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <DialogTitle className="sr-only">
-            {part.filename ?? "Image preview"}
-          </DialogTitle>
-          <div className="relative mx-auto flex max-h-[80dvh] w-full items-center justify-center overflow-hidden bg-background">
-            <img
-              src={part.url}
-              alt={part.filename ?? "Attached image"}
-              className="block h-auto max-h-[80vh] w-auto max-w-full object-contain"
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
+          <img
+            src={part.url}
+            alt={part.filename ?? "Attached image"}
+            className="max-h-40 max-w-40 rounded-xl object-cover"
+          />
+        </button>
+      </ImagePreviewDialog>
     );
   }
 
@@ -391,9 +404,11 @@ const UserAttachment: FC<{ part: FilePart }> = ({ part }) => {
       href={part.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm transition-colors hover:bg-muted"
+      className="inline-flex items-center gap-3 rounded-xl bg-muted/50 px-3.5 py-2.5 text-[13px] transition-colors hover:bg-muted"
     >
-      <FileIcon className="size-4 text-muted-foreground" />
+      <div className="flex size-8 items-center justify-center rounded-lg bg-background/80">
+        <FileIcon className="size-4 text-muted-foreground" />
+      </div>
       <span className="font-medium">{part.filename ?? "Attached file"}</span>
     </a>
   );
@@ -405,10 +420,44 @@ const MessagePartRenderer: FC<{ part: MessagePart }> = ({ part }) => {
   }
 
   if (part.type === "tool-call" && "toolName" in part) {
+    const toolCallPart = part as ToolCallPart;
+
+    if (toolCallPart.toolName === "generate_image" && toolCallPart.result) {
+      const result = toolCallPart.result as {
+        url?: string;
+        prompt?: string;
+      };
+      if (result.url) {
+        return (
+          <div className="my-3">
+            <ImagePreviewDialog
+              src={result.url}
+              alt={result.prompt ?? "Generated image"}
+            >
+              <button
+                type="button"
+                className="cursor-pointer overflow-hidden rounded-xl transition-opacity hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <img
+                  src={result.url}
+                  alt={result.prompt ?? "Generated image"}
+                  className="max-h-72 rounded-xl object-contain"
+                />
+              </button>
+            </ImagePreviewDialog>
+            {result.prompt && (
+              <p className="mt-2.5 line-clamp-2 text-muted-foreground text-xs">
+                {result.prompt}
+              </p>
+            )}
+          </div>
+        );
+      }
+    }
+
     return (
-      <div className="my-2 rounded-md bg-muted/50 p-3 text-muted-foreground text-sm">
-        <span className="font-medium">Tool call:</span>{" "}
-        {(part as ToolCallPart).toolName}
+      <div className="my-3 rounded-xl bg-muted/50 px-4 py-3 text-[13px] text-muted-foreground">
+        <span className="font-medium">Tool call:</span> {toolCallPart.toolName}
       </div>
     );
   }
@@ -419,50 +468,40 @@ const MessagePartRenderer: FC<{ part: MessagePart }> = ({ part }) => {
 
     if (isImage) {
       return (
-        <div className="my-2">
-          <Dialog>
-            <DialogTrigger asChild>
-              <button
-                type="button"
-                className="cursor-pointer overflow-hidden rounded-lg transition-opacity hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              >
-                <img
-                  src={filePart.url}
-                  alt={filePart.filename ?? "Attached image"}
-                  className="max-h-64 rounded-lg object-contain"
-                />
-              </button>
-            </DialogTrigger>
-            <DialogContent
-              className="p-2 sm:max-w-3xl [&>button]:rounded-full [&>button]:bg-foreground/60 [&>button]:p-1 [&>button]:opacity-100 [&>button]:ring-0! [&_svg]:text-background [&>button]:hover:[&_svg]:text-destructive"
-              showCloseButton
+        <div className="my-3">
+          <ImagePreviewDialog
+            src={filePart.url}
+            alt={filePart.filename ?? "Attached image"}
+          >
+            <button
+              type="button"
+              className="cursor-pointer overflow-hidden rounded-xl transition-opacity hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <DialogTitle className="sr-only">
-                {filePart.filename ?? "Image preview"}
-              </DialogTitle>
-              <div className="relative mx-auto flex max-h-[80dvh] w-full items-center justify-center overflow-hidden bg-background">
-                <img
-                  src={filePart.url}
-                  alt={filePart.filename ?? "Attached image"}
-                  className="block h-auto max-h-[80vh] w-auto max-w-full object-contain"
-                />
-              </div>
-            </DialogContent>
-          </Dialog>
+              <img
+                src={filePart.url}
+                alt={filePart.filename ?? "Attached image"}
+                className="max-h-72 rounded-xl object-contain"
+              />
+            </button>
+          </ImagePreviewDialog>
         </div>
       );
     }
 
     return (
-      <div className="my-2 inline-flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm">
-        <FileIcon className="size-4 text-muted-foreground" />
+      <div className="my-3">
         <a
           href={filePart.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-medium text-foreground hover:underline"
+          className="inline-flex items-center gap-3 rounded-xl bg-muted/50 px-3.5 py-2.5 text-[13px] transition-colors hover:bg-muted"
         >
-          {filePart.filename ?? "Attached file"}
+          <div className="flex size-8 items-center justify-center rounded-lg bg-background/80">
+            <FileIcon className="size-4 text-muted-foreground" />
+          </div>
+          <span className="font-medium text-foreground">
+            {filePart.filename ?? "Attached file"}
+          </span>
         </a>
       </div>
     );
@@ -482,16 +521,16 @@ const SimpleMarkdown: FC<{ text: string }> = ({ text }) => {
           if (match) {
             const [, language, code] = match;
             return (
-              <div key={index} className="my-3">
+              <div key={index} className="my-4 overflow-hidden rounded-xl">
                 {language && (
-                  <div className="rounded-t-lg bg-muted px-4 py-2 text-muted-foreground text-sm">
+                  <div className="bg-muted px-4 py-2.5 text-[13px] text-muted-foreground">
                     {language}
                   </div>
                 )}
                 <pre
                   className={cn(
-                    "overflow-x-auto bg-[#1e1e1e] p-4 text-sm text-white",
-                    language ? "rounded-b-lg" : "rounded-lg",
+                    "overflow-x-auto bg-[#1e1e1e] p-4 text-[13px] text-white leading-relaxed",
+                    !language && "rounded-xl",
                   )}
                 >
                   <code>{code?.trim()}</code>
@@ -516,9 +555,9 @@ function HeaderTag({
 }) {
   const className = cn(
     level === 1 && "mb-4 font-semibold text-2xl tracking-tight",
-    level === 2 && "mt-6 mb-3 font-semibold text-xl tracking-tight first:mt-0",
-    level === 3 && "mt-4 mb-2 font-semibold text-lg tracking-tight first:mt-0",
-    level >= 4 && "mt-4 mb-2 font-medium first:mt-0",
+    level === 2 && "mt-8 mb-4 font-semibold text-xl tracking-tight first:mt-0",
+    level === 3 && "mt-6 mb-3 font-semibold text-lg tracking-tight first:mt-0",
+    level >= 4 && "mt-5 mb-2 font-medium first:mt-0",
   );
 
   switch (level) {
@@ -562,7 +601,7 @@ const TextBlock: FC<{ text: string }> = ({ text }) => {
         if (trimmed.match(/^[-*]\s/m)) {
           const items = trimmed.split(/\n/).filter((line) => line.trim());
           return (
-            <ul key={pIndex} className="my-3 ml-6 list-disc [&>li]:mt-1">
+            <ul key={pIndex} className="my-4 ml-6 list-disc [&>li]:mt-1.5">
               {items.map((item, iIndex) => (
                 <li key={iIndex}>
                   <InlineText text={item.replace(/^[-*]\s+/, "")} />
@@ -575,7 +614,7 @@ const TextBlock: FC<{ text: string }> = ({ text }) => {
         if (trimmed.match(/^\d+\.\s/m)) {
           const items = trimmed.split(/\n/).filter((line) => line.trim());
           return (
-            <ol key={pIndex} className="my-3 ml-6 list-decimal [&>li]:mt-1">
+            <ol key={pIndex} className="my-4 ml-6 list-decimal [&>li]:mt-1.5">
               {items.map((item, iIndex) => (
                 <li key={iIndex}>
                   <InlineText text={item.replace(/^\d+\.\s+/, "")} />
@@ -586,7 +625,7 @@ const TextBlock: FC<{ text: string }> = ({ text }) => {
         }
 
         return (
-          <p key={pIndex} className="my-3 leading-7 first:mt-0 last:mb-0">
+          <p key={pIndex} className="my-4 leading-7 first:mt-0 last:mb-0">
             <InlineText text={trimmed} />
           </p>
         );
@@ -609,7 +648,7 @@ const InlineText: FC<{ text: string }> = ({ text }) => {
       parts.push(
         <code
           key={key++}
-          className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm"
+          className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[13px]"
         >
           {codeMatch[1]}
         </code>,
@@ -647,7 +686,7 @@ const InlineText: FC<{ text: string }> = ({ text }) => {
         <a
           key={key++}
           href={linkMatch[2]}
-          className="font-medium text-foreground underline underline-offset-4"
+          className="font-medium text-foreground underline underline-offset-4 transition-colors hover:text-foreground/80"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -664,6 +703,27 @@ const InlineText: FC<{ text: string }> = ({ text }) => {
 
   return <>{parts}</>;
 };
+
+type AISDKToolPart = {
+  type: string;
+  toolCallId?: string;
+  state?:
+    | "input-streaming"
+    | "input-available"
+    | "output-available"
+    | "output-error";
+  input?: unknown;
+  output?: unknown;
+  errorText?: string;
+};
+
+function isAISDKToolPart(part: unknown): part is AISDKToolPart {
+  if (typeof part !== "object" || part === null || !("type" in part)) {
+    return false;
+  }
+  const p = part as { type: string };
+  return p.type.startsWith("tool-") || p.type === "dynamic-tool";
+}
 
 function parseContent(message: SharedMessage): MessageContent {
   const content = message.content;
@@ -684,10 +744,29 @@ function parseContent(message: SharedMessage): MessageContent {
           return true;
         })
         .map((part) => {
-          if (typeof part === "object" && part && "type" in part) {
-            return part as MessagePart;
+          if (typeof part !== "object" || part === null || !("type" in part)) {
+            return { type: "unknown" };
           }
-          return { type: "unknown" };
+
+          if (isAISDKToolPart(part)) {
+            const p = part as AISDKToolPart;
+            const toolName =
+              p.type === "dynamic-tool"
+                ? ((part as { toolName?: string }).toolName ?? "unknown")
+                : p.type.replace("tool-", "");
+
+            const result =
+              p.state === "output-available" ? p.output : undefined;
+
+            return {
+              type: "tool-call",
+              toolName,
+              toolCallId: p.toolCallId,
+              result,
+            } as ToolCallPart;
+          }
+
+          return part as MessagePart;
         });
     }
   }

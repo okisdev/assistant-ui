@@ -2,12 +2,15 @@ import { AssistantChatTransport } from "@assistant-ui/react-ai-sdk";
 import type { AssistantRuntime } from "@assistant-ui/react";
 import type { HttpChatTransportInitOptions, UIMessage } from "ai";
 import type { MessageTiming } from "@/lib/types/timing";
+import type { ComposerMode } from "@/contexts/composer-mode-provider";
 
 export class ModelChatTransport<
   UI_MESSAGE extends UIMessage = UIMessage,
 > extends AssistantChatTransport<UI_MESSAGE> {
   private runtimeRef: AssistantRuntime | undefined;
   private _reasoningEnabled = true;
+  private _composerMode: ComposerMode = "default";
+  private _onComposerModeReset: (() => void) | null = null;
   private _timings: Record<string, MessageTiming> = {};
   private _timingListeners: Set<() => void> = new Set();
 
@@ -25,9 +28,15 @@ export class ModelChatTransport<
           body: {
             model: context?.config?.modelName,
             reasoningEnabled: this._reasoningEnabled,
+            composerMode: this._composerMode,
             ...options?.body,
           },
         };
+
+        if (this._composerMode !== "default") {
+          this._composerMode = "default";
+          this._onComposerModeReset?.();
+        }
         const preparedRequest =
           await initOptions?.prepareSendMessagesRequest?.(optionsEx);
 
@@ -52,6 +61,18 @@ export class ModelChatTransport<
 
   set reasoningEnabled(value: boolean) {
     this._reasoningEnabled = value;
+  }
+
+  get composerMode(): ComposerMode {
+    return this._composerMode;
+  }
+
+  set composerMode(value: ComposerMode) {
+    this._composerMode = value;
+  }
+
+  setOnComposerModeReset(callback: (() => void) | null): void {
+    this._onComposerModeReset = callback;
   }
 
   override setRuntime(runtime: AssistantRuntime) {

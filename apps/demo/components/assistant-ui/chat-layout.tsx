@@ -6,7 +6,7 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import { useSidePanel } from "@/lib/side-panel-context";
+import { useSidePanel } from "@/contexts/side-panel-provider";
 import { SidePanel } from "./side-panel";
 
 type ChatLayoutProps = {

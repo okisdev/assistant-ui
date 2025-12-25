@@ -1,67 +1,14 @@
 "use client";
 
 import { useCallback, useState, type FC } from "react";
-import {
-  X,
-  Sparkles,
-  FileText,
-  Image as ImageIcon,
-  FileCode,
-  File,
-  Copy,
-  Check,
-  Download,
-  ExternalLink,
-} from "lucide-react";
+import { X, Sparkles, Copy, Check, Download, ExternalLink } from "lucide-react";
 import {
   useSidePanel,
   type FilePreviewContent,
-} from "@/lib/side-panel-context";
+} from "@/contexts/side-panel-provider";
 import { ArtifactRenderer } from "./artifact-renderer";
 import { FilePreviewRenderer } from "./file-preview-renderer";
-
-const formatFileSize = (bytes?: number): string => {
-  if (bytes === undefined) return "";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
-
-const getFileTypeLabel = (mimeType: string): string => {
-  if (mimeType === "application/pdf") return "PDF";
-  if (mimeType.startsWith("image/")) {
-    const subtype = mimeType.split("/")[1]?.toUpperCase();
-    return subtype || "Image";
-  }
-  if (mimeType.startsWith("text/")) {
-    const subtype = mimeType.split("/")[1];
-    if (subtype === "plain") return "Text";
-    if (subtype === "markdown") return "Markdown";
-    if (subtype === "csv") return "CSV";
-    if (subtype === "html") return "HTML";
-    return subtype?.toUpperCase() || "Text";
-  }
-  if (mimeType === "application/json") return "JSON";
-  if (mimeType === "application/xml") return "XML";
-  return mimeType.split("/")[1]?.toUpperCase() || "File";
-};
-
-const getFileIcon = (mimeType: string) => {
-  if (mimeType === "application/pdf") {
-    return <FileText className="size-4 text-muted-foreground" />;
-  }
-  if (mimeType.startsWith("image/")) {
-    return <ImageIcon className="size-4 text-muted-foreground" />;
-  }
-  if (
-    mimeType.startsWith("text/") ||
-    mimeType === "application/json" ||
-    mimeType === "application/xml"
-  ) {
-    return <FileCode className="size-4 text-muted-foreground" />;
-  }
-  return <File className="size-4 text-muted-foreground" />;
-};
+import { getFileIcon, getFileTypeLabel, formatFileSize } from "@/utils/file";
 
 type FileActionsProps = {
   content: FilePreviewContent;
