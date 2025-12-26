@@ -9,9 +9,11 @@ import {
   useIsMarkdownCodeBlock,
 } from "@assistant-ui/react-markdown";
 import remarkGfm from "remark-gfm";
-import { highlight } from "sugar-high";
-import { type FC, memo, useMemo, useState } from "react";
+import { type FC, memo, useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
+
+import { MermaidDiagram } from "./mermaid-diagram";
+import { SyntaxHighlighter } from "./shiki-syntax-highlighter";
 
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { cn } from "@/lib/utils";
@@ -76,8 +78,12 @@ function preprocessNestedCodeBlocks(text: string): string {
 const MarkdownTextImpl = () => {
   return (
     <MarkdownTextPrimitive
+      className="aui-md"
       remarkPlugins={[remarkGfm]}
       components={defaultComponents}
+      componentsByLanguage={{
+        mermaid: { SyntaxHighlighter: MermaidDiagram },
+      }}
       preprocess={preprocessNestedCodeBlocks}
     />
   );
@@ -225,29 +231,20 @@ const defaultComponents = memoizeMarkdownComponents({
   code: function Code({ className, children, ...props }) {
     const isCodeBlock = useIsMarkdownCodeBlock();
 
-    const highlighted = useMemo(() => {
-      if (!isCodeBlock || typeof children !== "string") return null;
-      try {
-        return highlight(children);
-      } catch {
-        return null;
-      }
-    }, [isCodeBlock, children]);
-
-    if (isCodeBlock && highlighted) {
+    // Code blocks are handled by SyntaxHighlighter
+    // This only handles inline code
+    if (isCodeBlock) {
       return (
-        <code
-          className={className}
-          dangerouslySetInnerHTML={{ __html: highlighted }}
-          {...props}
-        />
+        <code className={className} {...props}>
+          {children}
+        </code>
       );
     }
 
     return (
       <code
         className={cn(
-          !isCodeBlock && "rounded bg-muted px-1.5 py-0.5 font-mono text-sm",
+          "rounded bg-muted px-1.5 py-0.5 font-mono text-sm",
           className,
         )}
         {...props}
@@ -256,5 +253,6 @@ const defaultComponents = memoizeMarkdownComponents({
       </code>
     );
   },
+  SyntaxHighlighter,
   CodeHeader,
 });

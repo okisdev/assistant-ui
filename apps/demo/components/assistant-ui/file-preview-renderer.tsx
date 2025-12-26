@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FC } from "react";
-import { highlight } from "sugar-high";
+import { useEffect, useState, type FC } from "react";
 import { FileText, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FileHighlighter } from "./shiki-syntax-highlighter";
 
 type FilePreviewRendererProps = {
   url: string;
@@ -25,18 +25,19 @@ const getFileCategory = (
   return "other";
 };
 
-const getFileExtensionFromMime = (mimeType: string): string => {
+const getLanguageFromMime = (mimeType: string): string => {
   const mapping: Record<string, string> = {
-    "text/plain": "txt",
-    "text/markdown": "md",
+    "text/plain": "text",
+    "text/markdown": "markdown",
     "text/csv": "csv",
     "text/html": "html",
     "text/css": "css",
-    "text/javascript": "js",
+    "text/javascript": "javascript",
+    "text/typescript": "typescript",
     "application/json": "json",
     "application/xml": "xml",
   };
-  return mapping[mimeType] || "";
+  return mapping[mimeType] || "text";
 };
 
 export const FilePreviewRenderer: FC<FilePreviewRendererProps> = ({
@@ -47,6 +48,8 @@ export const FilePreviewRenderer: FC<FilePreviewRendererProps> = ({
   const category = getFileCategory(mimeType);
   const [textContent, setTextContent] = useState<string | null>(null);
   const [isLoadingText, setIsLoadingText] = useState(false);
+
+  const language = getLanguageFromMime(mimeType);
 
   useEffect(() => {
     if (category === "text") {
@@ -65,27 +68,6 @@ export const FilePreviewRenderer: FC<FilePreviewRendererProps> = ({
         });
     }
   }, [url, category, onTextContentLoad]);
-
-  const highlightedCode = useMemo(() => {
-    if (!textContent) return "";
-    const ext = getFileExtensionFromMime(mimeType);
-    if (
-      ["js", "ts", "tsx", "jsx", "json", "html", "css", "xml"].includes(ext)
-    ) {
-      try {
-        return highlight(textContent);
-      } catch {
-        return textContent
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;");
-      }
-    }
-    return textContent
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-  }, [textContent, mimeType]);
 
   const handleDownload = () => {
     const a = document.createElement("a");
@@ -126,12 +108,9 @@ export const FilePreviewRenderer: FC<FilePreviewRendererProps> = ({
               </div>
             </div>
           ) : textContent ? (
-            <pre className="absolute inset-0 overflow-auto bg-muted/30 p-4 font-mono text-xs">
-              <code
-                className="wrap-break-word block whitespace-pre-wrap"
-                dangerouslySetInnerHTML={{ __html: highlightedCode }}
-              />
-            </pre>
+            <div className="absolute inset-0 overflow-auto bg-muted/30 p-4 font-mono text-xs">
+              <FileHighlighter code={textContent} language={language} />
+            </div>
           ) : (
             <div className="flex h-full min-h-64 items-center justify-center p-4">
               <div className="text-center text-muted-foreground text-sm">

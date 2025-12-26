@@ -1,7 +1,7 @@
 "use client";
 
 import type { FC } from "react";
-import { BrainIcon } from "lucide-react";
+import { BrainIcon, ImageIcon } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -18,16 +18,7 @@ import { useModelSelection } from "@/contexts/model-selection-provider";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-type ModelSelectorProps = {
-  className?: string;
-  /** Whether to show the full model name or just an abbreviated version */
-  compact?: boolean;
-};
-
-export const ModelSelector: FC<ModelSelectorProps> = ({
-  className,
-  compact = false,
-}) => {
+export const ModelSelector: FC<{ className?: string }> = ({ className }) => {
   const { modelId, model, setModel, enabledModels } = useModelSelection();
   const Icon = model.icon;
 
@@ -36,46 +27,46 @@ export const ModelSelector: FC<ModelSelectorProps> = ({
       <SelectTrigger
         className={cn(
           "h-8 gap-1.5 border-none bg-transparent px-2 text-muted-foreground shadow-none hover:bg-muted/50 hover:text-foreground focus:ring-0",
-          compact && "w-auto",
           className,
         )}
         size="sm"
       >
         <SelectValue>
           <span className="flex items-center gap-1.5">
-            <Icon className="mr-3.5 size-3.5 fill-current" />
-            <span className={cn(compact && "sr-only")}>{model.name}</span>
+            <Icon className="size-3.5 fill-current" />
+            <span>{model.name}</span>
           </span>
         </SelectValue>
       </SelectTrigger>
-      <SelectContent align="start">
+      <SelectContent
+        align="start"
+        className="min-w-[260px] rounded-xl p-2 shadow-lg"
+      >
         {enabledModels.map((m) => {
           const ItemIcon = m.icon;
+          const hasVision = m.capabilities.includes("image");
+          const hasReasoning = m.capabilities.includes("reasoning");
+
           return (
-            <SelectItem key={m.id} value={m.id}>
-              <div className="flex items-center gap-2">
-                <ItemIcon className="mr-2 size-3.5 fill-current" />
-                <div className="flex flex-col">
-                  <span>{m.name}</span>
-                  {m.description && (
-                    <span className="text-muted-foreground text-xs">
-                      {m.description}
-                    </span>
-                  )}
-                </div>
-              </div>
+            <SelectItem
+              key={m.id}
+              value={m.id}
+              className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
+            >
+              <ItemIcon className="size-4 fill-current" />
+              <span className="flex-1">{m.name}</span>
+              {(hasVision || hasReasoning) && (
+                <span className="ml-auto flex items-center gap-1 text-muted-foreground">
+                  {hasVision && <ImageIcon className="size-3.5" />}
+                  {hasReasoning && <BrainIcon className="size-3.5" />}
+                </span>
+              )}
             </SelectItem>
           );
         })}
       </SelectContent>
     </Select>
   );
-};
-
-export const ModelSelectorCompact: FC<{ className?: string }> = ({
-  className,
-}) => {
-  return <ModelSelector className={className} compact />;
 };
 
 export const ReasoningToggle: FC<{ className?: string }> = ({ className }) => {

@@ -1,9 +1,10 @@
 "use client";
 
-import { type FC, memo, useCallback, useRef, useState } from "react";
+import { type FC, memo, useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDownIcon, SparklesIcon } from "lucide-react";
 import { useScrollLock } from "@assistant-ui/react";
 import { cn } from "@/lib/utils";
+import { formatTime } from "@/lib/ai/utils";
 import {
   Collapsible,
   CollapsibleContent,
@@ -24,6 +25,19 @@ const ChainOfThoughtContentImpl: FC<ChainOfThoughtContentProps> = ({
   const collapsibleRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const lockScroll = useScrollLock(collapsibleRef, ANIMATION_DURATION);
+
+  const startTimeRef = useRef<number | null>(null);
+  const [duration, setDuration] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (isStreaming && startTimeRef.current === null) {
+      startTimeRef.current = Date.now();
+      setDuration(null);
+    } else if (!isStreaming && startTimeRef.current !== null) {
+      const elapsed = Date.now() - startTimeRef.current;
+      setDuration(elapsed);
+    }
+  }, [isStreaming]);
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
@@ -66,7 +80,11 @@ const ChainOfThoughtContentImpl: FC<ChainOfThoughtContentProps> = ({
                 isStreaming && "shimmer motion-reduce:animate-none",
               )}
             >
-              {isStreaming ? "Thinking..." : "Chain of Thought"}
+              {isStreaming
+                ? "Thinking..."
+                : duration !== null
+                  ? `Thought for ${formatTime(duration)}`
+                  : "Chain of Thought"}
             </span>
           </div>
         </div>

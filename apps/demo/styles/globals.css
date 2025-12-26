@@ -6,7 +6,6 @@
 @plugin "tailwind-scrollbar";
 
 @import "./animate.css";
-@import "./sugar-high.css";
 
 @custom-variant dark (&:is(.dark *));
 

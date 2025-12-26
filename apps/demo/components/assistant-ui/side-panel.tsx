@@ -153,7 +153,7 @@ export const SidePanel: FC = () => {
         {renderHeader()}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden p-4">
+      <div className="min-h-0 flex-1 overflow-hidden px-4 pb-4">
         {content.type === "artifact" && (
           <ArtifactRenderer
             title={content.title}

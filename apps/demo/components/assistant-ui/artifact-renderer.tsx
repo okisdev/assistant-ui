@@ -1,17 +1,10 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type FC,
-} from "react";
+import { useCallback, useEffect, useRef, useState, type FC } from "react";
 import { SafeContentFrame, type RenderedFrame } from "safe-content-frame";
-import { highlight } from "sugar-high";
 import { Copy, Check, Download, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FileHighlighter } from "./shiki-syntax-highlighter";
 
 type ArtifactRendererProps = {
   title: string;
@@ -122,18 +115,7 @@ export const ArtifactRenderer: FC<ArtifactRendererProps> = ({
     URL.revokeObjectURL(url);
   }, [content, title, type]);
 
-  const highlightedCode = useMemo(() => {
-    if (!content) return "";
-    try {
-      const result = highlight(content);
-      return result || content;
-    } catch {
-      return content
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-    }
-  }, [content]);
+  const codeLanguage = type === "svg" ? "xml" : "html";
 
   const TabsComponent = (
     <div className="flex items-center gap-1 rounded-full bg-muted/50 p-0.5">
@@ -229,12 +211,9 @@ export const ArtifactRenderer: FC<ArtifactRendererProps> = ({
             <div ref={containerRef} className="h-full min-h-64 bg-white" />
           )
         ) : (
-          <pre className="absolute inset-0 overflow-auto bg-muted/30 p-4 font-mono text-xs">
-            <code
-              className="block"
-              dangerouslySetInnerHTML={{ __html: highlightedCode }}
-            />
-          </pre>
+          <div className="absolute inset-0 overflow-auto bg-muted/30 p-4 font-mono text-xs">
+            <FileHighlighter code={content} language={codeLanguage} />
+          </div>
         )}
       </div>
     </div>

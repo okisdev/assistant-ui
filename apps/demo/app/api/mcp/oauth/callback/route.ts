@@ -1,12 +1,8 @@
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
-import { eq, and } from "drizzle-orm";
 
 import { auth } from "@/lib/auth";
-import { database } from "@/lib/database";
-import { mcpServer } from "@/lib/database/schema";
-import { decrypt, encrypt } from "@/lib/crypto";
-import { exchangeCodeForTokens } from "@/lib/mcp-auth";
+import { api } from "@/utils/trpc/server";
 
 export const runtime = "nodejs";
 
@@ -51,65 +47,15 @@ export async function GET(request: NextRequest) {
     return redirectWithError(request, "Missing server ID");
   }
 
-  const [server] = await database
-    .select({
-      id: mcpServer.id,
-      oauthClientId: mcpServer.oauthClientId,
-      oauthClientSecret: mcpServer.oauthClientSecret,
-      oauthTokenUrl: mcpServer.oauthTokenUrl,
-      oauthScope: mcpServer.oauthScope,
-    })
-    .from(mcpServer)
-    .where(
-      and(eq(mcpServer.id, serverId), eq(mcpServer.userId, session.user.id)),
-    )
-    .limit(1);
-
-  if (!server) {
-    return redirectWithError(request, "MCP server not found");
-  }
-
-  if (
-    !server.oauthClientId ||
-    !server.oauthClientSecret ||
-    !server.oauthTokenUrl
-  ) {
-    return redirectWithError(request, "OAuth configuration is incomplete");
-  }
-
   const callbackUrl = new URL("/api/mcp/oauth/callback", request.url);
   const redirectUri = callbackUrl.toString();
 
   try {
-    const tokens = await exchangeCodeForTokens(
-      {
-        clientId: server.oauthClientId,
-        clientSecret: decrypt(server.oauthClientSecret),
-        authorizationUrl: "",
-        tokenUrl: server.oauthTokenUrl,
-        scope: server.oauthScope ?? undefined,
-        redirectUri,
-      },
+    await api.mcpServer.exchangeOAuthCode({
+      id: serverId,
       code,
-    );
-
-    const expiresAt = tokens.expiresIn
-      ? new Date(Date.now() + tokens.expiresIn * 1000)
-      : null;
-
-    await database
-      .update(mcpServer)
-      .set({
-        oauthAccessToken: encrypt(tokens.accessToken),
-        oauthRefreshToken: tokens.refreshToken
-          ? encrypt(tokens.refreshToken)
-          : null,
-        oauthTokenExpiresAt: expiresAt,
-        enabled: true,
-      })
-      .where(
-        and(eq(mcpServer.id, serverId), eq(mcpServer.userId, session.user.id)),
-      );
+      redirectUri,
+    });
 
     return redirectWithSuccess(request);
   } catch (err) {

@@ -3,6 +3,11 @@
 import type { FC } from "react";
 import Link from "next/link";
 import {
+  ComposerPrimitive,
+  useAssistantApi,
+  useAssistantState,
+} from "@assistant-ui/react";
+import {
   PlusIcon,
   Paperclip,
   Sparkles,
@@ -11,8 +16,12 @@ import {
   ChevronRight,
   X,
   Clock,
+  UploadIcon,
+  ArrowRight,
+  LoaderIcon,
+  MicIcon,
+  SquareIcon,
 } from "lucide-react";
-import { useAssistantState, useAssistantApi } from "@assistant-ui/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,20 +40,12 @@ import { useProject } from "@/hooks/use-project";
 import { api } from "@/utils/trpc/client";
 import { getFileIcon } from "@/utils/file";
 import { createExistingAttachmentFile } from "@/lib/adapters/blob-attachment-adapter";
+import { ComposerAttachments } from "@/components/assistant-ui/attachment";
 
 const MAX_VISIBLE_ITEMS = 3;
 
 const getFileName = (pathname: string): string =>
   pathname.split("/").pop() || pathname;
-
-// Design tokens for consistent styling
-const contentClass = "min-w-[240px] rounded-xl p-2 shadow-lg";
-const itemClass =
-  "rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50";
-const subTriggerClass =
-  "rounded-lg px-3 py-2.5 text-[13px] transition-colors data-[state=open]:bg-accent/50";
-const subContentClass = "min-w-[240px] rounded-xl p-2 shadow-lg";
-const separatorClass = "-mx-2 my-2";
 
 const RecentAttachmentsSubmenu: FC = () => {
   const assistantApi = useAssistantApi();
@@ -67,11 +68,11 @@ const RecentAttachmentsSubmenu: FC = () => {
 
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger className={subTriggerClass}>
+      <DropdownMenuSubTrigger className="rounded-lg px-3 py-2.5 text-[13px] transition-colors data-[state=open]:bg-accent/50">
         <Clock className="size-4" />
         <span>Recent</span>
       </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent className={subContentClass}>
+      <DropdownMenuSubContent className="min-w-[240px] rounded-xl p-2 shadow-lg">
         {isLoading ? (
           <div className="flex flex-col gap-1">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -92,7 +93,7 @@ const RecentAttachmentsSubmenu: FC = () => {
           recentAttachments.map((attachment) => (
             <DropdownMenuItem
               key={attachment.id}
-              className={itemClass}
+              className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
               onClick={() => handleSelectAttachment(attachment)}
             >
               {getFileIcon(attachment.contentType)}
@@ -116,11 +117,11 @@ const ProjectsSubmenu: FC = () => {
 
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger className={subTriggerClass}>
+      <DropdownMenuSubTrigger className="rounded-lg px-3 py-2.5 text-[13px] transition-colors data-[state=open]:bg-accent/50">
         <FolderOpen className="size-4" />
         <span>Project</span>
       </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent className={subContentClass}>
+      <DropdownMenuSubContent className="min-w-[240px] rounded-xl p-2 shadow-lg">
         {isLoading ? (
           <div className="flex flex-col gap-1">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -138,8 +139,11 @@ const ProjectsSubmenu: FC = () => {
             <div className="px-3 py-2.5 text-[13px] text-muted-foreground">
               No projects yet
             </div>
-            <DropdownMenuSeparator className={separatorClass} />
-            <DropdownMenuItem asChild className={itemClass}>
+            <DropdownMenuSeparator className="-mx-2 my-2" />
+            <DropdownMenuItem
+              asChild
+              className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
+            >
               <Link href="/projects">
                 <span>Create a project</span>
                 <ChevronRight className="ml-auto size-4" />
@@ -151,7 +155,7 @@ const ProjectsSubmenu: FC = () => {
             {visibleProjects.map((project) => (
               <DropdownMenuItem
                 key={project.id}
-                className={itemClass}
+                className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
                 onClick={() => setCurrentProjectId(project.id)}
               >
                 <div
@@ -166,8 +170,11 @@ const ProjectsSubmenu: FC = () => {
             ))}
             {hasMore && (
               <>
-                <DropdownMenuSeparator className={separatorClass} />
-                <DropdownMenuItem asChild className={itemClass}>
+                <DropdownMenuSeparator className="-mx-2 my-2" />
+                <DropdownMenuItem
+                  asChild
+                  className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
+                >
                   <Link href="/projects">
                     <span>View all ({projects.length})</span>
                     <ChevronRight className="ml-auto size-4" />
@@ -177,9 +184,9 @@ const ProjectsSubmenu: FC = () => {
             )}
             {currentProjectId && (
               <>
-                <DropdownMenuSeparator className={separatorClass} />
+                <DropdownMenuSeparator className="-mx-2 my-2" />
                 <DropdownMenuItem
-                  className={itemClass}
+                  className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
                   onClick={() => setCurrentProjectId(null)}
                 >
                   <X className="size-4" />
@@ -194,7 +201,7 @@ const ProjectsSubmenu: FC = () => {
   );
 };
 
-export const ComposerDropdown: FC = () => {
+const ComposerDropdown: FC = () => {
   const assistantApi = useAssistantApi();
   const { model } = useModelSelection();
   const { capabilities } = useCapabilities();
@@ -250,11 +257,15 @@ export const ComposerDropdown: FC = () => {
           <PlusIcon className="size-5" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" side="bottom" className={contentClass}>
+      <DropdownMenuContent
+        align="start"
+        side="bottom"
+        className="min-w-[240px] rounded-xl p-2 shadow-lg"
+      >
         {supportsAttachments && (
           <>
             <DropdownMenuItem
-              className={itemClass}
+              className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
               onClick={handleAddAttachment}
             >
               <Paperclip className="size-4" />
@@ -265,7 +276,7 @@ export const ComposerDropdown: FC = () => {
         )}
         {supportsImageGeneration && (
           <DropdownMenuItem
-            className={itemClass}
+            className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
             onClick={() => setMode("image-generation")}
           >
             <Sparkles className="size-4" />
@@ -275,12 +286,141 @@ export const ComposerDropdown: FC = () => {
         {isNewThread && (
           <>
             {(supportsAttachments || supportsImageGeneration) && (
-              <DropdownMenuSeparator className={separatorClass} />
+              <DropdownMenuSeparator className="-mx-2 my-2" />
             )}
             <ProjectsSubmenu />
           </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+};
+
+type ComposerActionButtonProps = {
+  isListening: boolean;
+  isSpeechSupported: boolean;
+  hasUploadingAttachments: boolean;
+  startListening: () => void;
+  stopListening: () => void;
+};
+
+const ComposerActionButton: FC<ComposerActionButtonProps> = ({
+  isListening,
+  isSpeechSupported,
+  hasUploadingAttachments,
+  startListening,
+  stopListening,
+}) => {
+  const isRunning = useAssistantState(({ thread }) => thread.isRunning);
+  const hasText = useAssistantState(
+    ({ composer }) => composer.text.trim().length > 0,
+  );
+
+  if (isListening) {
+    return (
+      <Button
+        type="button"
+        size="icon"
+        className="shrink-0 rounded-full"
+        onClick={stopListening}
+      >
+        <SquareIcon className="size-3 animate-pulse fill-current" />
+      </Button>
+    );
+  }
+
+  if (isRunning) {
+    return (
+      <ComposerPrimitive.Cancel asChild>
+        <Button size="icon" className="shrink-0 rounded-full">
+          <SquareIcon className="size-3 fill-current" />
+        </Button>
+      </ComposerPrimitive.Cancel>
+    );
+  }
+
+  if (hasUploadingAttachments) {
+    return (
+      <Button size="icon" className="shrink-0 rounded-full" disabled>
+        <LoaderIcon className="size-4 animate-spin" />
+      </Button>
+    );
+  }
+
+  if (hasText) {
+    return (
+      <ComposerPrimitive.Send asChild>
+        <Button size="icon" className="shrink-0 rounded-full">
+          <ArrowRight className="size-4" />
+        </Button>
+      </ComposerPrimitive.Send>
+    );
+  }
+
+  if (isSpeechSupported) {
+    return (
+      <Button
+        type="button"
+        size="icon"
+        className="shrink-0 rounded-full"
+        onClick={startListening}
+      >
+        <MicIcon className="size-4" />
+      </Button>
+    );
+  }
+
+  return (
+    <ComposerPrimitive.Send asChild>
+      <Button size="icon" className="shrink-0 rounded-full">
+        <ArrowRight className="size-4" />
+      </Button>
+    </ComposerPrimitive.Send>
+  );
+};
+
+type ComposerInputProps = {
+  placeholder: string;
+  isListening: boolean;
+  isSpeechSupported: boolean;
+  hasUploadingAttachments: boolean;
+  startListening: () => void;
+  stopListening: () => void;
+};
+
+export const ComposerInput: FC<ComposerInputProps> = ({
+  placeholder,
+  isListening,
+  isSpeechSupported,
+  hasUploadingAttachments,
+  startListening,
+  stopListening,
+}) => {
+  return (
+    <ComposerPrimitive.AttachmentDropzone className="group/dropzone relative flex w-full flex-col outline-none">
+      <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-accent/50 opacity-0 transition-opacity duration-200 group-data-[dragging=true]/dropzone:opacity-100">
+        <div className="flex flex-col items-center gap-2 text-accent-foreground">
+          <UploadIcon className="size-8" />
+          <span className="font-medium text-sm">Drop files here</span>
+        </div>
+      </div>
+      <ComposerAttachments />
+      <div className="flex items-end gap-3">
+        <ComposerDropdown />
+        <ComposerPrimitive.Input
+          placeholder={placeholder}
+          className="peer max-h-40 flex-1 resize-none overflow-y-auto bg-transparent py-1.5 text-base outline-none placeholder:text-muted-foreground"
+          rows={1}
+          autoFocus
+        />
+        <ComposerActionButton
+          isListening={isListening}
+          isSpeechSupported={isSpeechSupported}
+          hasUploadingAttachments={hasUploadingAttachments}
+          startListening={startListening}
+          stopListening={stopListening}
+        />
+      </div>
+    </ComposerPrimitive.AttachmentDropzone>
   );
 };

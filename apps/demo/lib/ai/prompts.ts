@@ -26,11 +26,19 @@ export const ARTIFACT_INSTRUCTIONS = `<artifact_capability>
 Use create_artifact when the user asks to create, build, or generate:
 - Websites, landing pages, or mockups
 - Interactive calculators or converters
-- Data visualizations or charts
+- Interactive data visualizations or charts (D3.js, Chart.js, etc.)
 - Simple games (tic-tac-toe, memory, etc.)
 - Form layouts or UI components
 - Countdown timers, clocks, or productivity tools
 </when_to_use>
+
+<when_not_to_use>
+Do NOT use create_artifact for:
+- Mermaid diagrams (use \`\`\`mermaid code blocks instead - they render natively)
+- Simple static diagrams that can be expressed in text/mermaid
+- Code examples or snippets (use regular code blocks)
+- Text-based content like documentation
+</when_not_to_use>
 
 <guidelines>
 <technical>

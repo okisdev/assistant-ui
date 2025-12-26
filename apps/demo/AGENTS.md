@@ -1,222 +1,166 @@
-# AGENTS.md
+# assistant-ui demo agents guide
 
 ## Project Overview
 
-This is the official demo application for [assistant-ui](https://www.assistant-ui.com), an open-source React toolkit for building AI chat experiences. The demo showcases authentication, session management, and a clean, modern UI design.
+Official demo app for [assistant-ui](https://www.assistant-ui.com) - React toolkit for AI chat experiences.
 
-## Tech Stack
+**Tech**: Next.js 16, better-auth, PostgreSQL, Drizzle ORM, tRPC, Tailwind CSS, Radix UI
 
-- **Framework**: Next.js 16 (App Router)
-- **Authentication**: better-auth with Drizzle adapter
-- **Database**: PostgreSQL with Drizzle ORM
-- **API**: tRPC for type-safe API routes
-- **UI**: Tailwind CSS, Radix UI primitives, shadcn/ui components
-- **State**: TanStack Query (React Query)
-- **Forms**: react-hook-form with Zod validation
-
-## Dev Commands
+## Setup Commands
 
 ```bash
-# Install dependencies (from monorepo root)
+# Install dependencies
 pnpm install
 
-# Start development server (from monorepo root)
-pnpm dev --filter @assistant-ui/demo
-
-# Or start all apps
-pnpm dev
+# Start dev server (from monorepo root)
+pnpm demo:dev
 
 # Database migrations
 pnpm drizzle-kit push
-
-# Type check
-pnpm tsc --noEmit
-
-# Lint
-pnpm biome check .
-
-# Lint with auto-fix
-pnpm biome check --write .
 ```
-
-Required environment variables:
-- `AUTH_SECRET` - Secret for better-auth
-- `DATABASE_URL` - PostgreSQL connection string
-- `APPLICATION_GITHUB_CLIENT_ID` - GitHub OAuth client ID
-- `APPLICATION_GITHUB_CLIENT_SECRET` - GitHub OAuth client secret
 
 ## Dev Environment Tips
 
-- This is a monorepo using pnpm workspaces and Turborepo
-- The demo app is at `apps/demo/`
-- Use `--filter @assistant-ui/demo` to target this specific package
-- Check `package.json` for the exact package name before running filtered commands
-- Shared UI components are in `components/ui/` (shadcn/ui style)
-- Feature components are organized by domain: `components/dashboard/`, `components/auth/`, etc.
+- Monorepo using pnpm workspaces + Turborepo
+- Use `--filter @assistant-ui/demo` to target this package
+- Check `package.json` for exact package name before filtered commands
+- App structure: `app/` (routes), `components/` (UI), `lib/` (utils), `server/` (tRPC)
 
-## Project Structure
-
-```
-apps/demo/
-├── app/                    # Next.js App Router pages
-│   ├── (app)/             # Main app routes (chat, share)
-│   ├── (auth)/            # Auth routes (login, forgot-password)
-│   ├── (dashboard)/       # Protected dashboard routes
-│   └── api/               # API routes (auth, tRPC)
-├── components/
-│   ├── ui/                # Base UI components (shadcn/ui)
-│   ├── home/              # Home page components
-│   ├── dashboard/         # Dashboard feature components
-│   ├── auth/              # Auth-related components
-│   ├── shared/            # Shared layout components
-│   └── assistant-ui/      # Chat UI components
-├── lib/                   # Utilities and configurations
-│   ├── ai/               # AI backend (prompts, tools, context)
-│   ├── adapters/         # Runtime adapters (transport, memory)
-│   └── database/         # Database schema and client
-├── server/                # tRPC routers and context
-├── hooks/                 # Custom React hooks
-├── contexts/              # Context providers
-└── utils/                 # Utility functions and configurations
-```
-
-## Code Style Guidelines
+## Code Style
 
 ### TypeScript
-- **NO `any` types** - Always use proper types; search for library types before defining custom ones
+- **NO `any` types** - Search for library types first
 - **NO barrel files** (`index.ts`) unless necessary
-- Use strict TypeScript mode
+- **NO unnecessary comments** - Code should be self-documenting, avoid JSDoc unless for public APIs
+- Strict mode enabled
 
 ### Components
-- Keep related code together - don't over-split into too many files
+- **Keep related code together** - 300-500 lines in one file > 5 small files with cross-dependencies
+- Don't split unless: reused elsewhere OR > 500 lines
 - Use `"use client"` only when needed (hooks, event handlers)
-- Prefer server components when possible
 
-### Imports
-- Use path aliases (`@/`) for imports
-- Group imports: external packages → internal modules → relative imports
+**Bad**:
+```typescript
+// footer.tsx
+export const ActionButton = () => { }
+// input.tsx
+import { ActionButton } from "./footer"  // Wrong place!
+```
+
+**Good**:
+```typescript
+// input.tsx (~400 lines)
+const ActionButton = () => { }
+export const Input = () => { }
+```
+
+### File Structure
+```typescript
+// Imports
+// Constants & types (local only)
+// Helpers (local only)
+// Sub-components (local only)
+// Main export
+```
 
 ### Naming
-- Components: PascalCase (`SessionList.tsx`)
-- Utilities/hooks: camelCase (`useSession.ts`)
-- Types: PascalCase (`type Session = ...`)
+- Components: `PascalCase` (`SessionList.tsx`)
+- Hooks/utils: `camelCase` (`useSession.ts`)
+- Types: `PascalCase` (`type Session = ...`)
 
-## Design Principles
+### Imports
+- Use `@/` path aliases
+- Group: external packages → internal modules → relative imports
 
-### UI Philosophy
-- **Minimal and clean** - No unnecessary visual clutter
-- **No cards for simple layouts** - Use spacing instead
-- **No border lines** - Avoid `border`, `border-r`, `border-b` for separators; use spacing and backgrounds
-- **Content centered** - Keep main content centered in the viewport (`max-w-2xl` or `max-w-3xl`)
-- **Consistent with home page design** - Reference `components/home/pages/authenticated.tsx` for patterns
+## UI Guidelines
 
-### Visual Separation (NO borders)
-Instead of borders, use these patterns:
-- **Header separation**: `bg-background/80 backdrop-blur-sm` (transparent with blur)
-- **List items**: `bg-muted/50` with `hover:bg-muted` for hover state
-- **Info boxes**: `bg-muted/50` with `rounded-lg` (no border)
-- **Icon containers**: `bg-muted/50` with `rounded-full`
-- **Inactive elements**: `bg-muted/30` for subtle distinction
-- **Interactive elements**: Use `hover:bg-muted` or `hover:bg-accent` for clear hover feedback
+### Core Principles
+- Minimal, clean design
+- **NO borders** - Use `bg-muted/50`, spacing, and subtle backgrounds instead
+- **NO Card components** for simple layouts - Use spacing
+- Center content: `max-w-2xl` (readable) or `max-w-3xl` (wider)
 
-### Status & Semantic Colors
-Use semantic colors to indicate meaning and differentiate features:
-- **Active/Success**: Green tint (`bg-emerald-500/10`, `text-emerald-500`)
-- **Inactive/Default**: Muted (`bg-muted`, `text-muted-foreground`)
-- **Destructive**: Red tint (`bg-destructive/10`, `text-destructive`)
-- **Reasoning/Thinking**: Amber tint (`bg-amber-500/5`, `text-amber-600`) - for AI thinking processes
-- **Info/Highlight**: Blue tint (`bg-blue-500/10`, `text-blue-500`) - for informational callouts
+### Visual Patterns
+- Headers: `bg-background/80 backdrop-blur-sm`
+- List items: `bg-muted/50` + `hover:bg-muted`
+- Icons: `bg-muted/50` + `rounded-full`
 
-Use semantic colors sparingly to differentiate distinct feature areas (e.g., CoT vs native reasoning). Default to muted for general UI elements.
+### Colors (Semantic)
+- Active/Success: `bg-emerald-500/10 text-emerald-500`
+- Destructive: `bg-destructive/10 text-destructive`
+- Reasoning/Thinking: `bg-amber-500/5 text-amber-600`
+- Default: `bg-muted text-muted-foreground`
 
-### Component Choices
-- **Popover** for quick actions (share link, quick settings)
-- **Dialog** for complex multi-step flows or forms
-- **AlertDialog** for destructive action confirmations
-- **DropdownMenu** for contextual actions on items
-
-### Layout Patterns
-- Use `AppLayout` wrapper for authenticated pages with sidebar
-- Maximum content width: `max-w-2xl` for readability, `max-w-3xl` for wider content
-- Subtle backgrounds: `bg-muted/50` with `rounded-full` for icons
-- Brand consistency: Use `MessagesSquare` icon in standalone page headers
-
-### Link & Button Patterns
-- **Text links**: `text-muted-foreground hover:text-foreground` with subtle arrow animation
-- **CTA links**: Include arrow icon with `group-hover:translate-x-0.5` animation
-- **Ghost buttons**: For secondary actions in headers
-
-### Composer Action Buttons
-- **Primary action button** (send/mic/stop/cancel): Use plain `Button` with `size="icon"` and `rounded-full`
-- **TooltipIconButton**: Only for secondary/auxiliary actions in action bars (copy, share, feedback, etc.)
-- Button states should be handled by a single component using conditional returns based on state priority:
-  1. `isListening` → stop button
-  2. `isRunning` → cancel button
-  3. `hasUploadingAttachments` → loading button
-  4. `hasText` → send button
-  5. `isSpeechSupported` → mic button
-  6. fallback → send button
-
-### Loading States
-- Use inline skeleton patterns, not full-page loaders
-- Keep skeletons simple (animated divs with `bg-muted`)
-
-### User Feedback
-- Use `sonner` toast for success/error messages (keep messages short: "Copied", "Link created")
-- Use `AlertDialog` for destructive action confirmations
+### Components
+- **Popover**: Quick actions
+- **Dialog**: Complex flows/forms
+- **AlertDialog**: Destructive confirmations
+- **DropdownMenu**: Contextual actions
 
 ## Key Patterns
 
 ### Authentication
 ```typescript
-// Server-side session check
-const session = await auth.api.getSession({
-  headers: await headers(),
-});
+// Server
+const session = await auth.api.getSession({ headers: await headers() });
 
-// Client-side session hook
+// Client
 const { data: session } = authClient.useSession();
 ```
 
-### tRPC Usage
+### tRPC
 ```typescript
-// Define router in server/routers/
-export const exampleRouter = createTRPCRouter({
-  getData: publicProcedure.query(async ({ ctx }) => {
-    // ...
-  }),
+// Define in server/routers/
+export const router = createTRPCRouter({
+  getData: publicProcedure.query(async ({ ctx }) => { }),
 });
 
-// Client-side (components)
+// Client
 const { data } = api.example.getData.useQuery();
 
-// Server-side (API routes, lib/ai/)
+// Server (API/lib)
 import { api } from "@/utils/trpc/server";
 const data = await api.example.getData();
 ```
 
-### Component Organization
-Keep feature-related code in a single file unless it grows too large:
-```typescript
-// components/dashboard/account/session-list.tsx
-// Contains: types, helpers, sub-components, main export
-```
+## Testing
 
-## assistant-ui Limitations
+- Run `pnpm tsc --noEmit` before committing
+- Run `pnpm biome check .` to catch lint errors
+- Fix all errors before pushing
 
-When implementing features blocked by `assistant-ui` package limitations, document them in `enhancements.md` with:
-- Problem description
-- Current workaround
-- Proposed upstream solution
+## Do
+
+- Use tRPC for all database operations
+- Keep related code together in one file
+- Search for library types before defining custom ones
+- Handle multi-state buttons with single component (order conditions by priority)
+- Use `Button` with `size="icon"` and `rounded-full` for primary actions
+- Check `apps/registry/components/` for reusable assistant-ui components before building custom ones
 
 ## Do NOT
 
-- Create documentation files (README, .md) unless explicitly asked
+- Create docs/README files unless explicitly asked
 - Run build commands after changes
-- Use `any` type when proper types exist
-- Create unnecessary barrel/index files
-- Over-engineer with excessive abstractions
-- Add Card components for simple list layouts
-- Use border lines (`border-r`, `border-b`) for visual separation
-- Use heavy Dialog for simple quick actions (use Popover instead)
+- Use `any` type
+- Create barrel files unless necessary
+- Export internal components from wrong modules
+- Use borders (`border-r`, `border-b`) for separation
+- Use Card components for simple lists
+- Use Dialog for simple quick actions (use Popover)
 - Send system prompts or tool schemas from frontend to backend
+
+## Documentation Files
+
+| File | Purpose |
+|------|---------|
+| `roadmap.md` | Feature checklist - what's implemented vs planned |
+| `enhancements.md` | Proposals for features to upstream to assistant-ui |
+| `refactoring.md` | Demo code that could use existing assistant-ui features |
+
+## assistant-ui Limitations
+
+Document blocked features in `enhancements.md` with:
+- Problem description
+- Current workaround
+- Proposed upstream solution

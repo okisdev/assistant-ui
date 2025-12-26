@@ -5,7 +5,13 @@ import { createMCPClient } from "@ai-sdk/mcp";
 import { TRPCError } from "@trpc/server";
 
 import { mcpServer, type MCPTransportType } from "@/lib/database/schema";
-import { getOAuthAuthorizationHeader } from "@/lib/mcp-auth";
+import {
+  getOAuthAuthorizationHeader,
+  discoverOAuthMetadata,
+  registerOAuthClient,
+  exchangeCodeForTokens,
+} from "@/lib/mcp-auth";
+import { encrypt, decrypt } from "@/lib/crypto";
 import { protectedProcedure, createTRPCRouter } from "../trpc";
 
 const headersSchema = z.record(z.string(), z.string());
@@ -354,5 +360,229 @@ export const mcpServerRouter = createTRPCRouter({
           await client.close().catch(() => {});
         }
       }
+    }),
+
+  getOAuthConfig: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const [server] = await ctx.db
+        .select({
+          id: mcpServer.id,
+          name: mcpServer.name,
+          url: mcpServer.url,
+          oauthClientId: mcpServer.oauthClientId,
+          oauthClientSecret: mcpServer.oauthClientSecret,
+          oauthAuthorizationUrl: mcpServer.oauthAuthorizationUrl,
+          oauthTokenUrl: mcpServer.oauthTokenUrl,
+          oauthScope: mcpServer.oauthScope,
+        })
+        .from(mcpServer)
+        .where(
+          and(
+            eq(mcpServer.id, input.id),
+            eq(mcpServer.userId, ctx.session.user.id),
+          ),
+        )
+        .limit(1);
+
+      if (!server) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "MCP server not found",
+        });
+      }
+
+      return server;
+    }),
+
+  initiateOAuth: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        redirectUri: z.string().url(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [server] = await ctx.db
+        .select({
+          id: mcpServer.id,
+          name: mcpServer.name,
+          url: mcpServer.url,
+          oauthClientId: mcpServer.oauthClientId,
+          oauthClientSecret: mcpServer.oauthClientSecret,
+          oauthAuthorizationUrl: mcpServer.oauthAuthorizationUrl,
+          oauthTokenUrl: mcpServer.oauthTokenUrl,
+          oauthScope: mcpServer.oauthScope,
+        })
+        .from(mcpServer)
+        .where(
+          and(
+            eq(mcpServer.id, input.id),
+            eq(mcpServer.userId, ctx.session.user.id),
+          ),
+        )
+        .limit(1);
+
+      if (!server) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "MCP server not found",
+        });
+      }
+
+      let clientId = server.oauthClientId;
+      let clientSecret = server.oauthClientSecret;
+      let authorizationUrl = server.oauthAuthorizationUrl;
+      let tokenUrl = server.oauthTokenUrl;
+      let scope = server.oauthScope;
+
+      // Discover OAuth metadata if not already configured
+      if (!authorizationUrl || !tokenUrl) {
+        const metadata = await discoverOAuthMetadata(server.url);
+
+        if (!metadata) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Unable to discover OAuth configuration from MCP server. The server may not support OAuth.",
+          });
+        }
+
+        authorizationUrl = metadata.authorization_endpoint;
+        tokenUrl = metadata.token_endpoint;
+
+        if (!scope && metadata.scopes_supported?.length) {
+          scope = metadata.scopes_supported.join(" ");
+        }
+
+        // Dynamic client registration if supported and no client ID exists
+        if (metadata.registration_endpoint && !clientId) {
+          try {
+            const clientRegistration = await registerOAuthClient(
+              metadata.registration_endpoint,
+              input.redirectUri,
+              `assistant-ui with ${server.name}`,
+            );
+
+            clientId = clientRegistration.client_id;
+            clientSecret = clientRegistration.client_secret
+              ? encrypt(clientRegistration.client_secret)
+              : null;
+          } catch (error) {
+            console.error("Failed to register OAuth client:", error);
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Failed to register OAuth client with MCP server",
+            });
+          }
+        }
+
+        // Save discovered OAuth configuration
+        await ctx.db
+          .update(mcpServer)
+          .set({
+            oauthClientId: clientId,
+            oauthClientSecret: clientSecret,
+            oauthAuthorizationUrl: authorizationUrl,
+            oauthTokenUrl: tokenUrl,
+            oauthScope: scope,
+          })
+          .where(eq(mcpServer.id, input.id));
+      }
+
+      if (!clientId || !authorizationUrl) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "OAuth configuration is incomplete. Client ID and authorization URL are required.",
+        });
+      }
+
+      return {
+        clientId,
+        authorizationUrl,
+        tokenUrl,
+        scope,
+      };
+    }),
+
+  exchangeOAuthCode: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        code: z.string(),
+        redirectUri: z.string().url(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [server] = await ctx.db
+        .select({
+          id: mcpServer.id,
+          oauthClientId: mcpServer.oauthClientId,
+          oauthClientSecret: mcpServer.oauthClientSecret,
+          oauthTokenUrl: mcpServer.oauthTokenUrl,
+          oauthScope: mcpServer.oauthScope,
+        })
+        .from(mcpServer)
+        .where(
+          and(
+            eq(mcpServer.id, input.id),
+            eq(mcpServer.userId, ctx.session.user.id),
+          ),
+        )
+        .limit(1);
+
+      if (!server) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "MCP server not found",
+        });
+      }
+
+      if (
+        !server.oauthClientId ||
+        !server.oauthClientSecret ||
+        !server.oauthTokenUrl
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "OAuth configuration is incomplete",
+        });
+      }
+
+      const tokens = await exchangeCodeForTokens(
+        {
+          clientId: server.oauthClientId,
+          clientSecret: decrypt(server.oauthClientSecret),
+          authorizationUrl: "",
+          tokenUrl: server.oauthTokenUrl,
+          scope: server.oauthScope ?? undefined,
+          redirectUri: input.redirectUri,
+        },
+        input.code,
+      );
+
+      const expiresAt = tokens.expiresIn
+        ? new Date(Date.now() + tokens.expiresIn * 1000)
+        : null;
+
+      await ctx.db
+        .update(mcpServer)
+        .set({
+          oauthAccessToken: encrypt(tokens.accessToken),
+          oauthRefreshToken: tokens.refreshToken
+            ? encrypt(tokens.refreshToken)
+            : null,
+          oauthTokenExpiresAt: expiresAt,
+          enabled: true,
+        })
+        .where(
+          and(
+            eq(mcpServer.id, input.id),
+            eq(mcpServer.userId, ctx.session.user.id),
+          ),
+        );
+
+      return { success: true };
     }),
 });

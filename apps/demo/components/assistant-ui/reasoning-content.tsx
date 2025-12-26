@@ -4,6 +4,7 @@ import { type FC, memo, useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDownIcon, BrainIcon } from "lucide-react";
 import { useMessagePartReasoning, useScrollLock } from "@assistant-ui/react";
 import { cn } from "@/lib/utils";
+import { formatTime } from "@/lib/ai/utils";
 import {
   Collapsible,
   CollapsibleContent,
@@ -12,11 +13,6 @@ import {
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 
 const ANIMATION_DURATION = 200;
-
-const formatThinkingDuration = (ms: number): string => {
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
-};
 
 const ReasoningContentImpl: FC = () => {
   const { text, status } = useMessagePartReasoning();
@@ -81,9 +77,9 @@ const ReasoningContentImpl: FC = () => {
               )}
             >
               {isStreaming
-                ? "Thinking"
+                ? "Thinking..."
                 : duration !== null
-                  ? `Thought for ${formatThinkingDuration(duration)}`
+                  ? `Thought for ${formatTime(duration)}`
                   : "Thought"}
             </span>
           </div>
