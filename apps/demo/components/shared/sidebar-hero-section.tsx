@@ -7,7 +7,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { FolderOpen, Plus } from "lucide-react";
+import { FolderOpen, Grid3X3, Plus } from "lucide-react";
 import type { FC } from "react";
 import Link from "next/link";
 
@@ -35,6 +35,14 @@ export const SidebarHeroSection: FC = () => {
               <Link href="/projects">
                 <FolderOpen />
                 <span>Projects</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Apps">
+              <Link href="/apps">
+                <Grid3X3 />
+                <span>Apps</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

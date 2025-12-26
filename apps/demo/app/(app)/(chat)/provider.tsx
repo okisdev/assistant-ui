@@ -49,6 +49,10 @@ import {
   useIncognitoOptional,
 } from "@/contexts/incognito-provider";
 import { ComposerModeProvider } from "@/contexts/composer-mode-provider";
+import {
+  SelectedAppsProvider,
+  useSelectedApps,
+} from "@/contexts/selected-apps-provider";
 
 function HistoryProvider({ children }: { children?: ReactNode }) {
   const threadListItem = useAssistantState(
@@ -365,6 +369,28 @@ function RuntimeProviderInner({
   );
 }
 
+function SelectedAppsBinding({ children }: { children: ReactNode }) {
+  const { selectedAppIds, clearApps } = useSelectedApps();
+  const threadId = useAssistantState(({ threadListItem }) => threadListItem.id);
+  const prevThreadIdRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    modelTransport.selectedAppIds = selectedAppIds;
+  }, [selectedAppIds]);
+
+  useEffect(() => {
+    if (
+      prevThreadIdRef.current !== undefined &&
+      prevThreadIdRef.current !== threadId
+    ) {
+      clearApps();
+    }
+    prevThreadIdRef.current = threadId;
+  }, [threadId, clearApps]);
+
+  return <>{children}</>;
+}
+
 function ChatProviderInner({
   children,
   projectId,
@@ -384,7 +410,7 @@ function ChatProviderInner({
       key={isIncognito ? "incognito" : "regular"}
       adapter={adapter}
     >
-      {children}
+      <SelectedAppsBinding>{children}</SelectedAppsBinding>
     </RuntimeProviderInner>
   );
 }
@@ -411,9 +437,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         <IncognitoProvider>
           <SidePanelProvider>
             <ComposerModeProvider>
-              <ChatProviderInner projectId={currentProjectId}>
-                {children}
-              </ChatProviderInner>
+              <SelectedAppsProvider>
+                <ChatProviderInner projectId={currentProjectId}>
+                  {children}
+                </ChatProviderInner>
+              </SelectedAppsProvider>
             </ComposerModeProvider>
           </SidePanelProvider>
         </IncognitoProvider>

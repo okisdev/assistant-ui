@@ -1,5 +1,6 @@
 import type { ResolvedUserCapabilities } from "@/lib/database/types";
 import { api } from "@/utils/trpc/server";
+import { getConnectedApps, type ConnectedApp } from "./apps-context";
 
 export type UserProfile = {
   name: string;
@@ -24,6 +25,7 @@ export type UserContext = {
   memories: Memory[];
   capabilities: ResolvedUserCapabilities;
   projectContext: ProjectContext | null;
+  connectedApps: ConnectedApp[];
 };
 
 export async function getUserContext(
@@ -80,6 +82,8 @@ export async function getUserContext(
     throw new Error("User profile not found");
   }
 
+  const connectedApps = await getConnectedApps(profile.id);
+
   return {
     userId: profile.id,
     profile: {
@@ -90,5 +94,6 @@ export async function getUserContext(
     memories,
     capabilities,
     projectContext,
+    connectedApps,
   };
 }

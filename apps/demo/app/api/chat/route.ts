@@ -13,6 +13,7 @@ import { getUserContext, type UserContext } from "@/lib/ai/context";
 import { saveMemoryTool } from "@/lib/ai/tools/save-memory";
 import { createArtifactTool } from "@/lib/ai/tools/create-artifact";
 import { generateImageTool } from "@/lib/ai/tools/generate-image";
+import { getAppTools } from "@/lib/ai/tools/apps";
 import { DEFAULT_CAPABILITIES } from "@/lib/ai/capabilities";
 import { recordUsage } from "@/lib/ai/usage";
 import { getMCPTools, closeMCPClients } from "@/lib/ai/mcp";
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
     model: requestModel,
     reasoningEnabled = true,
     composerMode = "default" as ComposerMode,
+    selectedAppIds = [] as string[],
   } = await req.json();
 
   let userContext: UserContext | null = null;
@@ -114,8 +116,16 @@ export async function POST(req: Request) {
   } = await getMCPTools();
   Object.assign(tools, mcpTools);
 
+  if (userContext && userContext.connectedApps.length > 0) {
+    const appTools = await getAppTools(
+      userContext.connectedApps,
+      selectedAppIds,
+    );
+    Object.assign(tools, appTools);
+  }
+
   const systemPrompt = userContext
-    ? buildSystemPrompt(userContext, mcpToolInfos)
+    ? buildSystemPrompt(userContext, mcpToolInfos, selectedAppIds)
     : "";
 
   const result = streamText({

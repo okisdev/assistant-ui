@@ -21,6 +21,7 @@ import {
   LoaderIcon,
   MicIcon,
   SquareIcon,
+  Puzzle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -36,6 +37,7 @@ import { Button } from "@/components/ui/button";
 import { useModelSelection } from "@/contexts/model-selection-provider";
 import { useCapabilities } from "@/contexts/capabilities-provider";
 import { useComposerMode } from "@/contexts/composer-mode-provider";
+import { useSelectedApps } from "@/contexts/selected-apps-provider";
 import { useProject } from "@/hooks/use-project";
 import { api } from "@/utils/trpc/client";
 import { getFileIcon } from "@/utils/file";
@@ -201,6 +203,111 @@ const ProjectsSubmenu: FC = () => {
   );
 };
 
+const AppsSubmenu: FC = () => {
+  const { data: connections, isLoading } =
+    api.application.userConnections.useQuery();
+  const { selectedAppIds, toggleApp, clearApps } = useSelectedApps();
+
+  const connectedApps =
+    connections?.filter((c) => c.isConnected && c.enabled) ?? [];
+  const visibleApps = connectedApps.slice(0, MAX_VISIBLE_ITEMS);
+  const hasMore = connectedApps.length > MAX_VISIBLE_ITEMS;
+  const hasSelected = selectedAppIds.length > 0;
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger className="rounded-lg px-3 py-2.5 text-[13px] transition-colors data-[state=open]:bg-accent/50">
+        <Puzzle className="size-4" />
+        <span>Apps</span>
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className="min-w-[240px] rounded-xl p-2 shadow-lg">
+        {isLoading ? (
+          <div className="flex flex-col gap-1">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5"
+              >
+                <div className="size-4 animate-pulse rounded bg-muted" />
+                <div className="h-4 flex-1 animate-pulse rounded-md bg-muted" />
+              </div>
+            ))}
+          </div>
+        ) : connectedApps.length === 0 ? (
+          <>
+            <div className="px-3 py-2.5 text-[13px] text-muted-foreground">
+              No connected apps
+            </div>
+            <DropdownMenuSeparator className="-mx-2 my-2" />
+            <DropdownMenuItem
+              asChild
+              className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
+            >
+              <Link href="/apps">
+                <span>Connect apps</span>
+                <ChevronRight className="ml-auto size-4" />
+              </Link>
+            </DropdownMenuItem>
+          </>
+        ) : (
+          <>
+            {visibleApps.map((conn) => (
+              <DropdownMenuItem
+                key={conn.applicationId}
+                className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
+                onClick={(e) => {
+                  e.preventDefault();
+                  toggleApp(conn.applicationId);
+                }}
+              >
+                {conn.application.iconUrl ? (
+                  <img
+                    src={conn.application.iconUrl}
+                    alt=""
+                    className="size-4 rounded object-contain"
+                  />
+                ) : (
+                  <Puzzle className="size-4 text-muted-foreground" />
+                )}
+                <span className="truncate">{conn.application.name}</span>
+                {selectedAppIds.includes(conn.applicationId) && (
+                  <Check className="ml-auto size-4 text-primary" />
+                )}
+              </DropdownMenuItem>
+            ))}
+            {hasMore && (
+              <>
+                <DropdownMenuSeparator className="-mx-2 my-2" />
+                <DropdownMenuItem
+                  asChild
+                  className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
+                >
+                  <Link href="/apps">
+                    <span>View all ({connectedApps.length})</span>
+                    <ChevronRight className="ml-auto size-4" />
+                  </Link>
+                </DropdownMenuItem>
+              </>
+            )}
+            {hasSelected && (
+              <>
+                <DropdownMenuSeparator className="-mx-2 my-2" />
+                <DropdownMenuItem
+                  className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
+                  onClick={clearApps}
+                >
+                  <X className="size-4" />
+                  <span>Clear selection</span>
+                </DropdownMenuItem>
+              </>
+            )}
+          </>
+        )}
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+  );
+};
+
 const ComposerDropdown: FC = () => {
   const assistantApi = useAssistantApi();
   const { model } = useModelSelection();
@@ -289,6 +396,7 @@ const ComposerDropdown: FC = () => {
               <DropdownMenuSeparator className="-mx-2 my-2" />
             )}
             <ProjectsSubmenu />
+            <AppsSubmenu />
           </>
         )}
       </DropdownMenuContent>

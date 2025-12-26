@@ -102,6 +102,12 @@ type ProgressItem =
       id: string;
       toolName: string;
       completed: boolean;
+    }
+  | {
+      type: "app_tool";
+      id: string;
+      toolName: string;
+      completed: boolean;
     };
 
 function useMessageTiming(messageId: string): MessageTiming | undefined {
@@ -185,6 +191,16 @@ const ActivityProgress: FC<{ isRunning: boolean; cotEnabled?: boolean }> = ({
       ) {
         result.push({
           type: "mcp_tool",
+          id: part.toolCallId,
+          toolName: part.toolName,
+          completed: !!part.result,
+        });
+      }
+
+      // App tools (all start with app_)
+      if (part.type === "tool-call" && part.toolName.startsWith("app_")) {
+        result.push({
+          type: "app_tool",
           id: part.toolCallId,
           toolName: part.toolName,
           completed: !!part.result,
@@ -347,6 +363,41 @@ const ActivityProgress: FC<{ isRunning: boolean; cotEnabled?: boolean }> = ({
           );
         }
 
+        if (item.type === "app_tool") {
+          const toolParts = item.toolName.replace(/^app_/, "").split("_");
+          const appName = toolParts.slice(0, 2).join("_") || "app";
+          const toolNameDisplay = toolParts.slice(2).join("_") || item.toolName;
+
+          if (!item.completed && isRunning) {
+            return (
+              <div
+                key={item.id}
+                className="flex items-center gap-2 text-violet-600 dark:text-violet-400"
+              >
+                <LoaderIcon className="size-4 animate-spin" />
+                <span className="shimmer text-sm">
+                  Using {appName}: {toolNameDisplay}...
+                </span>
+              </div>
+            );
+          }
+
+          return (
+            <div
+              key={item.id}
+              className="flex items-start gap-2 text-muted-foreground text-xs"
+            >
+              <CheckIcon className="mt-0.5 size-3 shrink-0 text-emerald-500" />
+              <span>
+                Used {appName}:{" "}
+                <span className="font-medium text-foreground/80">
+                  {toolNameDisplay}
+                </span>
+              </span>
+            </div>
+          );
+        }
+
         return null;
       })}
     </div>
@@ -382,7 +433,8 @@ export const AssistantMessage: FC = () => {
         (part.type === "tool-call" &&
           (part.toolName === "web_search" ||
             part.toolName === "generate_image" ||
-            part.toolName.startsWith("mcp_"))),
+            part.toolName.startsWith("mcp_") ||
+            part.toolName.startsWith("app_"))),
     ),
   );
 

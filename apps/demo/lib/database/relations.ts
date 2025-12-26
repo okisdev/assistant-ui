@@ -16,6 +16,8 @@ import {
   invitation,
   organization,
   mcpServer,
+  application,
+  userApplication,
 } from "./schema";
 
 export const userRelations = relations(user, ({ many }) => ({
@@ -30,6 +32,7 @@ export const userRelations = relations(user, ({ many }) => ({
   memories: many(memory),
   usageRecords: many(usage),
   mcpServers: many(mcpServer),
+  userApplications: many(userApplication),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -39,11 +42,12 @@ export const sessionRelations = relations(session, ({ one }) => ({
   }),
 }));
 
-export const accountRelations = relations(account, ({ one }) => ({
+export const accountRelations = relations(account, ({ one, many }) => ({
   user: one(user, {
     fields: [account.userId],
     references: [user.id],
   }),
+  userApplications: many(userApplication),
 }));
 
 export const organizationRelations = relations(organization, ({ many }) => ({
@@ -179,3 +183,25 @@ export const mcpServerRelations = relations(mcpServer, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+export const applicationRelations = relations(application, ({ many }) => ({
+  userApplications: many(userApplication),
+}));
+
+export const userApplicationRelations = relations(
+  userApplication,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [userApplication.userId],
+      references: [user.id],
+    }),
+    application: one(application, {
+      fields: [userApplication.applicationId],
+      references: [application.id],
+    }),
+    account: one(account, {
+      fields: [userApplication.accountId],
+      references: [account.id],
+    }),
+  }),
+);

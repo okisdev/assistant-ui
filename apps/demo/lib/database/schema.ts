@@ -404,3 +404,81 @@ export const mcpServer = pgTable(
   },
   (table) => [index("mcp_server_userId_idx").on(table.userId)],
 );
+
+export type ApplicationCategory =
+  | "productivity"
+  | "communication"
+  | "development"
+  | "design"
+  | "other";
+
+export type ApplicationStatus = "published" | "wip";
+
+export type ApplicationToolDefinition = {
+  name: string;
+  description: string;
+};
+
+export const application = pgTable(
+  "application",
+  {
+    id: text("id").primaryKey(),
+    slug: text("slug").notNull().unique(),
+    name: text("name").notNull(),
+    description: text("description"),
+    iconUrl: text("icon_url"),
+    category: text("category").$type<ApplicationCategory>().notNull(),
+    status: text("status").$type<ApplicationStatus>().default("wip").notNull(),
+    verified: boolean("verified").default(false).notNull(),
+    publisher: text("publisher"),
+    websiteUrl: text("website_url"),
+    privacyPolicyUrl: text("privacy_policy_url"),
+    termsOfServiceUrl: text("terms_of_service_url"),
+    oauthProvider: text("oauth_provider").notNull(),
+    oauthScopes: jsonb("oauth_scopes").$type<string[]>().notNull(),
+    tools: jsonb("tools").$type<ApplicationToolDefinition[]>(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    isBuiltin: boolean("is_builtin").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [uniqueIndex("application_slug_uidx").on(table.slug)],
+);
+
+export const userApplication = pgTable(
+  "user_application",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    applicationId: text("application_id").notNull(),
+    accountId: text("account_id").references(() => account.id, {
+      onDelete: "set null",
+    }),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    tokenExpiresAt: timestamp("token_expires_at"),
+    externalId: text("external_id"),
+    externalName: text("external_name"),
+    oauthMetadata: jsonb("oauth_metadata").$type<Record<string, unknown>>(),
+    enabled: boolean("enabled").default(true).notNull(),
+    config: jsonb("config").$type<Record<string, unknown>>(),
+    connectedAt: timestamp("connected_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("user_application_userId_idx").on(table.userId),
+    index("user_application_applicationId_idx").on(table.applicationId),
+    uniqueIndex("user_application_user_app_uidx").on(
+      table.userId,
+      table.applicationId,
+    ),
+  ],
+);

@@ -1,9 +1,10 @@
 "use client";
 
 import type { FC, ReactNode } from "react";
-import { Sparkles, X } from "lucide-react";
+import { Sparkles, X, Puzzle } from "lucide-react";
 import { useAssistantState } from "@assistant-ui/react";
 import { useComposerMode } from "@/contexts/composer-mode-provider";
+import { useSelectedApps } from "@/contexts/selected-apps-provider";
 import { useProject } from "@/hooks/use-project";
 import { api as trpc } from "@/utils/trpc/client";
 import { cn } from "@/lib/utils";
@@ -67,6 +68,7 @@ const ComposerBadge: FC<ComposerBadgeProps> = ({
 export const ComposerHeader: FC = () => {
   const { mode, resetMode } = useComposerMode();
   const { currentProjectId, setCurrentProjectId } = useProject();
+  const { selectedAppIds, deselectApp } = useSelectedApps();
   const isNewThread = useAssistantState(({ thread }) => thread.isEmpty);
 
   const { data: currentProject } = trpc.project.get.useQuery(
@@ -74,10 +76,22 @@ export const ComposerHeader: FC = () => {
     { enabled: !!currentProjectId && isNewThread },
   );
 
+  const { data: connections } = trpc.application.userConnections.useQuery(
+    undefined,
+    { enabled: selectedAppIds.length > 0 && isNewThread },
+  );
+
+  const selectedApps =
+    connections?.filter(
+      (c) => c.isConnected && selectedAppIds.includes(c.applicationId),
+    ) ?? [];
+
   const isImageGenerationMode = mode === "image-generation";
   const showProjectBadge = isNewThread && currentProjectId && currentProject;
+  const showAppBadges = isNewThread && selectedApps.length > 0;
 
-  if (!isImageGenerationMode && !showProjectBadge) return null;
+  if (!isImageGenerationMode && !showProjectBadge && !showAppBadges)
+    return null;
 
   return (
     <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -96,6 +110,25 @@ export const ComposerHeader: FC = () => {
           colorDot={currentProject.color || "#3b82f6"}
         />
       )}
+      {showAppBadges &&
+        selectedApps.map((app) => (
+          <ComposerBadge
+            key={app.applicationId}
+            icon={
+              app.application.iconUrl ? (
+                <img
+                  src={app.application.iconUrl}
+                  alt=""
+                  className="size-3.5 rounded object-contain"
+                />
+              ) : (
+                <Puzzle className="size-3.5" />
+              )
+            }
+            label={app.application.name}
+            onRemove={() => deselectApp(app.applicationId)}
+          />
+        ))}
     </div>
   );
 };

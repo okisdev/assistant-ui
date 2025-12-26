@@ -10,6 +10,7 @@ export class ModelChatTransport<
   private runtimeRef: AssistantRuntime | undefined;
   private _reasoningEnabled = true;
   private _composerMode: ComposerMode = "default";
+  private _selectedAppIds: string[] = [];
   private _onComposerModeReset: (() => void) | null = null;
   private _timings: Record<string, MessageTiming> = {};
   private _timingListeners: Set<() => void> = new Set();
@@ -29,6 +30,7 @@ export class ModelChatTransport<
             model: context?.config?.modelName,
             reasoningEnabled: this._reasoningEnabled,
             composerMode: this._composerMode,
+            selectedAppIds: this._selectedAppIds,
             ...options?.body,
           },
         };
@@ -69,6 +71,14 @@ export class ModelChatTransport<
 
   set composerMode(value: ComposerMode) {
     this._composerMode = value;
+  }
+
+  get selectedAppIds(): string[] {
+    return this._selectedAppIds;
+  }
+
+  set selectedAppIds(value: string[]) {
+    this._selectedAppIds = value;
   }
 
   setOnComposerModeReset(callback: (() => void) | null): void {

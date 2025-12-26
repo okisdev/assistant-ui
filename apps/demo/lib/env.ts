@@ -24,6 +24,12 @@ export const env = createEnv({
     BLOB_READ_WRITE_TOKEN: z
       .string()
       .min(1, "BLOB_READ_WRITE_TOKEN is required"),
+    INTEGRATION_NOTION_CLIENT_ID: z.string().optional(),
+    INTEGRATION_NOTION_CLIENT_SECRET: z.string().optional(),
+    INTEGRATION_SLACK_CLIENT_ID: z.string().optional(),
+    INTEGRATION_SLACK_CLIENT_SECRET: z.string().optional(),
+    INTEGRATION_FIGMA_CLIENT_ID: z.string().optional(),
+    INTEGRATION_FIGMA_CLIENT_SECRET: z.string().optional(),
   },
   clientPrefix: "NEXT_PUBLIC_",
   client: {
@@ -45,6 +51,15 @@ export const env = createEnv({
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     XAI_API_KEY: process.env.XAI_API_KEY,
     BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN,
+    INTEGRATION_NOTION_CLIENT_ID: process.env.INTEGRATION_NOTION_CLIENT_ID,
+    INTEGRATION_NOTION_CLIENT_SECRET:
+      process.env.INTEGRATION_NOTION_CLIENT_SECRET,
+    INTEGRATION_SLACK_CLIENT_ID: process.env.INTEGRATION_SLACK_CLIENT_ID,
+    INTEGRATION_SLACK_CLIENT_SECRET:
+      process.env.INTEGRATION_SLACK_CLIENT_SECRET,
+    INTEGRATION_FIGMA_CLIENT_ID: process.env.INTEGRATION_FIGMA_CLIENT_ID,
+    INTEGRATION_FIGMA_CLIENT_SECRET:
+      process.env.INTEGRATION_FIGMA_CLIENT_SECRET,
   },
   emptyStringAsUndefined: true,
   extends: [vercel()],

@@ -211,9 +211,36 @@ ${serverBlocks.join("\n")}
 </mcp_tools>`;
 }
 
+function formatConnectedApps(
+  connectedApps: Array<{ id: string; name: string; slug: string }>,
+  selectedAppIds: string[],
+): string {
+  if (connectedApps.length === 0) return "";
+
+  const appLines = connectedApps.map((app) => {
+    const isSelected = selectedAppIds.includes(app.id);
+    const status = isSelected ? "selected" : "available";
+    return `  <app name="${app.name}" status="${status}" />`;
+  });
+
+  const hasSelected = selectedAppIds.length > 0;
+
+  return `<connected_apps>
+<purpose>The user has connected external applications. You have tools to interact with these apps.</purpose>
+<apps>
+${appLines.join("\n")}
+</apps>
+<instruction>
+${hasSelected ? "The user has explicitly selected one or more apps. Prioritize using tools from selected apps when relevant to their request." : "Use the app tools when the user's request relates to the connected app's functionality (e.g., calendar queries, file searches)."}
+- For Google Calendar: Use list_calendar_events, create_calendar_event, update_calendar_event, delete_calendar_event
+</instruction>
+</connected_apps>`;
+}
+
 export function buildSystemPrompt(
   context: UserContext,
   mcpToolInfos?: MCPToolInfo[],
+  selectedAppIds?: string[],
 ): string {
   const parts: string[] = [];
 
@@ -240,6 +267,16 @@ export function buildSystemPrompt(
 
   if (mcpToolInfos && mcpToolInfos.length > 0) {
     parts.push(formatMCPTools(mcpToolInfos));
+  }
+
+  if (context.connectedApps && context.connectedApps.length > 0) {
+    const appsText = formatConnectedApps(
+      context.connectedApps,
+      selectedAppIds ?? [],
+    );
+    if (appsText) {
+      parts.push(appsText);
+    }
   }
 
   const userInfo = formatUserInfo(context.profile);
