@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { getFaviconUrl } from "@/utils/image";
+import { FaviconImage } from "@/utils/image";
 import { api } from "@/utils/trpc/client";
 import type { RouterOutputs } from "@/server";
 import { cn } from "@/lib/utils";
@@ -329,7 +329,6 @@ function MCPServerRow({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const oauthStatus = getOAuthStatus(server);
-  const faviconUrl = getFaviconUrl(server.url);
 
   const canShowTools =
     oauthStatus === "connected" || oauthStatus === "not-required";
@@ -382,29 +381,16 @@ function MCPServerRow({
                 !canShowTools && "invisible",
               )}
             />
-            <div className="relative size-5 shrink-0">
-              {faviconUrl ? (
-                <img
-                  src={faviconUrl}
-                  alt=""
-                  width={20}
-                  height={20}
-                  className="size-5 rounded-sm"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                    e.currentTarget.nextElementSibling?.classList.remove(
-                      "hidden",
-                    );
-                  }}
-                />
-              ) : null}
-              <GlobeIcon
-                className={cn(
-                  "absolute inset-0 size-5 text-muted-foreground",
-                  faviconUrl && "hidden",
-                )}
-              />
-            </div>
+            <FaviconImage
+              url={server.url}
+              alt=""
+              width={20}
+              height={20}
+              className="size-5 shrink-0 rounded-sm"
+              fallback={
+                <GlobeIcon className="size-5 shrink-0 text-muted-foreground" />
+              }
+            />
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <div className="flex items-center gap-2">
                 <span className="font-medium text-sm">{server.name}</span>

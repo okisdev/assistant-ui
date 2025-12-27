@@ -123,12 +123,6 @@ import { api } from "@/utils/trpc/server";
 const data = await api.example.getData();
 ```
 
-## Testing
-
-- Run `pnpm tsc --noEmit` before committing
-- Run `pnpm biome check .` to catch lint errors
-- Fix all errors before pushing
-
 ## Do
 
 - Use tRPC for all database operations

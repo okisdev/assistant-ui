@@ -4,7 +4,7 @@ import { type FC, memo } from "react";
 import { ExternalLinkIcon, GlobeIcon } from "lucide-react";
 import type { SourceMessagePartProps } from "@assistant-ui/react";
 import { cn } from "@/lib/utils";
-import { getFaviconUrl } from "@/utils/image";
+import { FaviconImage } from "@/utils/image";
 
 const extractDomain = (url: string): string => {
   try {
@@ -25,7 +25,6 @@ const SourceContentImpl: FC<SourceMessagePartProps> = ({
   }
 
   const domain = extractDomain(url);
-  const faviconUrl = getFaviconUrl(url);
   const displayTitle = title || domain;
 
   return (
@@ -38,21 +37,13 @@ const SourceContentImpl: FC<SourceMessagePartProps> = ({
         "text-muted-foreground hover:text-foreground",
       )}
     >
-      {faviconUrl ? (
-        <img
-          src={faviconUrl}
-          alt=""
-          width={14}
-          height={14}
-          className="size-3.5 shrink-0 rounded-sm"
-          onError={(e) => {
-            e.currentTarget.style.display = "none";
-            e.currentTarget.nextElementSibling?.classList.remove("hidden");
-          }}
-        />
-      ) : null}
-      <GlobeIcon
-        className={cn("hidden size-3.5 shrink-0", !faviconUrl && "block!")}
+      <FaviconImage
+        url={url}
+        alt=""
+        width={14}
+        height={14}
+        className="size-3.5 shrink-0 rounded-sm"
+        fallback={<GlobeIcon className="size-3.5 shrink-0" />}
       />
       <span className="max-w-[150px] truncate">{displayTitle}</span>
       <ExternalLinkIcon className="size-3 shrink-0 opacity-0 transition-opacity group-hover/source:opacity-100" />

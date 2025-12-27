@@ -79,7 +79,7 @@ function AppIcon({
     <img
       src={iconUrl}
       alt={name}
-      className={cn("rounded-sm object-contain", className)}
+      className={cn("object-contain", className)}
       onError={() => setHasError(true)}
     />
   );

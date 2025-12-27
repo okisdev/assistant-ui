@@ -504,6 +504,7 @@
   - [x] Connection status checking
   - [x] Custom headers support
   - [x] HTTP/SSE transport types
+  - [ ] stdio transport type (for E2B sandbox integration)
   - [x] Server management (add/edit/delete)
   - [x] Enable/disable servers
   - [x] MCP resource handling
