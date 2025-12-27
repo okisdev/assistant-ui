@@ -7,6 +7,7 @@ import {
   RuntimeAdapterProvider,
   unstable_useRemoteThreadListRuntime as useRemoteThreadListRuntime,
   useAssistantState,
+  useAssistantApi,
   WebSpeechSynthesisAdapter,
   type unstable_RemoteThreadListAdapter as RemoteThreadListAdapter,
   type ThreadMessage,
@@ -17,17 +18,18 @@ import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { createAssistantStream } from "assistant-stream";
 import { api, useTRPCReady } from "@/utils/trpc/client";
 import {
-  DatabaseHistoryAdapterWithAttachments,
-  type DbOperations,
-} from "@/lib/adapters/database-history-adapter";
+  ReadOnlyHistoryAdapterWithAISDKFormat,
+  type DbReadOperations,
+} from "@/lib/adapters/readonly-history-adapter";
 import { useFeedbackAdapter } from "@/lib/adapters/feedback-adapter";
 import { BlobAttachmentAdapter } from "@/lib/adapters/blob-attachment-adapter";
+import { z } from "zod";
 import { DatabaseMemoryStore } from "@/lib/adapters/database-memory-adapter";
 import { ModelChatTransport } from "@/lib/adapters/model-chat-transport";
-import { useMemoryTools } from "@/hooks/use-memory-tools";
-import { useArtifactTools } from "@/hooks/use-artifact-tools";
-import { useImageTools } from "@/hooks/use-image-tools";
 import { useStreamingTiming } from "@/hooks/use-streaming-timing";
+import { generateImageSchema } from "@/lib/ai/tools/generate-image";
+import { saveMemorySchema } from "@/lib/ai/tools/save-memory";
+import type { ImageModelId } from "@/lib/ai/models";
 import { ModelSelectionProvider } from "@/contexts/model-selection-provider";
 import {
   CapabilitiesProvider,
@@ -67,7 +69,8 @@ function HistoryProvider({ children }: { children?: ReactNode }) {
 
   const remoteId = threadListItem.remoteId;
 
-  const db: DbOperations = useMemo(
+  // Read-only database operations - messages are saved server-side
+  const db: DbReadOperations = useMemo(
     () => ({
       getMessages: async (chatId: string) => {
         const messages = await utils.chat.getMessages.fetch({ chatId });
@@ -83,25 +86,13 @@ function HistoryProvider({ children }: { children?: ReactNode }) {
           createdAt: m.createdAt,
         }));
       },
-      createMessage: async (data: {
-        id: string;
-        chatId: string;
-        parentId: string | null;
-        role: string;
-        format: string;
-        content: unknown;
-        status: unknown;
-        metadata: unknown;
-      }) => {
-        await utils.client.chat.createMessage.mutate(data);
-      },
     }),
     [utils],
   );
 
   const history = useMemo(
     () =>
-      remoteId ? new DatabaseHistoryAdapterWithAttachments(remoteId, db) : null,
+      remoteId ? new ReadOnlyHistoryAdapterWithAISDKFormat(remoteId, db) : null,
     [remoteId, db],
   );
 
@@ -278,7 +269,13 @@ const speechAdapter = new WebSpeechSynthesisAdapter();
 function useCustomChatRuntime() {
   const feedback = useFeedbackAdapter();
   const attachments = useMemo(() => new BlobAttachmentAdapter(), []);
+  const api = useAssistantApi();
   const id = useAssistantState(({ threadListItem }) => threadListItem.id);
+
+  useEffect(() => {
+    modelTransport.setInitializeThread(() => api.threadListItem().initialize());
+    return () => modelTransport.setInitializeThread(null);
+  }, [api]);
 
   const chat = useChat({
     id,
@@ -306,6 +303,7 @@ function useCustomChatRuntime() {
 function MemoryProvider({ children }: { children: ReactNode }) {
   const utils = api.useUtils();
   const { capabilities } = useCapabilities();
+  const assistantApi = useAssistantApi();
 
   const memoryStore = useMemo(() => new DatabaseMemoryStore(utils), [utils]);
 
@@ -313,7 +311,27 @@ function MemoryProvider({ children }: { children: ReactNode }) {
     memoryStore.initialize();
   }, [memoryStore]);
 
-  useMemoryTools(memoryStore, { enabled: capabilities.memory.personalization });
+  const memoryTool = useMemo(
+    () => ({
+      parameters: saveMemorySchema,
+      execute: async (args: { content: string; category?: string }) => {
+        const memory = memoryStore.addMemory(args);
+        return {
+          success: true,
+          memoryId: memory.id,
+          message: `Memory saved: "${args.content}"`,
+        };
+      },
+    }),
+    [memoryStore],
+  );
+
+  useEffect(() => {
+    if (!capabilities.memory.personalization) return;
+    return assistantApi.modelContext().register({
+      getModelContext: () => ({ tools: { save_memory: memoryTool } }),
+    });
+  }, [assistantApi, memoryTool, capabilities.memory.personalization]);
 
   return <>{children}</>;
 }
@@ -321,6 +339,7 @@ function MemoryProvider({ children }: { children: ReactNode }) {
 function ToolsProvider({ children }: { children: ReactNode }) {
   const { capabilities } = useCapabilities();
   const { closePanel } = useSidePanel();
+  const assistantApi = useAssistantApi();
 
   const threadId = useAssistantState(
     ({ threadListItem }) => threadListItem.remoteId,
@@ -340,9 +359,58 @@ function ToolsProvider({ children }: { children: ReactNode }) {
     }
   }, [threadId, closePanel]);
 
-  // Register tools
-  useArtifactTools({ enabled: capabilities.tools.artifacts });
-  useImageTools({ enabled: capabilities.tools.imageGeneration });
+  const artifactTool = useMemo(
+    () => ({
+      parameters: z.object({
+        title: z.string(),
+        content: z.string(),
+        type: z.enum(["html", "react", "svg"]).default("html"),
+      }),
+      execute: async (args: {
+        title: string;
+        content: string;
+        type: "html" | "react" | "svg";
+      }) => ({
+        success: true,
+        ...args,
+        message: `Created artifact: "${args.title}"`,
+      }),
+    }),
+    [],
+  );
+
+  const imageTool = useMemo(
+    () => ({
+      parameters: generateImageSchema,
+      execute: async (args: { prompt: string; model?: ImageModelId }) => {
+        const response = await fetch("/api/generate-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(args),
+        });
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to generate image");
+        }
+        return response.json();
+      },
+    }),
+    [],
+  );
+
+  useEffect(() => {
+    if (!capabilities.tools.artifacts) return;
+    return assistantApi.modelContext().register({
+      getModelContext: () => ({ tools: { create_artifact: artifactTool } }),
+    });
+  }, [assistantApi, artifactTool, capabilities.tools.artifacts]);
+
+  useEffect(() => {
+    if (!capabilities.tools.imageGeneration) return;
+    return assistantApi.modelContext().register({
+      getModelContext: () => ({ tools: { generate_image: imageTool } }),
+    });
+  }, [assistantApi, imageTool, capabilities.tools.imageGeneration]);
 
   return (
     <>

@@ -434,6 +434,8 @@ export const AssistantMessage: FC = () => {
         (part.type === "tool-call" &&
           (part.toolName === "web_search" ||
             part.toolName === "generate_image" ||
+            part.toolName === "create_artifact" ||
+            part.toolName === "save_memory" ||
             part.toolName.startsWith("mcp_") ||
             part.toolName.startsWith("app_"))),
     ),

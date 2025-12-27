@@ -4,6 +4,11 @@ import type { HttpChatTransportInitOptions, UIMessage } from "ai";
 import type { MessageTiming } from "@/lib/types/timing";
 import type { ComposerMode } from "@/contexts/composer-mode-provider";
 
+type InitializeThreadFn = () => Promise<{
+  remoteId: string;
+  externalId: string | undefined;
+}>;
+
 export class ModelChatTransport<
   UI_MESSAGE extends UIMessage = UIMessage,
 > extends AssistantChatTransport<UI_MESSAGE> {
@@ -14,15 +19,23 @@ export class ModelChatTransport<
   private _onComposerModeReset: (() => void) | null = null;
   private _timings: Record<string, MessageTiming> = {};
   private _timingListeners: Set<() => void> = new Set();
+  private _initializeThread: InitializeThreadFn | null = null;
 
   constructor(initOptions?: HttpChatTransportInitOptions<UI_MESSAGE>) {
     super({
       ...initOptions,
       prepareSendMessagesRequest: async (options) => {
         const context = this.runtimeRef?.thread.getModelContext();
-        const id =
-          (await this.runtimeRef?.threads.mainItem.initialize())?.remoteId ??
-          options.id;
+
+        let id: string;
+        if (this._initializeThread) {
+          const result = await this._initializeThread();
+          id = result.remoteId;
+        } else {
+          id =
+            (await this.runtimeRef?.threads.mainItem.initialize())?.remoteId ??
+            options.id;
+        }
 
         const optionsEx = {
           ...options,
@@ -42,10 +55,13 @@ export class ModelChatTransport<
         const preparedRequest =
           await initOptions?.prepareSendMessagesRequest?.(optionsEx);
 
+        const { tools: _tools, ...bodyWithoutTools } = (preparedRequest?.body ??
+          optionsEx.body) as Record<string, unknown>;
+
         return {
           ...preparedRequest,
-          body: preparedRequest?.body ?? {
-            ...optionsEx.body,
+          body: {
+            ...bodyWithoutTools,
             id,
             messages: options.messages,
             trigger: options.trigger,
@@ -83,6 +99,10 @@ export class ModelChatTransport<
 
   setOnComposerModeReset(callback: (() => void) | null): void {
     this._onComposerModeReset = callback;
+  }
+
+  setInitializeThread(fn: InitializeThreadFn | null): void {
+    this._initializeThread = fn;
   }
 
   override setRuntime(runtime: AssistantRuntime) {

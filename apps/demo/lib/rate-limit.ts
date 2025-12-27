@@ -1,12 +1,12 @@
+import { ApiError } from "@/lib/error";
+
 type RateLimitRecord = {
   count: number;
   resetAt: number;
 };
 
 type RateLimitOptions = {
-  /** Time window in milliseconds (default: 60000 = 1 minute) */
   window?: number;
-  /** Maximum requests per window (default: 5) */
   max?: number;
 };
 
@@ -52,12 +52,40 @@ class RateLimiter {
     };
   }
 
+  checkOrThrow(identifier: string): RateLimitResult {
+    const result = this.check(identifier);
+    if (!result.success) {
+      const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000);
+      throw ApiError.rateLimit(
+        `Rate limit exceeded. Retry after ${retryAfter}s`,
+      );
+    }
+    return result;
+  }
+
+  checkOrRespond(identifier: string): Response | null {
+    const result = this.check(identifier);
+    if (!result.success) {
+      const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000);
+      return new Response(JSON.stringify({ error: "Too many requests" }), {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "Retry-After": String(retryAfter),
+          "X-RateLimit-Limit": String(this.max),
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(Math.ceil(result.resetAt / 1000)),
+        },
+      });
+    }
+    return null;
+  }
+
   reset(identifier: string): void {
     this.store.delete(identifier);
   }
 
   private startCleanup(): void {
-    // Cleanup old entries every 5 minutes
     setInterval(
       () => {
         const now = Date.now();
@@ -72,14 +100,12 @@ class RateLimiter {
   }
 }
 
-// Pre-configured rate limiters for common use cases
 export const rateLimiters = {
-  /** Auth-related actions: 5 requests per minute */
   auth: new RateLimiter({ window: 60 * 1000, max: 5 }),
-  /** Sensitive actions: 3 requests per minute */
   sensitive: new RateLimiter({ window: 60 * 1000, max: 3 }),
-  /** General API: 100 requests per minute */
   api: new RateLimiter({ window: 60 * 1000, max: 100 }),
+  chat: new RateLimiter({ window: 60 * 1000, max: 30 }),
+  imageGeneration: new RateLimiter({ window: 60 * 1000, max: 10 }),
 };
 
 export { RateLimiter };

@@ -9,6 +9,7 @@ import {
   type ImageModelId,
 } from "@/lib/ai/models";
 import { api } from "@/utils/trpc/server";
+import { getAuthenticatedUser, unauthorizedResponse } from "@/lib/api/auth";
 
 export const maxDuration = 60;
 
@@ -47,13 +48,18 @@ async function resolveImageModel(
       return defaultModel as ImageModelId;
     }
   } catch {
-    // Not authenticated or error, use default
+    // Use default if not authenticated
   }
 
   return DEFAULT_IMAGE_MODEL_ID;
 }
 
 export async function POST(req: Request) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return unauthorizedResponse();
+  }
+
   try {
     const { prompt, model: requestModel }: GenerateImageRequest =
       await req.json();

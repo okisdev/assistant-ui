@@ -238,7 +238,6 @@ export const chatRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Verify the user owns this chat
       const chatResult = await ctx.db
         .select({ id: chat.id })
         .from(chat)
@@ -263,6 +262,74 @@ export const chatRouter = createTRPCRouter({
       });
 
       return { id: input.id };
+    }),
+
+  saveMessages: protectedProcedure
+    .input(
+      z.object({
+        chatId: z.string(),
+        messages: z.array(
+          z.object({
+            id: z.string(),
+            role: z.string(),
+            parts: z.unknown(),
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const chatResult = await ctx.db
+        .select({ id: chat.id })
+        .from(chat)
+        .where(
+          and(eq(chat.id, input.chatId), eq(chat.userId, ctx.session.user.id)),
+        )
+        .limit(1);
+
+      if (!chatResult[0]) {
+        return { saved: 0 };
+      }
+
+      const existing = await ctx.db
+        .select({ id: chatMessage.id })
+        .from(chatMessage)
+        .where(eq(chatMessage.chatId, input.chatId));
+
+      const persistedIds = new Set(existing.map((m) => m.id));
+      const newMessages = input.messages.filter((m) => !persistedIds.has(m.id));
+
+      if (newMessages.length === 0) {
+        return { saved: 0 };
+      }
+
+      let lastParentId: string | null = null;
+      for (const msg of input.messages) {
+        if (persistedIds.has(msg.id)) {
+          lastParentId = msg.id;
+        }
+      }
+
+      const messagesToInsert = newMessages.map((msg) => {
+        const parentId = lastParentId;
+        lastParentId = msg.id;
+        return {
+          id: msg.id,
+          chatId: input.chatId,
+          parentId,
+          role: msg.role,
+          format: "ai-sdk/v5",
+          content: {
+            role: msg.role,
+            parts: msg.parts,
+          },
+          status: undefined,
+          metadata: undefined,
+        };
+      });
+
+      await ctx.db.insert(chatMessage).values(messagesToInsert);
+
+      return { saved: newMessages.length };
     }),
 
   listArchived: protectedProcedure.query(async ({ ctx }) => {
@@ -328,7 +395,6 @@ export const chatRouter = createTRPCRouter({
   permanentDelete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // Only allow permanent deletion of already soft-deleted chats
       await ctx.db
         .delete(chat)
         .where(

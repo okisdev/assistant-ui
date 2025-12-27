@@ -1,8 +1,14 @@
 import { put } from "@vercel/blob";
 import { nanoid } from "nanoid";
 import { api } from "@/utils/trpc/server";
+import { getAuthenticatedUser, unauthorizedResponse } from "@/lib/api/auth";
 
 export async function POST(req: Request) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return unauthorizedResponse();
+  }
+
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
 
@@ -12,19 +18,8 @@ export async function POST(req: Request) {
 
   const chatId = formData.get("chatId") as string | null;
 
-  let userId: string;
-  try {
-    const profile = await api.user.profile.get();
-    if (!profile) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    userId = profile.id;
-  } catch {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const id = nanoid();
-  const pathname = `attachments/${userId}/${id}/${file.name}`;
+  const pathname = `attachments/${user.id}/${id}/${file.name}`;
 
   const blob = await put(pathname, file, {
     access: "public",

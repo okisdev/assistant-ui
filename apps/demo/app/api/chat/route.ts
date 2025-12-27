@@ -4,6 +4,7 @@ import {
   stepCountIs,
   type ToolSet,
 } from "ai";
+import { nanoid } from "nanoid";
 import { openai } from "@ai-sdk/openai";
 import { AVAILABLE_MODELS } from "@/lib/ai/models";
 import type { ResolvedUserCapabilities } from "@/lib/database/types";
@@ -17,11 +18,18 @@ import { getAppTools } from "@/lib/ai/tools/apps";
 import { DEFAULT_CAPABILITIES } from "@/lib/ai/capabilities";
 import { recordUsage } from "@/lib/ai/usage";
 import { getMCPTools, closeMCPClients } from "@/lib/ai/mcp";
+import { api } from "@/utils/trpc/server";
+import { getAuthenticatedUser, unauthorizedResponse } from "@/lib/api/auth";
 import type { ComposerMode } from "@/contexts/composer-mode-provider";
 
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return unauthorizedResponse();
+  }
+
   const {
     messages,
     id,
@@ -165,8 +173,33 @@ export async function POST(req: Request) {
     },
   });
 
+  result.consumeStream();
+
   return result.toUIMessageStreamResponse({
     sendReasoning: reasoningEnabled,
+    originalMessages: messages,
+    generateMessageId: () => nanoid(),
+    onFinish: async ({ messages: allMessages }) => {
+      if (id && !id.includes("incognito")) {
+        const validChatId =
+          id && !id.includes("DEFAULT") && !id.includes("THREAD") ? id : null;
+
+        if (validChatId) {
+          try {
+            await api.chat.saveMessages({
+              chatId: validChatId,
+              messages: allMessages.map((m) => ({
+                id: m.id,
+                role: m.role,
+                parts: m.parts,
+              })),
+            });
+          } catch (error) {
+            console.error("Failed to save messages:", error);
+          }
+        }
+      }
+    },
     headers: {
       "Content-Encoding": "none",
       "Transfer-Encoding": "chunked",

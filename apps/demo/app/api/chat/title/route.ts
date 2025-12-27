@@ -1,7 +1,13 @@
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
+import { getAuthenticatedUser, unauthorizedResponse } from "@/lib/api/auth";
 
 export async function POST(req: Request) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return unauthorizedResponse();
+  }
+
   const { messages } = await req.json();
 
   const userMessage = messages.find((m: { role: string }) => m.role === "user");
