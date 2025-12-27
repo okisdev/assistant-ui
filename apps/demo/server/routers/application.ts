@@ -156,10 +156,15 @@ export const applicationRouter = createTRPCRouter({
         );
 
         if (builtinApp) {
-          const isScopeConnection = builtinApp.connection.type === "scope";
-          const isConnected = isScopeConnection
-            ? !!conn.account
-            : !!conn.user_application.accessToken;
+          const connectionType = builtinApp.connection.type;
+          let isConnected = false;
+          if (connectionType === "scope") {
+            isConnected = !!conn.account;
+          } else if (connectionType === "oauth") {
+            isConnected = !!conn.user_application.accessToken;
+          } else if (connectionType === "none") {
+            isConnected = true;
+          }
 
           return {
             id: conn.user_application.id,
@@ -216,6 +221,8 @@ export const applicationRouter = createTRPCRouter({
       let isConnected = false;
       if (builtinApp?.connection.type === "scope") {
         isConnected = connection.accountId !== null;
+      } else if (builtinApp?.connection.type === "none") {
+        isConnected = true;
       } else {
         isConnected = connection.accessToken !== null;
       }

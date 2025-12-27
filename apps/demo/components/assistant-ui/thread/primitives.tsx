@@ -33,6 +33,7 @@ import {
 import { toast } from "sonner";
 
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
+import { MCPAppToolFallback } from "@/components/assistant-ui/mcp-app-tool-ui";
 import { ReasoningContent } from "@/components/assistant-ui/reasoning-content";
 import { SourceContent } from "@/components/assistant-ui/source-content";
 import { TextWithChainOfThought } from "@/components/assistant-ui/text-with-chain-of-thought";
@@ -506,6 +507,9 @@ export const AssistantMessage: FC = () => {
                 Text: TextComponent,
                 Reasoning: ReasoningContent,
                 Source: () => null,
+                tools: {
+                  Fallback: MCPAppToolFallback,
+                },
               }}
             />
             <MessageError />

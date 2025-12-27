@@ -1,5 +1,6 @@
 import type { UserContext } from "./context";
 import type { MCPToolInfo } from "./mcp";
+import { getBuiltinApp } from "@/lib/integrations/apps";
 
 export const SAVE_MEMORY_INSTRUCTIONS = `<memory_capability>
 <tool>save_memory</tool>
@@ -211,11 +212,35 @@ ${serverBlocks.join("\n")}
 </mcp_tools>`;
 }
 
+function generateAppToolInstructions(
+  app: { id: string; name: string; slug: string },
+  isSelected: boolean,
+): string {
+  const appDef = getBuiltinApp(app.slug);
+  if (!appDef?.tools || appDef.tools.length === 0) return "";
+
+  const toolPrefix = `app_${app.slug.replace(/-/g, "_")}`;
+  const toolNames = appDef.tools.map((t) => `${toolPrefix}_${t.name}`);
+  const toolDescriptions = appDef.tools
+    .map((t) => `${t.name}: ${t.description}`)
+    .join("; ");
+
+  const priority = isSelected ? " [SELECTED - USE THIS FIRST]" : "";
+  return `- ${app.name}${priority}: Tools: ${toolNames.join(", ")} (${toolDescriptions})`;
+}
+
 function formatConnectedApps(
   connectedApps: Array<{ id: string; name: string; slug: string }>,
   selectedAppIds: string[],
 ): string {
   if (connectedApps.length === 0) return "";
+
+  const selectedApps = connectedApps.filter((app) =>
+    selectedAppIds.includes(app.id),
+  );
+  const otherApps = connectedApps.filter(
+    (app) => !selectedAppIds.includes(app.id),
+  );
 
   const appLines = connectedApps.map((app) => {
     const isSelected = selectedAppIds.includes(app.id);
@@ -223,17 +248,32 @@ function formatConnectedApps(
     return `  <app name="${app.name}" status="${status}" />`;
   });
 
-  const hasSelected = selectedAppIds.length > 0;
+  const selectedInstructions = selectedApps
+    .map((app) => generateAppToolInstructions(app, true))
+    .filter(Boolean);
+
+  const otherInstructions = otherApps
+    .map((app) => generateAppToolInstructions(app, false))
+    .filter(Boolean);
+
+  const allInstructions = [...selectedInstructions, ...otherInstructions].join(
+    "\n",
+  );
+
+  const priorityNote =
+    selectedApps.length > 0
+      ? `\n<priority>The user has explicitly selected ${selectedApps.map((a) => a.name).join(", ")}. You MUST use tools from selected apps when the request is relevant. Do not ignore selected apps.</priority>`
+      : "";
 
   return `<connected_apps>
 <purpose>The user has connected external applications. You have tools to interact with these apps.</purpose>
 <apps>
 ${appLines.join("\n")}
-</apps>
-<instruction>
-${hasSelected ? "The user has explicitly selected one or more apps. Prioritize using tools from selected apps when relevant to their request." : "Use the app tools when the user's request relates to the connected app's functionality (e.g., calendar queries, file searches)."}
-- For Google Calendar: Use list_calendar_events, create_calendar_event, update_calendar_event, delete_calendar_event
-</instruction>
+</apps>${priorityNote}
+<available_tools>
+${allInstructions}
+</available_tools>
+<instruction>When the user's request relates to any connected app's functionality, use the appropriate app tools. Tool names follow the pattern: app_[app_slug]_[tool_name]</instruction>
 </connected_apps>`;
 }
 

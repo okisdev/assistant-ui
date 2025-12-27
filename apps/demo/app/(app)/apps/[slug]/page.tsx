@@ -19,6 +19,9 @@ import {
   Construction,
   Link2,
   BadgeCheck,
+  MoreHorizontal,
+  Download,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,6 +30,17 @@ import { authClient } from "@/lib/auth.client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,11 +51,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 
 const CATEGORY_CONFIG: Record<
   string,
@@ -69,7 +78,7 @@ function AppIcon({
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-xl bg-muted text-muted-foreground",
+          "flex items-center justify-center rounded-xl bg-muted/50 text-muted-foreground",
           className,
         )}
       >
@@ -93,8 +102,8 @@ function PageSkeleton() {
     <div className="flex flex-1 flex-col overflow-auto">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-10 md:px-8">
         <div className="h-8 w-16 animate-pulse rounded bg-muted" />
-        <div className="flex items-start gap-4">
-          <div className="size-16 animate-pulse rounded-xl bg-muted" />
+        <div className="flex items-center gap-4">
+          <div className="size-18 animate-pulse rounded-xl bg-muted" />
           <div className="flex-1 space-y-2">
             <div className="h-6 w-32 animate-pulse rounded bg-muted" />
             <div className="h-4 w-full animate-pulse rounded bg-muted" />
@@ -224,10 +233,31 @@ export default function AppDetailPage({
     window.location.href = `/api/connect/${app.connection.provider}`;
   };
 
+  const installMutation = api.application.connect.useMutation({
+    onSuccess: () => {
+      toast.success("App installed successfully");
+      utils.application.userConnections.invalidate();
+      refetchStatus();
+      setIsConnecting(false);
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to install app");
+      setIsConnecting(false);
+    },
+  });
+
+  const handleNoAuthInstall = () => {
+    if (!app || app.connection.type !== "none") return;
+    setIsConnecting(true);
+    installMutation.mutate({ applicationId: app.id });
+  };
+
   const handleConnect = () => {
     if (!app) return;
     if (app.connection.type === "scope") {
       handleScopeConnect();
+    } else if (app.connection.type === "none") {
+      handleNoAuthInstall();
     } else {
       handleOAuthConnect();
     }
@@ -272,6 +302,7 @@ export default function AppDetailPage({
   const categoryConfig = CATEGORY_CONFIG[app.category] ?? CATEGORY_CONFIG.other;
   const CategoryIcon = categoryConfig.icon;
   const isScopeConnection = app.connection.type === "scope";
+  const isNoAuthConnection = app.connection.type === "none";
 
   return (
     <div className="flex flex-1 flex-col overflow-auto">
@@ -283,25 +314,25 @@ export default function AppDetailPage({
           </Link>
         </Button>
 
-        <div className="flex items-start gap-4">
+        <div className="flex items-center gap-4">
           <AppIcon
             iconUrl={app.iconUrl}
             name={app.name}
-            className="size-16 shrink-0"
+            className="size-18 shrink-0"
           />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <h1 className="font-medium text-xl tracking-tight">{app.name}</h1>
               {app.status === "wip" && (
-                <span className="flex items-center gap-1 rounded bg-amber-500/5 px-1.5 py-0.5 text-amber-600 text-xs">
+                <span className="flex items-center gap-1 rounded bg-amber-500/10 px-2 py-0.5 text-amber-600 text-xs">
                   <Construction className="size-3" />
                   Coming Soon
                 </span>
               )}
               {isConnected && (
-                <span className="flex items-center gap-1 rounded bg-emerald-500/10 px-1.5 py-0.5 text-emerald-500 text-xs">
+                <span className="flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-0.5 text-emerald-500 text-xs">
                   <Check className="size-3" />
-                  Connected
+                  {isNoAuthConnection ? "Installed" : "Connected"}
                 </span>
               )}
             </div>
@@ -313,25 +344,19 @@ export default function AppDetailPage({
                 <span className="flex items-center gap-1">
                   By {app.publisher}
                   {app.verified && (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button
-                          type="button"
-                          className="inline-flex items-center text-blue-500 hover:text-blue-600"
-                        >
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex cursor-help text-blue-500">
                           <BadgeCheck className="size-3.5" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        side="top"
-                        className="w-auto px-3 py-2 text-xs"
-                      >
-                        <p className="font-medium">Verified App</p>
-                        <p className="text-muted-foreground">
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p className="font-medium">Verified</p>
+                        <p className="text-muted">
                           This app has been verified by assistant-ui
                         </p>
-                      </PopoverContent>
-                    </Popover>
+                      </TooltipContent>
+                    </Tooltip>
                   )}
                 </span>
               )}
@@ -341,61 +366,66 @@ export default function AppDetailPage({
               </span>
             </div>
           </div>
+          {isConnected && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="size-8 shrink-0">
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => setShowDisconnectDialog(true)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  {isNoAuthConnection ? (
+                    <Trash2 className="mr-2 size-4" />
+                  ) : (
+                    <Unlink className="mr-2 size-4" />
+                  )}
+                  {isNoAuthConnection ? "Uninstall" : "Disconnect"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         {app.status === "published" ? (
-          <div>
-            {isConnected ? (
-              <div className="flex flex-col gap-3">
-                {connectionStatus.externalName && (
-                  <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-4 py-3 text-sm">
-                    <span className="text-muted-foreground">Connected to:</span>
-                    <span className="font-medium">
-                      {connectionStatus.externalName}
-                    </span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between rounded-lg bg-muted/50 p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm">Enable this app</span>
-                    <Switch
-                      checked={connectionStatus.enabled}
-                      onCheckedChange={handleToggleEnabled}
-                      disabled={toggleMutation.isPending}
-                    />
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground"
-                    onClick={() => setShowDisconnectDialog(true)}
-                  >
-                    <Unlink className="mr-1.5 size-3.5" />
-                    Disconnect
-                  </Button>
+          isConnected ? (
+            <div className="flex flex-col gap-3">
+              {connectionStatus.externalName && (
+                <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-4 py-3 text-sm">
+                  <span className="text-muted-foreground">Connected as</span>
+                  <span className="font-medium">
+                    {connectionStatus.externalName}
+                  </span>
                 </div>
+              )}
+              <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
+                <span className="text-sm">Enable this app</span>
+                <Switch
+                  checked={connectionStatus.enabled}
+                  onCheckedChange={handleToggleEnabled}
+                  disabled={toggleMutation.isPending}
+                />
               </div>
-            ) : (
-              <Button
-                className="w-full"
-                onClick={handleConnect}
-                disabled={isConnecting}
-              >
-                {isConnecting ? (
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                ) : isScopeConnection ? (
-                  <ExternalLink className="mr-2 size-4" />
-                ) : (
-                  <Link2 className="mr-2 size-4" />
-                )}
-                {isScopeConnection
-                  ? `Connect ${app.name}`
-                  : `Connect to ${app.name}`}
-              </Button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <Button onClick={handleConnect} disabled={isConnecting}>
+              {isConnecting ? (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              ) : isNoAuthConnection ? (
+                <Download className="mr-2 size-4" />
+              ) : isScopeConnection ? (
+                <ExternalLink className="mr-2 size-4" />
+              ) : (
+                <Link2 className="mr-2 size-4" />
+              )}
+              {isNoAuthConnection ? "Install" : "Connect"} {app.name}
+            </Button>
+          )
         ) : (
-          <div className="flex items-center justify-center rounded-lg bg-muted/50 p-4 text-muted-foreground text-sm">
+          <div className="flex items-center justify-center rounded-lg bg-muted/50 px-4 py-3 text-muted-foreground text-sm">
             <Construction className="mr-2 size-4" />
             Coming soon
           </div>
@@ -407,7 +437,7 @@ export default function AppDetailPage({
               <Globe className="size-4 text-muted-foreground" />
               Resources
             </h2>
-            <div className="flex flex-col gap-3 text-sm">
+            <div className="flex flex-col gap-2 text-sm">
               {app.websiteUrl && (
                 <a
                   href={app.websiteUrl}
@@ -451,9 +481,13 @@ export default function AppDetailPage({
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Disconnect {app.name}?</AlertDialogTitle>
+              <AlertDialogTitle>
+                {isNoAuthConnection ? "Uninstall" : "Disconnect"} {app.name}?
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                You&apos;ll need to reconnect to use this app again.
+                {isNoAuthConnection
+                  ? "You'll need to install again to use this app."
+                  : "You'll need to reconnect to use this app again."}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -467,7 +501,7 @@ export default function AppDetailPage({
                 {disconnectMutation.isPending && (
                   <Loader2 className="mr-2 size-4 animate-spin" />
                 )}
-                Disconnect
+                {isNoAuthConnection ? "Uninstall" : "Disconnect"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

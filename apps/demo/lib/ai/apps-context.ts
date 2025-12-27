@@ -80,6 +80,16 @@ export async function getConnectedApps(
           tokenExpiresAt: userApp.tokenExpiresAt,
         });
       }
+    } else if (appDef.connection.type === "none") {
+      connectedApps.push({
+        id: appDef.id,
+        slug: appDef.slug,
+        name: appDef.name,
+        connectionType: "none",
+        accessToken: "",
+        refreshToken: null,
+        tokenExpiresAt: null,
+      });
     }
   }
 

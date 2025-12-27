@@ -2,6 +2,7 @@ import type { ToolSet } from "ai";
 import type { ConnectedApp } from "@/lib/ai/apps-context";
 import { createGoogleCalendarTools } from "./google-calendar";
 import { createGoogleDriveTools } from "./google-drive";
+import { createGoogleHotelsTools } from "./google-hotels";
 
 export async function getAppTools(
   connectedApps: ConnectedApp[],
@@ -25,6 +26,11 @@ export async function getAppTools(
       case "google-drive": {
         const driveTools = createGoogleDriveTools(app.accessToken);
         Object.assign(tools, driveTools);
+        break;
+      }
+      case "google-hotels": {
+        const hotelsTools = createGoogleHotelsTools();
+        Object.assign(tools, hotelsTools);
         break;
       }
     }

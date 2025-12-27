@@ -11,7 +11,8 @@
         "NEXT_PUBLIC_ASSISTANT_BASE_URL",
         "OPENAI_API_KEY",
         "XAI_API_KEY",
-        "BLOB_READ_WRITE_TOKEN"
+        "BLOB_READ_WRITE_TOKEN",
+        "SERPAPI_API_KEY"
       ]
     }
   }

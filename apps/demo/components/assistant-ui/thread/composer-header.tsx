@@ -2,7 +2,6 @@
 
 import type { FC, ReactNode } from "react";
 import { Sparkles, X, Puzzle } from "lucide-react";
-import { useAssistantState } from "@assistant-ui/react";
 import { useComposerMode } from "@/contexts/composer-mode-provider";
 import { useSelectedApps } from "@/contexts/selected-apps-provider";
 import { useProject } from "@/hooks/use-project";
@@ -69,16 +68,15 @@ export const ComposerHeader: FC = () => {
   const { mode, resetMode } = useComposerMode();
   const { currentProjectId, setCurrentProjectId } = useProject();
   const { selectedAppIds, deselectApp } = useSelectedApps();
-  const isNewThread = useAssistantState(({ thread }) => thread.isEmpty);
 
   const { data: currentProject } = trpc.project.get.useQuery(
     { id: currentProjectId! },
-    { enabled: !!currentProjectId && isNewThread },
+    { enabled: !!currentProjectId },
   );
 
   const { data: connections } = trpc.application.userConnections.useQuery(
     undefined,
-    { enabled: selectedAppIds.length > 0 && isNewThread },
+    { enabled: selectedAppIds.length > 0 },
   );
 
   const selectedApps =
@@ -87,8 +85,8 @@ export const ComposerHeader: FC = () => {
     ) ?? [];
 
   const isImageGenerationMode = mode === "image-generation";
-  const showProjectBadge = isNewThread && currentProjectId && currentProject;
-  const showAppBadges = isNewThread && selectedApps.length > 0;
+  const showProjectBadge = currentProjectId && currentProject;
+  const showAppBadges = selectedApps.length > 0;
 
   if (!isImageGenerationMode && !showProjectBadge && !showAppBadges)
     return null;

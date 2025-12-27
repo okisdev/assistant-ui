@@ -377,6 +377,64 @@ export function useMessageProgress(): {
 
 ---
 
+## Proposed: MCP Apps (Interactive UI from MCP Servers)
+
+No built-in support for rendering interactive HTML UI returned by MCP servers (SEP-1865).
+
+**Background**: MCP Apps is an extension to the Model Context Protocol that allows MCP servers to return interactive HTML content instead of plain text. This enables rich, interactive tool results like charts, forms, and dashboards.
+
+**Demo Implementation**:
+- `MCPAppRenderer` component using `safe-content-frame` for secure iframe sandboxing
+- `MCPAppToolFallback` as `tools.Fallback` in `MessagePrimitive.Parts`
+- App Bridge Protocol support: theme synchronization via `postMessage`
+- Auto-resize support via `postMessage`
+- Detection of `type: "resource"` with `mimeType: "text/html"` in tool results
+
+**Challenges**:
+1. Requires `safe-content-frame` dependency for secure HTML rendering
+2. App Bridge Protocol needs standardization (theme-change, resize messages)
+3. MCP server must provide absolute API URLs (iframe origin differs from server origin)
+
+**Proposed Solution** (`@assistant-ui/react-mcp-apps`):
+```typescript
+// Core renderer component
+export const MCPAppRenderer: FC<{
+  html: string;
+  theme?: "light" | "dark";
+  minHeight?: number;
+  sandbox?: string[];
+  onResize?: (height: number) => void;
+}>;
+
+// Tool fallback for automatic MCP App detection
+export const MCPAppToolFallback: FC<ToolCallMessagePartProps>;
+
+// Utility to extract HTML from MCP tool results
+export function extractMCPAppHtml(result: unknown): string | null;
+
+// Usage
+<MessagePrimitive.Parts
+  components={{
+    tools: {
+      Fallback: MCPAppToolFallback,
+    },
+  }}
+/>
+```
+
+**App Bridge Protocol** (to be standardized):
+```typescript
+// Host → App (theme synchronization)
+window.postMessage({ type: "theme-change", theme: "dark" }, "*");
+
+// App → Host (auto-resize)
+window.parent.postMessage({ type: "resize", height: 400 }, "*");
+```
+
+**Note**: MCP Apps servers must embed their API base URL in the HTML (cannot use `window.location.origin` as iframe is sandboxed with different origin).
+
+---
+
 ## Summary: Upstream Priority
 
 ### High Priority (Core UX)
@@ -390,9 +448,10 @@ export function useMessageProgress(): {
 6. **Incognito Mode** - Privacy feature
 7. **Thread Soft Delete** - Better UX than hard delete
 8. **Source/Citation Component** - Web search is common
+9. **MCP Apps** - Interactive UI from MCP servers (SEP-1865)
 
 ### Lower Priority (App-Specific)
-9. **Chain-of-Thought Parsing** - Can vary by model
-10. **Composer Modes** - Highly app-specific
-11. **Usage Tracking** - Often backend-specific
-12. **Activity Progress** - UI preference
+10. **Chain-of-Thought Parsing** - Can vary by model
+11. **Composer Modes** - Highly app-specific
+12. **Usage Tracking** - Often backend-specific
+13. **Activity Progress** - UI preference

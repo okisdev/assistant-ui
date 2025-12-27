@@ -35,13 +35,18 @@ import {
 } from "@/contexts/capabilities-provider";
 import { ArtifactToolUI } from "@/components/assistant-ui/artifact";
 import { ImageToolUI } from "@/components/assistant-ui/image-tool-ui";
+import { HotelsToolUI } from "@/components/assistant-ui/hotels-tool-ui";
 import {
   SidePanelProvider,
   useSidePanel,
 } from "@/contexts/side-panel-provider";
 import { ChatLayout } from "@/components/assistant-ui/chat-layout";
 import { ChatContent } from "@/components/app/chat/chat-content";
-import { ProjectContext, type ProjectContextValue } from "@/hooks/use-project";
+import {
+  ProjectContext,
+  useProject,
+  type ProjectContextValue,
+} from "@/hooks/use-project";
 import { ChatPageProvider } from "@/contexts/chat-page-provider";
 import {
   IncognitoProvider,
@@ -343,6 +348,7 @@ function ToolsProvider({ children }: { children: ReactNode }) {
     <>
       {capabilities.tools.artifacts && <ArtifactToolUI />}
       {capabilities.tools.imageGeneration && <ImageToolUI />}
+      <HotelsToolUI />
       {children}
     </>
   );
@@ -369,8 +375,9 @@ function RuntimeProviderInner({
   );
 }
 
-function SelectedAppsBinding({ children }: { children: ReactNode }) {
+function ComposerContextBinding({ children }: { children: ReactNode }) {
   const { selectedAppIds, clearApps } = useSelectedApps();
+  const { setCurrentProjectId } = useProject();
   const threadId = useAssistantState(({ threadListItem }) => threadListItem.id);
   const prevThreadIdRef = useRef<string | undefined>(undefined);
 
@@ -384,9 +391,10 @@ function SelectedAppsBinding({ children }: { children: ReactNode }) {
       prevThreadIdRef.current !== threadId
     ) {
       clearApps();
+      setCurrentProjectId(null);
     }
     prevThreadIdRef.current = threadId;
-  }, [threadId, clearApps]);
+  }, [threadId, clearApps, setCurrentProjectId]);
 
   return <>{children}</>;
 }
@@ -410,7 +418,7 @@ function ChatProviderInner({
       key={isIncognito ? "incognito" : "regular"}
       adapter={adapter}
     >
-      <SelectedAppsBinding>{children}</SelectedAppsBinding>
+      <ComposerContextBinding>{children}</ComposerContextBinding>
     </RuntimeProviderInner>
   );
 }

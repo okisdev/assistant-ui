@@ -506,7 +506,8 @@
   - [x] HTTP/SSE transport types
   - [x] Server management (add/edit/delete)
   - [x] Enable/disable servers
-  - [ ] MCP resource handling
+  - [x] MCP resource handling
+  - [x] MCP Apps (interactive UI from MCP servers)
 
 ## Model Context & Runtime
 

@@ -77,8 +77,11 @@ function ToolBadgeSkeleton() {
 
 type MCPServer = RouterOutputs["mcpServer"]["list"][number];
 
-function getOAuthStatus(server: MCPServer): "connected" | "expired" | null {
-  if (!server.oauthAccessToken) return null;
+type OAuthStatus = "connected" | "expired" | "required" | "not-required";
+
+function getOAuthStatus(server: MCPServer): OAuthStatus {
+  if (!server.requiresOAuth) return "not-required";
+  if (!server.oauthAccessToken) return "required";
   if (server.oauthTokenExpiresAt) {
     const expiresAt = new Date(server.oauthTokenExpiresAt);
     if (expiresAt < new Date()) return "expired";
@@ -86,7 +89,7 @@ function getOAuthStatus(server: MCPServer): "connected" | "expired" | null {
   return "connected";
 }
 
-export function MCPSection() {
+export function MCPServerSection() {
   const searchParams = useSearchParams();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingServer, setEditingServer] = useState<MCPServer | undefined>();
@@ -98,19 +101,16 @@ export function MCPSection() {
   const { data: servers, isLoading } = api.mcpServer.list.useQuery();
   const utils = api.useUtils();
 
-  // Handle OAuth callback messages
   useEffect(() => {
     const oauthError = searchParams.get("oauth_error");
     const oauthSuccess = searchParams.get("oauth_success");
 
     if (oauthError) {
       toast.error(`OAuth failed: ${oauthError}`);
-      // Clean up URL
       window.history.replaceState({}, "", "/integrations");
     } else if (oauthSuccess) {
       toast.success("OAuth connected successfully");
       utils.mcpServer.list.invalidate();
-      // Clean up URL
       window.history.replaceState({}, "", "/integrations");
     }
   }, [searchParams, utils.mcpServer.list]);
@@ -171,7 +171,6 @@ export function MCPSection() {
   };
 
   const handleOAuthConnect = (server: MCPServer) => {
-    // Redirect to OAuth authorize endpoint
     window.location.href = `/api/mcp/oauth/authorize?serverId=${server.id}`;
   };
 
@@ -332,11 +331,14 @@ function MCPServerRow({
   const oauthStatus = getOAuthStatus(server);
   const faviconUrl = getFaviconUrl(server.url);
 
+  const canShowTools =
+    oauthStatus === "connected" || oauthStatus === "not-required";
+
   useEffect(() => {
-    if (!oauthStatus) {
+    if (!canShowTools) {
       setIsOpen(false);
     }
-  }, [oauthStatus]);
+  }, [canShowTools]);
 
   const checkConnectionMutation = api.mcpServer.checkConnection.useMutation({
     onSuccess: (result) => {
@@ -356,7 +358,7 @@ function MCPServerRow({
       { id: server.id },
       {
         staleTime: 5 * 60 * 1000,
-        enabled: !!oauthStatus,
+        enabled: canShowTools,
       },
     );
 
@@ -367,17 +369,17 @@ function MCPServerRow({
       <div className="rounded-lg bg-muted/50">
         <div className="flex w-full items-center gap-3 rounded-lg px-4 py-3">
           <CollapsibleTrigger
-            disabled={!oauthStatus}
+            disabled={!canShowTools}
             className={cn(
               "flex min-w-0 flex-1 items-center gap-3 text-left transition-colors",
-              oauthStatus && "hover:opacity-70",
+              canShowTools && "hover:opacity-70",
             )}
           >
             <ChevronRight
               className={cn(
                 "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
                 isOpen && "rotate-90",
-                !oauthStatus && "invisible",
+                !canShowTools && "invisible",
               )}
             />
             <div className="relative size-5 shrink-0">
@@ -409,8 +411,10 @@ function MCPServerRow({
                 <span className="rounded bg-muted px-2 py-0.5 text-muted-foreground text-xs uppercase">
                   {server.transportType}
                 </span>
-                {oauthStatus && <OAuthStatusBadge status={oauthStatus} />}
-                {oauthStatus && !isLoadingTools && toolCount > 0 && (
+                {oauthStatus === "connected" && (
+                  <OAuthStatusBadge status={oauthStatus} />
+                )}
+                {canShowTools && !isLoadingTools && toolCount > 0 && (
                   <span className="text-muted-foreground text-xs">
                     {toolCount} tool{toolCount !== 1 ? "s" : ""}
                   </span>
@@ -422,13 +426,7 @@ function MCPServerRow({
             </div>
           </CollapsibleTrigger>
           <div className="flex shrink-0 items-center gap-2">
-            {oauthStatus ? (
-              <Switch
-                checked={server.enabled}
-                onCheckedChange={onToggle}
-                disabled={isToggling}
-              />
-            ) : (
+            {oauthStatus === "required" ? (
               <Button
                 variant="outline"
                 size="sm"
@@ -438,6 +436,12 @@ function MCPServerRow({
                 <ExternalLink className="mr-1 size-3" />
                 Connect
               </Button>
+            ) : (
+              <Switch
+                checked={server.enabled}
+                onCheckedChange={onToggle}
+                disabled={isToggling}
+              />
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -446,7 +450,7 @@ function MCPServerRow({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {oauthStatus && (
+                {canShowTools && (
                   <>
                     <DropdownMenuItem
                       onClick={() =>
@@ -462,14 +466,18 @@ function MCPServerRow({
                       />
                       Check Connection
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={onOAuthConnect}>
-                      <Key className="mr-2 size-4" />
-                      Reconnect OAuth
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={onOAuthDisconnect}>
-                      <Unlink className="mr-2 size-4" />
-                      Disconnect OAuth
-                    </DropdownMenuItem>
+                    {oauthStatus === "connected" && (
+                      <>
+                        <DropdownMenuItem onClick={onOAuthConnect}>
+                          <Key className="mr-2 size-4" />
+                          Reconnect OAuth
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={onOAuthDisconnect}>
+                          <Unlink className="mr-2 size-4" />
+                          Disconnect OAuth
+                        </DropdownMenuItem>
+                      </>
+                    )}
                     <DropdownMenuSeparator />
                   </>
                 )}

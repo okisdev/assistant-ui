@@ -176,6 +176,9 @@ importers:
       tailwind-scrollbar:
         specifier: ^4.0.2
         version: 4.0.2(react@19.2.3)(tailwindcss@4.1.18)
+      tldts:
+        specifier: ^7.0.19
+        version: 7.0.19
       tw-shimmer:
         specifier: workspace:*
         version: link:../../packages/tw-shimmer

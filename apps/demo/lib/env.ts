@@ -30,6 +30,7 @@ export const env = createEnv({
     INTEGRATION_SLACK_CLIENT_SECRET: z.string().optional(),
     INTEGRATION_FIGMA_CLIENT_ID: z.string().optional(),
     INTEGRATION_FIGMA_CLIENT_SECRET: z.string().optional(),
+    SERPAPI_API_KEY: z.string().min(1, "SERPAPI_API_KEY is required"),
   },
   clientPrefix: "NEXT_PUBLIC_",
   client: {
@@ -60,6 +61,7 @@ export const env = createEnv({
     INTEGRATION_FIGMA_CLIENT_ID: process.env.INTEGRATION_FIGMA_CLIENT_ID,
     INTEGRATION_FIGMA_CLIENT_SECRET:
       process.env.INTEGRATION_FIGMA_CLIENT_SECRET,
+    SERPAPI_API_KEY: process.env.SERPAPI_API_KEY,
   },
   emptyStringAsUndefined: true,
   extends: [vercel()],

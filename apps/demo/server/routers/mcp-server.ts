@@ -14,6 +14,19 @@ import {
 import { encrypt, decrypt } from "@/lib/crypto";
 import { protectedProcedure, createTRPCRouter } from "../trpc";
 
+const MCP_CONNECTION_TIMEOUT_MS = 10000;
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  errorMessage: string,
+): Promise<T> {
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]);
+}
+
 const headersSchema = z.record(z.string(), z.string());
 
 const mcpServerInput = z.object({
@@ -30,6 +43,7 @@ const listSelectFields = {
   transportType: mcpServer.transportType,
   headers: mcpServer.headers,
   enabled: mcpServer.enabled,
+  oauthClientId: mcpServer.oauthClientId,
   oauthAccessToken: mcpServer.oauthAccessToken,
   oauthTokenExpiresAt: mcpServer.oauthTokenExpiresAt,
   createdAt: mcpServer.createdAt,
@@ -62,6 +76,8 @@ export const mcpServerRouter = createTRPCRouter({
 
     return servers.map((server) => ({
       ...server,
+      requiresOAuth: !!server.oauthClientId,
+      oauthClientId: undefined,
       oauthAccessToken: server.oauthAccessToken ? "[connected]" : null,
     }));
   }),
@@ -206,15 +222,23 @@ export const mcpServerRouter = createTRPCRouter({
       let client: Awaited<ReturnType<typeof createMCPClient>> | null = null;
 
       try {
-        client = await createMCPClient({
-          transport: {
-            type: input.transportType,
-            url: input.url,
-            headers: input.headers,
-          },
-        });
+        client = await withTimeout(
+          createMCPClient({
+            transport: {
+              type: input.transportType,
+              url: input.url,
+              headers: input.headers,
+            },
+          }),
+          MCP_CONNECTION_TIMEOUT_MS,
+          "Connection timeout",
+        );
 
-        const tools = await client.tools();
+        const tools = await withTimeout(
+          client.tools(),
+          MCP_CONNECTION_TIMEOUT_MS,
+          "Timeout fetching tools",
+        );
         const toolList = Object.entries(tools).map(([name, tool]) => ({
           name,
           description: tool.description ?? "",
@@ -270,15 +294,23 @@ export const mcpServerRouter = createTRPCRouter({
       }
 
       try {
-        client = await createMCPClient({
-          transport: {
-            type: server.transportType,
-            url: server.url,
-            headers: Object.keys(headers).length > 0 ? headers : undefined,
-          },
-        });
+        client = await withTimeout(
+          createMCPClient({
+            transport: {
+              type: server.transportType,
+              url: server.url,
+              headers: Object.keys(headers).length > 0 ? headers : undefined,
+            },
+          }),
+          MCP_CONNECTION_TIMEOUT_MS,
+          "Connection timeout",
+        );
 
-        const tools = await client.tools();
+        const tools = await withTimeout(
+          client.tools(),
+          MCP_CONNECTION_TIMEOUT_MS,
+          "Timeout fetching tools",
+        );
         const toolList = Object.entries(tools).map(([name, tool]) => ({
           name,
           description: tool.description ?? "",
@@ -331,15 +363,23 @@ export const mcpServerRouter = createTRPCRouter({
       let client: Awaited<ReturnType<typeof createMCPClient>> | null = null;
 
       try {
-        client = await createMCPClient({
-          transport: {
-            type: server.transportType,
-            url: server.url,
-            headers: Object.keys(headers).length > 0 ? headers : undefined,
-          },
-        });
+        client = await withTimeout(
+          createMCPClient({
+            transport: {
+              type: server.transportType,
+              url: server.url,
+              headers: Object.keys(headers).length > 0 ? headers : undefined,
+            },
+          }),
+          MCP_CONNECTION_TIMEOUT_MS,
+          "Connection timeout",
+        );
 
-        const tools = await client.tools();
+        const tools = await withTimeout(
+          client.tools(),
+          MCP_CONNECTION_TIMEOUT_MS,
+          "Timeout fetching tools",
+        );
         const toolCount = Object.keys(tools).length;
 
         return {
@@ -436,7 +476,6 @@ export const mcpServerRouter = createTRPCRouter({
       let tokenUrl = server.oauthTokenUrl;
       let scope = server.oauthScope;
 
-      // Discover OAuth metadata if not already configured
       if (!authorizationUrl || !tokenUrl) {
         const metadata = await discoverOAuthMetadata(server.url);
 
@@ -455,7 +494,6 @@ export const mcpServerRouter = createTRPCRouter({
           scope = metadata.scopes_supported.join(" ");
         }
 
-        // Dynamic client registration if supported and no client ID exists
         if (metadata.registration_endpoint && !clientId) {
           try {
             const clientRegistration = await registerOAuthClient(
@@ -477,7 +515,6 @@ export const mcpServerRouter = createTRPCRouter({
           }
         }
 
-        // Save discovered OAuth configuration
         await ctx.db
           .update(mcpServer)
           .set({

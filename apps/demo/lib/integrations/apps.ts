@@ -4,7 +4,7 @@ import type {
   ApplicationToolDefinition,
 } from "@/lib/database/schema";
 
-export type AppConnectionType = "scope" | "oauth";
+export type AppConnectionType = "scope" | "oauth" | "none";
 
 export type ScopeConnectionConfig = {
   type: "scope";
@@ -22,7 +22,14 @@ export type OAuthConnectionConfig = {
   additionalAuthParams?: Record<string, string>;
 };
 
-export type AppConnectionConfig = ScopeConnectionConfig | OAuthConnectionConfig;
+export type NoAuthConnectionConfig = {
+  type: "none";
+};
+
+export type AppConnectionConfig =
+  | ScopeConnectionConfig
+  | OAuthConnectionConfig
+  | NoAuthConnectionConfig;
 
 export type BuiltinAppDefinition = {
   id: string;
@@ -281,6 +288,29 @@ export const BUILTIN_APPS: BuiltinAppDefinition[] = [
       },
     ],
   },
+  {
+    id: "app_google_hotels",
+    slug: "google-hotels",
+    name: "Google Hotels",
+    description: "Search and compare hotel prices worldwide",
+    iconUrl: "/apps/icons/Google_Hotels.svg",
+    category: "other",
+    status: "published",
+    verified: true,
+    publisher: "assistant-ui",
+    websiteUrl: "https://www.google.com/travel/hotels",
+    privacyPolicyUrl: "https://policies.google.com/privacy",
+    termsOfServiceUrl: "https://policies.google.com/terms",
+    connection: {
+      type: "none",
+    },
+    tools: [
+      {
+        name: "search",
+        description: "Search hotels by location and dates",
+      },
+    ],
+  },
 ];
 
 export function getBuiltinApp(slug: string): BuiltinAppDefinition | undefined {
@@ -296,5 +326,8 @@ export function getBuiltinAppById(
 export function getBuiltinAppByProvider(
   provider: string,
 ): BuiltinAppDefinition | undefined {
-  return BUILTIN_APPS.find((app) => app.connection.provider === provider);
+  return BUILTIN_APPS.find(
+    (app) =>
+      app.connection.type !== "none" && app.connection.provider === provider,
+  );
 }

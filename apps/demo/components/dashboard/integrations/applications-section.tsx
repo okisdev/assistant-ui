@@ -11,6 +11,7 @@ import {
   Palette,
   Plus,
   Settings,
+  MoreHorizontal,
 } from "lucide-react";
 
 import { api } from "@/utils/trpc/client";
@@ -18,6 +19,12 @@ import type { RouterOutputs } from "@/server";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { SettingHeader } from "@/components/dashboard/setting-header";
 
 type UserConnection = RouterOutputs["application"]["userConnections"][number];
@@ -40,12 +47,12 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 function ApplicationSkeleton() {
   return (
-    <div className="rounded-lg bg-muted/50 p-4">
-      <div className="flex items-start gap-3">
-        <div className="size-10 animate-pulse rounded-lg bg-muted" />
+    <div className="rounded-lg bg-muted/50 px-4 py-3">
+      <div className="flex items-center gap-3">
+        <div className="size-5 animate-pulse rounded bg-muted" />
         <div className="flex-1 space-y-2">
-          <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-          <div className="h-3 w-40 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-48 animate-pulse rounded bg-muted" />
         </div>
         <div className="h-5 w-9 animate-pulse rounded-full bg-muted" />
       </div>
@@ -65,23 +72,14 @@ function AppIcon({
   const [hasError, setHasError] = useState(false);
 
   if (!iconUrl || hasError) {
-    return (
-      <div
-        className={cn(
-          "flex items-center justify-center rounded-lg bg-muted text-muted-foreground",
-          className,
-        )}
-      >
-        <FileText className="size-5" />
-      </div>
-    );
+    return <FileText className={cn("text-muted-foreground", className)} />;
   }
 
   return (
     <img
       src={iconUrl}
       alt={name}
-      className={cn("rounded-lg object-contain", className)}
+      className={cn("rounded-sm object-contain", className)}
       onError={() => setHasError(true)}
     />
   );
@@ -100,37 +98,47 @@ function InstalledAppCard({
   const CategoryIcon = CATEGORY_ICONS[app.category] ?? Grid3X3;
 
   return (
-    <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-4">
-      <AppIcon
-        iconUrl={app.iconUrl}
-        name={app.name}
-        className="size-10 shrink-0"
-      />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-sm">{app.name}</span>
-        </div>
-        <p className="mt-0.5 line-clamp-1 text-muted-foreground text-xs">
-          {app.description}
-        </p>
-        <div className="mt-1 flex items-center gap-2">
-          <span className="flex items-center gap-1 text-muted-foreground text-xs">
-            <CategoryIcon className="size-3" />
-            {CATEGORY_LABELS[app.category] ?? "Other"}
-          </span>
-        </div>
-      </div>
-      <div className="flex shrink-0 items-center gap-3">
-        <Switch
-          checked={connection.enabled}
-          onCheckedChange={() => onToggle(connection)}
-          disabled={isToggling}
+    <div className="rounded-lg bg-muted/50">
+      <div className="flex w-full items-center gap-3 px-4 py-3">
+        <AppIcon
+          iconUrl={app.iconUrl}
+          name={app.name}
+          className="size-5 shrink-0"
         />
-        <Link href={`/apps/${app.slug}`}>
-          <Button variant="ghost" size="icon" className="size-8">
-            <Settings className="size-4" />
-          </Button>
-        </Link>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-sm">{app.name}</span>
+            <span className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-muted-foreground text-xs">
+              <CategoryIcon className="size-3" />
+              {CATEGORY_LABELS[app.category] ?? "Other"}
+            </span>
+          </div>
+          <p className="max-w-[300px] truncate text-muted-foreground text-xs">
+            {app.description}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Switch
+            checked={connection.enabled}
+            onCheckedChange={() => onToggle(connection)}
+            disabled={isToggling}
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-8">
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href={`/apps/${app.slug}`}>
+                  <Settings className="mr-2 size-4" />
+                  Settings
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </div>
   );
@@ -138,9 +146,9 @@ function InstalledAppCard({
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center gap-4 rounded-lg bg-muted/50 py-12">
-      <div className="flex size-12 items-center justify-center rounded-full bg-muted/50">
-        <Grid3X3 className="size-6 text-muted-foreground" />
+    <div className="flex flex-col items-center gap-4 rounded-lg bg-muted/50 py-16">
+      <div className="flex size-16 items-center justify-center rounded-full bg-muted/50">
+        <Grid3X3 className="size-8 text-muted-foreground" />
       </div>
       <div className="flex flex-col items-center gap-1 text-center">
         <p className="font-medium text-sm">No applications installed</p>

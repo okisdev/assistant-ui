@@ -1,7 +1,10 @@
+import { getDomain } from "tldts";
+
 export function getFaviconUrl(url: string): string {
   try {
-    const urlObj = new URL(url);
-    return `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=32`;
+    const domain = getDomain(url);
+    if (!domain) return "";
+    return `https://icons.duckduckgo.com/ip3/${domain}.ico`;
   } catch {
     return "";
   }
