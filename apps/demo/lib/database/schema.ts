@@ -372,6 +372,12 @@ export const usage = pgTable(
 
 export type MCPTransportType = "http" | "sse";
 
+export type MCPCachedTool = {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+};
+
 export const mcpServer = pgTable(
   "mcp_server",
   {
@@ -387,6 +393,8 @@ export const mcpServer = pgTable(
       .default("http"),
     headers: jsonb("headers").$type<Record<string, string>>(),
     enabled: boolean("enabled").default(false).notNull(),
+    toolsCache: jsonb("tools_cache").$type<MCPCachedTool[]>(),
+    toolsCacheUpdatedAt: timestamp("tools_cache_updated_at"),
     oauthClientId: text("oauth_client_id"),
     oauthClientSecret: text("oauth_client_secret"),
     oauthAuthorizationUrl: text("oauth_authorization_url"),

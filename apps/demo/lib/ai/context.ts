@@ -1,6 +1,8 @@
 import type { ResolvedUserCapabilities } from "@/lib/database/types";
 import { api } from "@/utils/trpc/server";
 import { getConnectedApps, type ConnectedApp } from "./apps-context";
+import { DEFAULT_CAPABILITIES } from "./capabilities";
+import { isValidModelId, DEFAULT_MODEL_ID } from "./models";
 
 export type UserProfile = {
   name: string;
@@ -19,70 +21,74 @@ export type ProjectContext = {
   documents: string[];
 };
 
-export type UserContext = {
+export type ChatContext = {
   userId: string;
   profile: UserProfile;
   memories: Memory[];
   capabilities: ResolvedUserCapabilities;
   projectContext: ProjectContext | null;
   connectedApps: ConnectedApp[];
+  resolvedModelId: string;
 };
 
-export async function getUserContext(
-  chatId: string | null,
-): Promise<UserContext> {
-  const [profile, capabilities] = await Promise.all([
+export type UserContext = Omit<ChatContext, "resolvedModelId">;
+
+type GetChatContextOptions = {
+  chatId: string | null;
+  requestModel: string | undefined;
+};
+
+export async function getChatContext(
+  options: GetChatContextOptions,
+): Promise<ChatContext> {
+  const { chatId, requestModel } = options;
+
+  const [profile, capabilities, chatData] = await Promise.all([
     api.user.profile.get(),
     api.user.capability.list(),
+    chatId ? api.chat.get({ id: chatId }).catch(() => null) : null,
   ]);
-
-  let projectId: string | null = null;
-  if (chatId) {
-    try {
-      const chatData = await api.chat.get({ id: chatId });
-      projectId = chatData?.projectId ?? null;
-    } catch {
-      // Chat not found or unauthorized
-    }
-  }
-
-  let memories: Memory[] = [];
-  if (capabilities.memory.personalization) {
-    const memoriesResult = await api.memory.list(
-      projectId ? { projectId } : undefined,
-    );
-    memories = memoriesResult.map((m) => ({
-      id: m.id,
-      content: m.content,
-      category: m.category,
-    }));
-  }
-
-  let projectContext: ProjectContext | null = null;
-  if (projectId) {
-    const [projectData, documentsResult] = await Promise.all([
-      api.project.get({ id: projectId }),
-      api.project.getDocumentsWithContent({ projectId }),
-    ]);
-
-    if (projectData) {
-      projectContext = {
-        instructions: projectData.instructions,
-        documents: documentsResult
-          .filter((doc) => doc.extractedText)
-          .map(
-            (doc) =>
-              `--- Document: ${doc.name} ---\n${doc.extractedText}\n--- End of ${doc.name} ---`,
-          ),
-      };
-    }
-  }
 
   if (!profile?.id) {
     throw new Error("User profile not found");
   }
 
-  const connectedApps = await getConnectedApps(profile.id);
+  const projectId = chatData?.projectId ?? null;
+
+  const [memories, projectData, documentsResult, connectedApps] =
+    await Promise.all([
+      capabilities.memory.personalization
+        ? api.memory.list(projectId ? { projectId } : undefined).then((m) =>
+            m.map((item) => ({
+              id: item.id,
+              content: item.content,
+              category: item.category,
+            })),
+          )
+        : [],
+      projectId ? api.project.get({ id: projectId }) : null,
+      projectId ? api.project.getDocumentsWithContent({ projectId }) : [],
+      getConnectedApps(profile.id),
+    ]);
+
+  const projectContext: ProjectContext | null =
+    projectId && projectData
+      ? {
+          instructions: projectData.instructions,
+          documents: documentsResult
+            .filter((doc) => doc.extractedText)
+            .map(
+              (doc) =>
+                `--- Document: ${doc.name} ---\n${doc.extractedText}\n--- End of ${doc.name} ---`,
+            ),
+        }
+      : null;
+
+  const resolvedModelId = resolveModelId(
+    requestModel,
+    chatData?.model,
+    capabilities.model.defaultId,
+  );
 
   return {
     userId: profile.id,
@@ -95,5 +101,33 @@ export async function getUserContext(
     capabilities,
     projectContext,
     connectedApps,
+    resolvedModelId,
+  };
+}
+
+function resolveModelId(
+  requestModel: string | undefined,
+  chatModel: string | null | undefined,
+  defaultModel: string | null | undefined,
+): string {
+  if (requestModel && isValidModelId(requestModel)) {
+    return requestModel;
+  }
+  if (chatModel && isValidModelId(chatModel)) {
+    return chatModel;
+  }
+  if (defaultModel && isValidModelId(defaultModel)) {
+    return defaultModel;
+  }
+  return DEFAULT_MODEL_ID;
+}
+
+export function getDefaultCapabilities(): ResolvedUserCapabilities {
+  return {
+    ...DEFAULT_CAPABILITIES,
+    memory: {
+      ...DEFAULT_CAPABILITIES.memory,
+      personalization: false,
+    },
   };
 }

@@ -7,15 +7,17 @@ import {
 import { nanoid } from "nanoid";
 import { openai } from "@ai-sdk/openai";
 import { AVAILABLE_MODELS } from "@/lib/ai/models";
-import type { ResolvedUserCapabilities } from "@/lib/database/types";
-import { getModel, resolveModel } from "@/lib/ai/providers";
+import { getModel } from "@/lib/ai/providers";
 import { buildSystemPrompt } from "@/lib/ai/prompts";
-import { getUserContext, type UserContext } from "@/lib/ai/context";
+import {
+  getChatContext,
+  getDefaultCapabilities,
+  type ChatContext,
+} from "@/lib/ai/context";
 import { saveMemoryTool } from "@/lib/ai/tools/save-memory";
 import { createArtifactTool } from "@/lib/ai/tools/create-artifact";
 import { generateImageTool } from "@/lib/ai/tools/generate-image";
 import { getAppTools } from "@/lib/ai/tools/apps";
-import { DEFAULT_CAPABILITIES } from "@/lib/ai/capabilities";
 import { recordUsage } from "@/lib/ai/usage";
 import { getMCPTools, closeMCPClients } from "@/lib/ai/mcp";
 import { api } from "@/utils/trpc/server";
@@ -39,101 +41,46 @@ export async function POST(req: Request) {
     selectedAppIds = [] as string[],
   } = await req.json();
 
-  let userContext: UserContext | null = null;
-  let capabilities: ResolvedUserCapabilities;
+  const [contextResult, mcpResult] = await Promise.all([
+    getChatContext({ chatId: id, requestModel }).catch(() => null),
+    getMCPTools(),
+  ]);
 
-  try {
-    userContext = await getUserContext(id);
-    capabilities = userContext.capabilities;
-  } catch {
-    capabilities = {
-      ...DEFAULT_CAPABILITIES,
-      memory: {
-        ...DEFAULT_CAPABILITIES.memory,
-        personalization: false,
-      },
-    };
-  }
-
-  const modelId = await resolveModel(id, requestModel);
-  const modelDef = AVAILABLE_MODELS.find((m) => m.id === modelId);
-  const provider = modelDef?.provider;
-
-  const webSearchEnabled = capabilities.tools.webSearch;
-
-  const providerOptions = reasoningEnabled
-    ? {
-        ...(provider === "openai" && {
-          openai: {
-            reasoningSummary: "detailed" as const,
-          },
-        }),
-        ...(provider === "xai" && {
-          xai: {
-            ...(webSearchEnabled && {
-              searchParameters: {
-                mode: "auto" as const,
-                returnCitations: true,
-                maxSearchResults: 5,
-                sources: [{ type: "web" as const }, { type: "news" as const }],
-              },
-            }),
-          },
-        }),
-      }
-    : webSearchEnabled && provider === "xai"
-      ? {
-          xai: {
-            searchParameters: {
-              mode: "auto" as const,
-              returnCitations: true,
-              maxSearchResults: 5,
-              sources: [{ type: "web" as const }, { type: "news" as const }],
-            },
-          },
-        }
-      : undefined;
-
-  const tools: ToolSet = {};
-
-  if (capabilities.memory.personalization) {
-    tools.save_memory = saveMemoryTool;
-  }
-
-  if (capabilities.tools.artifacts) {
-    tools.create_artifact = createArtifactTool;
-  }
-
-  if (
-    capabilities.tools.imageGeneration ||
-    composerMode === "image-generation"
-  ) {
-    tools.generate_image = generateImageTool;
-  }
-
-  if (webSearchEnabled && provider === "openai") {
-    tools.web_search = openai.tools.webSearch({
-      searchContextSize: "low",
-    });
-  }
+  const ctx: ChatContext | null = contextResult;
+  const capabilities = ctx?.capabilities ?? getDefaultCapabilities();
+  const modelId = ctx?.resolvedModelId ?? requestModel ?? "gpt-4o";
 
   const {
     tools: mcpTools,
     clients: mcpClients,
     toolInfos: mcpToolInfos,
-  } = await getMCPTools();
-  Object.assign(tools, mcpTools);
+  } = mcpResult;
 
-  if (userContext && userContext.connectedApps.length > 0) {
-    const appTools = await getAppTools(
-      userContext.connectedApps,
-      selectedAppIds,
-    );
+  const modelDef = AVAILABLE_MODELS.find((m) => m.id === modelId);
+  const provider = modelDef?.provider;
+  const webSearchEnabled = capabilities.tools.webSearch;
+
+  const providerOptions = buildProviderOptions(
+    provider,
+    reasoningEnabled,
+    webSearchEnabled,
+  );
+
+  const tools = buildTools(
+    capabilities,
+    composerMode,
+    provider,
+    webSearchEnabled,
+    mcpTools,
+  );
+
+  if (ctx && ctx.connectedApps.length > 0) {
+    const appTools = await getAppTools(ctx.connectedApps, selectedAppIds);
     Object.assign(tools, appTools);
   }
 
-  const systemPrompt = userContext
-    ? buildSystemPrompt(userContext, mcpToolInfos, selectedAppIds)
+  const systemPrompt = ctx
+    ? buildSystemPrompt(ctx, mcpToolInfos, selectedAppIds)
     : "";
 
   const result = streamText({
@@ -150,12 +97,12 @@ export async function POST(req: Request) {
     onFinish: async ({ usage, finishReason }) => {
       await closeMCPClients(mcpClients);
 
-      if (userContext?.userId && usage) {
+      if (ctx?.userId && usage) {
         const validChatId =
           id && !id.includes("DEFAULT") && !id.includes("THREAD") ? id : null;
 
         recordUsage({
-          userId: userContext.userId,
+          userId: ctx.userId,
           chatId: validChatId,
           modelId,
           inputTokens: usage.inputTokens ?? 0,
@@ -206,4 +153,77 @@ export async function POST(req: Request) {
       Connection: "keep-alive",
     },
   });
+}
+
+function buildProviderOptions(
+  provider: string | undefined,
+  reasoningEnabled: boolean,
+  webSearchEnabled: boolean,
+) {
+  if (reasoningEnabled) {
+    return {
+      ...(provider === "openai" && {
+        openai: { reasoningSummary: "detailed" as const },
+      }),
+      ...(provider === "xai" &&
+        webSearchEnabled && {
+          xai: {
+            searchParameters: {
+              mode: "auto" as const,
+              returnCitations: true,
+              maxSearchResults: 5,
+              sources: [{ type: "web" as const }, { type: "news" as const }],
+            },
+          },
+        }),
+    };
+  }
+
+  if (webSearchEnabled && provider === "xai") {
+    return {
+      xai: {
+        searchParameters: {
+          mode: "auto" as const,
+          returnCitations: true,
+          maxSearchResults: 5,
+          sources: [{ type: "web" as const }, { type: "news" as const }],
+        },
+      },
+    };
+  }
+
+  return undefined;
+}
+
+function buildTools(
+  capabilities: ReturnType<typeof getDefaultCapabilities>,
+  composerMode: ComposerMode,
+  provider: string | undefined,
+  webSearchEnabled: boolean,
+  mcpTools: ToolSet,
+): ToolSet {
+  const tools: ToolSet = {};
+
+  if (capabilities.memory.personalization) {
+    tools.save_memory = saveMemoryTool;
+  }
+
+  if (capabilities.tools.artifacts) {
+    tools.create_artifact = createArtifactTool;
+  }
+
+  if (
+    capabilities.tools.imageGeneration ||
+    composerMode === "image-generation"
+  ) {
+    tools.generate_image = generateImageTool;
+  }
+
+  if (webSearchEnabled && provider === "openai") {
+    tools.web_search = openai.tools.webSearch({ searchContextSize: "low" });
+  }
+
+  Object.assign(tools, mcpTools);
+
+  return tools;
 }

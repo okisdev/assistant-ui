@@ -30,26 +30,26 @@ export async function getConnectedApps(
       ),
     );
 
-  const connectedApps: ConnectedApp[] = [];
+  const results = await Promise.all(
+    userApps.map(async (userApp): Promise<ConnectedApp | null> => {
+      const appDef = getBuiltinAppById(userApp.applicationId);
+      if (!appDef) return null;
 
-  for (const userApp of userApps) {
-    const appDef = getBuiltinAppById(userApp.applicationId);
-    if (!appDef) continue;
+      if (appDef.connection.type === "scope") {
+        const providerAccount = await database
+          .select()
+          .from(account)
+          .where(
+            and(
+              eq(account.userId, userId),
+              eq(account.providerId, appDef.connection.provider),
+            ),
+          )
+          .limit(1)
+          .then((rows) => rows[0]);
 
-    if (appDef.connection.type === "scope") {
-      const providerAccount = await database
-        .select()
-        .from(account)
-        .where(
-          and(
-            eq(account.userId, userId),
-            eq(account.providerId, appDef.connection.provider),
-          ),
-        )
-        .limit(1)
-        .then((rows) => rows[0]);
+        if (!providerAccount?.accessToken) return null;
 
-      if (providerAccount?.accessToken) {
         const validToken = await ensureValidScopeToken(
           providerAccount.id,
           appDef.connection.provider,
@@ -58,7 +58,7 @@ export async function getConnectedApps(
           providerAccount.accessTokenExpiresAt,
         );
 
-        connectedApps.push({
+        return {
           id: appDef.id,
           slug: appDef.slug,
           name: appDef.name,
@@ -66,11 +66,12 @@ export async function getConnectedApps(
           accessToken: validToken,
           refreshToken: providerAccount.refreshToken,
           tokenExpiresAt: providerAccount.accessTokenExpiresAt,
-        });
+        };
       }
-    } else if (appDef.connection.type === "oauth") {
-      if (userApp.accessToken) {
-        connectedApps.push({
+
+      if (appDef.connection.type === "oauth") {
+        if (!userApp.accessToken) return null;
+        return {
           id: appDef.id,
           slug: appDef.slug,
           name: appDef.name,
@@ -78,20 +79,24 @@ export async function getConnectedApps(
           accessToken: userApp.accessToken,
           refreshToken: userApp.refreshToken,
           tokenExpiresAt: userApp.tokenExpiresAt,
-        });
+        };
       }
-    } else if (appDef.connection.type === "none") {
-      connectedApps.push({
-        id: appDef.id,
-        slug: appDef.slug,
-        name: appDef.name,
-        connectionType: "none",
-        accessToken: "",
-        refreshToken: null,
-        tokenExpiresAt: null,
-      });
-    }
-  }
 
-  return connectedApps;
+      if (appDef.connection.type === "none") {
+        return {
+          id: appDef.id,
+          slug: appDef.slug,
+          name: appDef.name,
+          connectionType: "none",
+          accessToken: "",
+          refreshToken: null,
+          tokenExpiresAt: null,
+        };
+      }
+
+      return null;
+    }),
+  );
+
+  return results.filter((app): app is ConnectedApp => app !== null);
 }

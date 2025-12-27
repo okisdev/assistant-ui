@@ -4,7 +4,11 @@ import { nanoid } from "nanoid";
 import { createMCPClient } from "@ai-sdk/mcp";
 import { TRPCError } from "@trpc/server";
 
-import { mcpServer, type MCPTransportType } from "@/lib/database/schema";
+import {
+  mcpServer,
+  type MCPTransportType,
+  type MCPCachedTool,
+} from "@/lib/database/schema";
 import {
   getOAuthAuthorizationHeader,
   discoverOAuthMetadata,
@@ -25,6 +29,73 @@ async function withTimeout<T>(
     setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
   });
   return Promise.race([promise, timeoutPromise]);
+}
+
+type ServerConfig = {
+  url: string;
+  transportType: "http" | "sse";
+  headers: Record<string, string> | null;
+  oauthAccessToken: string | null;
+  oauthClientId: string | null;
+  oauthClientSecret: string | null;
+  oauthAuthorizationUrl: string | null;
+  oauthTokenUrl: string | null;
+  oauthScope: string | null;
+  oauthRefreshToken: string | null;
+  oauthTokenExpiresAt: Date | null;
+};
+
+async function fetchToolsFromServer(
+  server: ServerConfig,
+): Promise<MCPCachedTool[]> {
+  let client: Awaited<ReturnType<typeof createMCPClient>> | null = null;
+
+  const headers: Record<string, string> = { ...server.headers };
+  if (!headers.Authorization && server.oauthAccessToken) {
+    const oauthHeader = getOAuthAuthorizationHeader(server);
+    if (oauthHeader) {
+      headers.Authorization = oauthHeader;
+    }
+  }
+
+  try {
+    client = await withTimeout(
+      createMCPClient({
+        transport: {
+          type: server.transportType,
+          url: server.url,
+          headers: Object.keys(headers).length > 0 ? headers : undefined,
+        },
+      }),
+      MCP_CONNECTION_TIMEOUT_MS,
+      "Connection timeout",
+    );
+
+    const tools = await withTimeout(
+      client.tools(),
+      MCP_CONNECTION_TIMEOUT_MS,
+      "Timeout fetching tools",
+    );
+
+    return Object.entries(tools).map(([name, tool]) => {
+      const toolAny = tool as Record<string, unknown>;
+      const inputSchema = toolAny.inputSchema as
+        | { jsonSchema?: Record<string, unknown> }
+        | undefined;
+      return {
+        name,
+        description: tool.description ?? "",
+        inputSchema: inputSchema?.jsonSchema ?? {
+          type: "object",
+          properties: {},
+        },
+      };
+    });
+  } finally {
+    if (client) {
+      await client.close().catch(() => {});
+    }
+  }
 }
 
 const headersSchema = z.record(z.string(), z.string());
@@ -56,6 +127,7 @@ const authSelectFields = {
   url: mcpServer.url,
   transportType: mcpServer.transportType,
   headers: mcpServer.headers,
+  toolsCache: mcpServer.toolsCache,
   oauthClientId: mcpServer.oauthClientId,
   oauthClientSecret: mcpServer.oauthClientSecret,
   oauthAuthorizationUrl: mcpServer.oauthAuthorizationUrl,
@@ -101,6 +173,31 @@ export const mcpServerRouter = createTRPCRouter({
     });
   }),
 
+  updateOAuthTokens: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        accessToken: z.string(),
+        refreshToken: z.string().nullable(),
+        expiresAt: z.date().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(mcpServer)
+        .set({
+          oauthAccessToken: input.accessToken,
+          oauthRefreshToken: input.refreshToken,
+          oauthTokenExpiresAt: input.expiresAt,
+        })
+        .where(
+          and(
+            eq(mcpServer.id, input.id),
+            eq(mcpServer.userId, ctx.session.user.id),
+          ),
+        );
+    }),
+
   create: protectedProcedure
     .input(mcpServerInput)
     .mutation(async ({ ctx, input }) => {
@@ -139,7 +236,7 @@ export const mcpServerRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { id, ...rest } = input;
+      const { id, enabled, ...rest } = input;
 
       const updateData: Record<string, unknown> = {};
 
@@ -147,6 +244,10 @@ export const mcpServerRouter = createTRPCRouter({
         if (value !== undefined) {
           updateData[key] = value;
         }
+      }
+
+      if (enabled !== undefined) {
+        updateData.enabled = enabled;
       }
 
       if (Object.keys(updateData).length === 0) {
@@ -162,6 +263,27 @@ export const mcpServerRouter = createTRPCRouter({
         .where(
           and(eq(mcpServer.id, id), eq(mcpServer.userId, ctx.session.user.id)),
         );
+
+      if (enabled === true) {
+        const [server] = await ctx.db
+          .select(authSelectFields)
+          .from(mcpServer)
+          .where(eq(mcpServer.id, id))
+          .limit(1);
+
+        if (server) {
+          try {
+            const tools = await fetchToolsFromServer(server);
+            await ctx.db
+              .update(mcpServer)
+              .set({
+                toolsCache: tools,
+                toolsCacheUpdatedAt: new Date(),
+              })
+              .where(eq(mcpServer.id, id));
+          } catch {}
+        }
+      }
 
       const [updated] = await ctx.db
         .select(listSelectFields)
@@ -208,6 +330,48 @@ export const mcpServerRouter = createTRPCRouter({
         );
 
       return { success: true };
+    }),
+
+  refreshToolsCache: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const [server] = await ctx.db
+        .select(authSelectFields)
+        .from(mcpServer)
+        .where(
+          and(
+            eq(mcpServer.id, input.id),
+            eq(mcpServer.userId, ctx.session.user.id),
+          ),
+        )
+        .limit(1);
+
+      if (!server) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "MCP server not found",
+        });
+      }
+
+      try {
+        const tools = await fetchToolsFromServer(server);
+        await ctx.db
+          .update(mcpServer)
+          .set({
+            toolsCache: tools,
+            toolsCacheUpdatedAt: new Date(),
+          })
+          .where(eq(mcpServer.id, input.id));
+
+        return { success: true, toolCount: tools.length };
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to fetch tools";
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Failed to refresh tools cache: ${message}`,
+        });
+      }
     }),
 
   test: protectedProcedure
@@ -380,11 +544,31 @@ export const mcpServerRouter = createTRPCRouter({
           MCP_CONNECTION_TIMEOUT_MS,
           "Timeout fetching tools",
         );
-        const toolCount = Object.keys(tools).length;
+
+        const toolsCache: MCPCachedTool[] = Object.entries(tools).map(
+          ([name, tool]) => {
+            const inputSchema = tool.inputSchema as
+              | { jsonSchema?: Record<string, unknown> }
+              | undefined;
+            return {
+              name,
+              description: tool.description ?? "",
+              inputSchema: inputSchema?.jsonSchema ?? {
+                type: "object",
+                properties: {},
+              },
+            };
+          },
+        );
+
+        await ctx.db
+          .update(mcpServer)
+          .set({ toolsCache })
+          .where(eq(mcpServer.id, input.id));
 
         return {
           connected: true,
-          toolCount,
+          toolCount: toolsCache.length,
           tokenExpiresAt: server.oauthTokenExpiresAt,
         };
       } catch (error) {
@@ -506,8 +690,7 @@ export const mcpServerRouter = createTRPCRouter({
             clientSecret = clientRegistration.client_secret
               ? encrypt(clientRegistration.client_secret)
               : null;
-          } catch (error) {
-            console.error("Failed to register OAuth client:", error);
+          } catch {
             throw new TRPCError({
               code: "BAD_REQUEST",
               message: "Failed to register OAuth client with MCP server",
@@ -555,6 +738,9 @@ export const mcpServerRouter = createTRPCRouter({
       const [server] = await ctx.db
         .select({
           id: mcpServer.id,
+          url: mcpServer.url,
+          transportType: mcpServer.transportType,
+          headers: mcpServer.headers,
           oauthClientId: mcpServer.oauthClientId,
           oauthClientSecret: mcpServer.oauthClientSecret,
           oauthTokenUrl: mcpServer.oauthTokenUrl,
@@ -603,6 +789,46 @@ export const mcpServerRouter = createTRPCRouter({
         ? new Date(Date.now() + tokens.expiresIn * 1000)
         : null;
 
+      let toolsCache: MCPCachedTool[] | null = null;
+      try {
+        const headers: Record<string, string> = { ...server.headers };
+        headers.Authorization = `Bearer ${tokens.accessToken}`;
+
+        const client = await withTimeout(
+          createMCPClient({
+            transport: {
+              type: server.transportType,
+              url: server.url,
+              headers,
+            },
+          }),
+          MCP_CONNECTION_TIMEOUT_MS,
+          "Connection timeout during OAuth exchange",
+        );
+
+        const tools = await withTimeout(
+          client.tools(),
+          MCP_CONNECTION_TIMEOUT_MS,
+          "Timeout fetching tools during OAuth exchange",
+        );
+
+        toolsCache = Object.entries(tools).map(([name, tool]) => {
+          const inputSchema = tool.inputSchema as
+            | { jsonSchema?: Record<string, unknown> }
+            | undefined;
+          return {
+            name,
+            description: tool.description ?? "",
+            inputSchema: inputSchema?.jsonSchema ?? {
+              type: "object",
+              properties: {},
+            },
+          };
+        });
+
+        await client.close().catch(() => {});
+      } catch {}
+
       await ctx.db
         .update(mcpServer)
         .set({
@@ -612,6 +838,7 @@ export const mcpServerRouter = createTRPCRouter({
             : null,
           oauthTokenExpiresAt: expiresAt,
           enabled: true,
+          toolsCache,
         })
         .where(
           and(

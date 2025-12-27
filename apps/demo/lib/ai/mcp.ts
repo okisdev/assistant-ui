@@ -1,9 +1,6 @@
 import { createMCPClient } from "@ai-sdk/mcp";
 import { jsonSchema, type ToolSet } from "ai";
-import { eq } from "drizzle-orm";
 import { api } from "@/utils/trpc/server";
-import { database } from "@/lib/database";
-import { mcpServer } from "@/lib/database/schema";
 import { decrypt, encrypt } from "@/lib/crypto";
 import {
   getOAuthAuthorizationHeader,
@@ -17,6 +14,11 @@ type MCPServerConfig = {
   url: string;
   transportType: "http" | "sse";
   headers: Record<string, string> | null;
+  toolsCache: Array<{
+    name: string;
+    description: string;
+    inputSchema: Record<string, unknown>;
+  }> | null;
   oauthClientId: string | null;
   oauthClientSecret: string | null;
   oauthAuthorizationUrl: string | null;
@@ -39,6 +41,29 @@ export type MCPToolInfo = {
   description: string;
 };
 
+type ActiveConnection = {
+  client: Awaited<ReturnType<typeof createMCPClient>>;
+  tools: Record<string, unknown>;
+  expiresAt: number;
+};
+
+const CONNECTION_CACHE = new Map<string, ActiveConnection>();
+const CACHE_TTL = 5 * 60 * 1000;
+const MCP_CONNECT_TIMEOUT = 5000;
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  name: string,
+): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${name} timeout after ${ms}ms`)), ms),
+    ),
+  ]);
+}
+
 async function refreshTokensIfNeeded(
   server: MCPServerConfig,
 ): Promise<MCPServerConfig> {
@@ -54,10 +79,6 @@ async function refreshTokensIfNeeded(
   if (!isTokenExpired(server.oauthTokenExpiresAt)) {
     return server;
   }
-
-  console.log(
-    `[MCP] Token expired for "${server.name}", attempting refresh...`,
-  );
 
   try {
     const tokens = await refreshAccessToken(
@@ -76,32 +97,25 @@ async function refreshTokensIfNeeded(
       ? new Date(Date.now() + tokens.expiresIn * 1000)
       : null;
 
-    await database
-      .update(mcpServer)
-      .set({
-        oauthAccessToken: encrypt(tokens.accessToken),
-        oauthRefreshToken: tokens.refreshToken
-          ? encrypt(tokens.refreshToken)
-          : server.oauthRefreshToken,
-        oauthTokenExpiresAt: expiresAt,
-      })
-      .where(eq(mcpServer.id, server.id));
+    const encryptedAccessToken = encrypt(tokens.accessToken);
+    const encryptedRefreshToken = tokens.refreshToken
+      ? encrypt(tokens.refreshToken)
+      : server.oauthRefreshToken;
 
-    console.log(`[MCP] Token refreshed for "${server.name}"`);
+    await api.mcpServer.updateOAuthTokens({
+      id: server.id,
+      accessToken: encryptedAccessToken,
+      refreshToken: encryptedRefreshToken,
+      expiresAt,
+    });
 
     return {
       ...server,
-      oauthAccessToken: encrypt(tokens.accessToken),
-      oauthRefreshToken: tokens.refreshToken
-        ? encrypt(tokens.refreshToken)
-        : server.oauthRefreshToken,
+      oauthAccessToken: encryptedAccessToken,
+      oauthRefreshToken: encryptedRefreshToken,
       oauthTokenExpiresAt: expiresAt,
     };
-  } catch (error) {
-    console.error(
-      `[MCP] Failed to refresh token for "${server.name}":`,
-      error instanceof Error ? error.message : error,
-    );
+  } catch {
     return server;
   }
 }
@@ -119,6 +133,78 @@ function buildMCPHeaders(
   }
 
   return Object.keys(headers).length > 0 ? headers : undefined;
+}
+
+async function getOrCreateConnection(
+  server: MCPServerConfig,
+): Promise<ActiveConnection> {
+  const cached = CONNECTION_CACHE.get(server.id);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached;
+  }
+
+  const refreshedServer = await refreshTokensIfNeeded(server);
+  const headers = buildMCPHeaders(refreshedServer);
+
+  const client = await withTimeout(
+    createMCPClient({
+      transport: {
+        type: refreshedServer.transportType,
+        url: refreshedServer.url,
+        headers,
+      },
+    }),
+    MCP_CONNECT_TIMEOUT,
+    `MCP connect to ${server.name}`,
+  );
+
+  const tools = await withTimeout(
+    client.tools(),
+    MCP_CONNECT_TIMEOUT,
+    `MCP tools from ${server.name}`,
+  );
+
+  const connection: ActiveConnection = {
+    client,
+    tools,
+    expiresAt: Date.now() + CACHE_TTL,
+  };
+
+  CONNECTION_CACHE.set(server.id, connection);
+  return connection;
+}
+
+function createLazyTool(
+  server: MCPServerConfig,
+  toolName: string,
+  toolDescription: string,
+  toolInputSchema: Record<string, unknown>,
+): ToolSet[string] {
+  const validSchema =
+    toolInputSchema.type === "object"
+      ? jsonSchema(toolInputSchema)
+      : jsonSchema({
+          type: "object" as const,
+          properties: {},
+          additionalProperties: true,
+        });
+
+  return {
+    description: toolDescription,
+    inputSchema: validSchema,
+    execute: async (args: unknown) => {
+      const connection = await getOrCreateConnection(server);
+      const tool = connection.tools[toolName] as {
+        execute?: (args: unknown) => Promise<unknown>;
+      };
+
+      if (!tool?.execute) {
+        throw new Error(`Tool ${toolName} not found on server ${server.name}`);
+      }
+
+      return tool.execute(args);
+    },
+  } as unknown as ToolSet[string];
 }
 
 export async function getMCPTools(): Promise<{
@@ -141,73 +227,29 @@ export async function getMCPTools(): Promise<{
     return { tools, clients, toolInfos };
   }
 
-  const connectionResults = await Promise.allSettled(
-    servers.map(async (server) => {
-      const refreshedServer = await refreshTokensIfNeeded(server);
-      const headers = buildMCPHeaders(refreshedServer);
+  for (const server of servers) {
+    const sanitizedServerName = server.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "_");
 
-      const client = await createMCPClient({
-        transport: {
-          type: refreshedServer.transportType,
-          url: refreshedServer.url,
-          headers,
-        },
-      });
+    if (server.toolsCache && server.toolsCache.length > 0) {
+      for (const cachedTool of server.toolsCache) {
+        const prefixedName = `mcp_${sanitizedServerName}_${cachedTool.name}`;
 
-      const serverTools = await client.tools();
-
-      return {
-        client,
-        serverName: refreshedServer.name,
-        tools: serverTools,
-      };
-    }),
-  );
-
-  for (const result of connectionResults) {
-    if (result.status === "fulfilled") {
-      const { client, serverName, tools: serverTools } = result.value;
-      clients.push({ client, serverName });
-
-      const sanitizedServerName = serverName
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "_");
-
-      for (const [toolName, tool] of Object.entries(serverTools)) {
-        const toolAny = tool as Record<string, unknown>;
-        if (typeof toolAny.execute !== "function") {
-          continue;
-        }
-
-        const prefixedName = `mcp_${sanitizedServerName}_${toolName}`;
-        const inputSchema = toolAny.inputSchema as
-          | { jsonSchema?: Record<string, unknown> }
-          | undefined;
-        const originalSchema = inputSchema?.jsonSchema;
-
-        const validSchema =
-          originalSchema?.type === "object"
-            ? jsonSchema(originalSchema)
-            : jsonSchema({
-                type: "object" as const,
-                properties: {},
-                additionalProperties: true,
-              });
-
-        tools[prefixedName] = {
-          ...tool,
-          inputSchema: validSchema,
-        } as unknown as ToolSet[string];
+        tools[prefixedName] = createLazyTool(
+          server,
+          cachedTool.name,
+          cachedTool.description,
+          cachedTool.inputSchema,
+        );
 
         toolInfos.push({
-          serverName,
-          toolName,
+          serverName: server.name,
+          toolName: cachedTool.name,
           prefixedName,
-          description: tool.description ?? "",
+          description: cachedTool.description,
         });
       }
-    } else {
-      console.error("[MCP] Failed to connect to MCP server:", result.reason);
     }
   }
 
@@ -215,9 +257,12 @@ export async function getMCPTools(): Promise<{
 }
 
 export async function closeMCPClients(
-  clients: MCPClientEntry[],
-): Promise<void> {
-  await Promise.allSettled(
-    clients.map(({ client }) => client.close().catch(() => {})),
-  );
+  _clients: MCPClientEntry[],
+): Promise<void> {}
+
+export function clearMCPCache(): void {
+  for (const conn of CONNECTION_CACHE.values()) {
+    conn.client.close().catch(() => {});
+  }
+  CONNECTION_CACHE.clear();
 }
