@@ -18,7 +18,7 @@
   - [x] Google
 - [x] Password reset flow
 - [ ] Email verification
-- [ ] Two-factor authentication (2FA)
+- [x] Two-factor authentication (2FA)
 - [x] Session management
   - [x] List active sessions
   - [x] Revoke single session

@@ -1,7 +1,13 @@
 import { z } from "zod";
-import { eq, desc, and, isNull, isNotNull } from "drizzle-orm";
+import { eq, desc, and, isNull, isNotNull, inArray, sql } from "drizzle-orm";
 
-import { chat, chatMessage, chatVote, share } from "@/lib/database/schema";
+import {
+  chat,
+  chatMessage,
+  chatVote,
+  share,
+  project,
+} from "@/lib/database/schema";
 import {
   AVAILABLE_MODELS,
   isDeprecatedModel,
@@ -19,6 +25,24 @@ const activeModelIdSchema = modelIdSchema.refine(
   { message: "Deprecated models cannot be selected" },
 );
 
+async function verifyProjectOwnership(
+  db: typeof import("@/lib/database").database,
+  projectId: string | null | undefined,
+  userId: string,
+): Promise<void> {
+  if (!projectId) return;
+
+  const projectResult = await db
+    .select({ id: project.id })
+    .from(project)
+    .where(and(eq(project.id, projectId), eq(project.userId, userId)))
+    .limit(1);
+
+  if (!projectResult[0]) {
+    throw new Error("Project not found or access denied");
+  }
+}
+
 export const chatRouter = createTRPCRouter({
   vote: voteRouter,
 
@@ -27,11 +51,15 @@ export const chatRouter = createTRPCRouter({
       z
         .object({
           projectId: z.string().nullable().optional(),
+          limit: z.number().min(1).max(100).default(20),
+          cursor: z.string().optional(),
         })
         .optional(),
     )
     .query(async ({ ctx, input }) => {
       const projectId = input?.projectId;
+      const limit = input?.limit ?? 20;
+      const cursor = input?.cursor;
 
       const conditions = [
         eq(chat.userId, ctx.session.user.id),
@@ -42,6 +70,21 @@ export const chatRouter = createTRPCRouter({
         conditions.push(isNull(chat.projectId));
       } else if (projectId !== undefined) {
         conditions.push(eq(chat.projectId, projectId));
+      }
+
+      if (cursor) {
+        const cursorChat = await ctx.db
+          .select({ updatedAt: chat.updatedAt })
+          .from(chat)
+          .where(eq(chat.id, cursor))
+          .limit(1);
+
+        if (cursorChat[0]) {
+          const cursorDate = cursorChat[0].updatedAt;
+          conditions.push(
+            sql`(${chat.updatedAt} < ${cursorDate} OR (${chat.updatedAt} = ${cursorDate} AND ${chat.id} < ${cursor}))`,
+          );
+        }
       }
 
       const chats = await ctx.db
@@ -57,9 +100,17 @@ export const chatRouter = createTRPCRouter({
         })
         .from(chat)
         .where(and(...conditions))
-        .orderBy(desc(chat.updatedAt));
+        .orderBy(desc(chat.updatedAt), desc(chat.id))
+        .limit(limit + 1);
 
-      return chats;
+      const hasMore = chats.length > limit;
+      const items = hasMore ? chats.slice(0, limit) : chats;
+      const nextCursor = hasMore ? items[items.length - 1]?.id : undefined;
+
+      return {
+        items,
+        nextCursor,
+      };
     }),
 
   create: protectedProcedure
@@ -71,6 +122,12 @@ export const chatRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await verifyProjectOwnership(
+        ctx.db,
+        input.projectId,
+        ctx.session.user.id,
+      );
+
       await ctx.db.insert(chat).values({
         id: input.id,
         userId: ctx.session.user.id,
@@ -97,6 +154,14 @@ export const chatRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...updates } = input;
+
+      if (updates.projectId !== undefined) {
+        await verifyProjectOwnership(
+          ctx.db,
+          updates.projectId,
+          ctx.session.user.id,
+        );
+      }
 
       await ctx.db
         .update(chat)
@@ -402,6 +467,67 @@ export const chatRouter = createTRPCRouter({
             eq(chat.id, input.id),
             eq(chat.userId, ctx.session.user.id),
             isNotNull(chat.deletedAt),
+          ),
+        );
+
+      return { success: true };
+    }),
+
+  bulkUpdate: protectedProcedure
+    .input(
+      z.object({
+        ids: z.array(z.string()).min(1),
+        status: z.enum(["regular", "archived"]).optional(),
+        projectId: z.string().nullable().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { ids, ...updates } = input;
+
+      if (updates.projectId !== undefined) {
+        await verifyProjectOwnership(
+          ctx.db,
+          updates.projectId,
+          ctx.session.user.id,
+        );
+      }
+
+      const filteredUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([, v]) => v !== undefined),
+      );
+
+      if (Object.keys(filteredUpdates).length > 0) {
+        await ctx.db
+          .update(chat)
+          .set(filteredUpdates)
+          .where(
+            and(inArray(chat.id, ids), eq(chat.userId, ctx.session.user.id)),
+          );
+      }
+
+      return { success: true };
+    }),
+
+  bulkDelete: protectedProcedure
+    .input(z.object({ ids: z.array(z.string()).min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(share)
+        .where(
+          and(
+            eq(share.resourceType, "chat"),
+            inArray(share.resourceId, input.ids),
+            eq(share.userId, ctx.session.user.id),
+          ),
+        );
+
+      await ctx.db
+        .update(chat)
+        .set({ deletedAt: new Date() })
+        .where(
+          and(
+            inArray(chat.id, input.ids),
+            eq(chat.userId, ctx.session.user.id),
           ),
         );
 

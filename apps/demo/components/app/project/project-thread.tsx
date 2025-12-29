@@ -24,6 +24,7 @@ import {
   AssistantMessage,
   EditComposer,
   ThreadScrollToBottom,
+  ThreadViewportHeaderInset,
   UserMessage,
 } from "@/components/assistant-ui/thread/primitives";
 import { Composer } from "@/components/assistant-ui/thread/composer";
@@ -75,6 +76,8 @@ export const ProjectThread: FC<ProjectThreadProps> = ({
         turnAnchor="top"
         className="flex min-h-0 flex-1 flex-col overflow-y-auto scroll-smooth"
       >
+        <ThreadViewportHeaderInset height={48} />
+
         <AssistantIf condition={({ thread }) => thread.isEmpty}>
           <ProjectWelcome projectId={projectId} projectName={projectName} />
         </AssistantIf>
@@ -83,7 +86,7 @@ export const ProjectThread: FC<ProjectThreadProps> = ({
           <div className="h-16 shrink-0" />
         </AssistantIf>
 
-        <div className="mx-auto w-full max-w-2xl px-4 pb-12">
+        <div className="mx-auto w-full max-w-2xl px-4">
           <ThreadPrimitive.Messages
             components={{
               UserMessage,

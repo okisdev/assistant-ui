@@ -138,32 +138,44 @@ const SidebarThreadListContent: FC = () => {
 };
 
 const SidebarThreadListItems: FC = () => {
-  const threadCount = useAssistantState(
-    ({ threads }) => threads.threadIds.length,
-  );
-  const visibleCount = Math.min(threadCount, MAX_VISIBLE_THREADS);
-  const hasMore = threadCount > MAX_VISIBLE_THREADS;
+  const validThreadIndicesJson = useAssistantState(({ threads }) => {
+    const indices: number[] = [];
+    threads.threadIds.forEach((threadId, i) => {
+      const item = threads.threadItems.find((t) => t.id === threadId);
+      if (item?.remoteId) {
+        indices.push(i);
+      }
+    });
+    return JSON.stringify(indices);
+  });
+
+  const validThreadIndices: number[] = JSON.parse(validThreadIndicesJson);
+  const visibleIndices = validThreadIndices.slice(0, MAX_VISIBLE_THREADS);
+  const totalCount = validThreadIndices.length;
+  const hasMore = totalCount > MAX_VISIBLE_THREADS;
 
   return (
     <SidebarMenu>
-      {Array.from({ length: visibleCount }, (_, index) => (
+      {visibleIndices.map((index) => (
         <ThreadListPrimitive.ItemByIndex
           key={index}
           index={index}
           components={{ ThreadListItem: SidebarThreadListItem }}
         />
       ))}
-      <SidebarMenuItem>
-        <SidebarMenuButton asChild>
-          <Link
-            href="/chats"
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <span>{hasMore ? `View all (${threadCount})` : "View all"}</span>
-            <ChevronRight className="ml-auto" />
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
+      {hasMore && (
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild>
+            <Link
+              href="/chats"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <span>View all </span>
+              <ChevronRight className="ml-auto" />
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      )}
     </SidebarMenu>
   );
 };

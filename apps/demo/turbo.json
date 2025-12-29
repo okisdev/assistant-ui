@@ -12,7 +12,10 @@
         "OPENAI_API_KEY",
         "XAI_API_KEY",
         "BLOB_READ_WRITE_TOKEN",
-        "SERPAPI_API_KEY"
+        "SERPAPI_API_KEY",
+        "REDIS_API_URL",
+        "REDIS_API_TOKEN",
+        "RESEND_API_KEY"
       ]
     }
   }

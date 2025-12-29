@@ -1,6 +1,12 @@
 "use client";
 
-import { type FC, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  type FC,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   ActionBarPrimitive,
   AssistantIf,
@@ -10,6 +16,7 @@ import {
   MessagePrimitive,
   ThreadPrimitive,
   useAssistantState,
+  useThreadViewport,
 } from "@assistant-ui/react";
 import {
   ArrowDownIcon,
@@ -60,6 +67,20 @@ export const ThreadScrollToBottom: FC = () => {
       </TooltipIconButton>
     </ThreadPrimitive.ScrollToBottom>
   );
+};
+
+export const ThreadViewportHeaderInset: FC<{ height: number }> = ({
+  height,
+}) => {
+  const register = useThreadViewport((s) => s.registerContentInset);
+
+  useEffect(() => {
+    const handle = register();
+    handle.setHeight(height);
+    return () => handle.unregister();
+  }, [register, height]);
+
+  return null;
 };
 
 export const MessageError: FC = () => {

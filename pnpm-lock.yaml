@@ -47,6 +47,9 @@ importers:
       '@assistant-ui/react-ai-sdk':
         specifier: workspace:*
         version: link:../../packages/react-ai-sdk
+      '@assistant-ui/react-devtools':
+        specifier: workspace:*
+        version: link:../../packages/react-devtools
       '@assistant-ui/react-markdown':
         specifier: workspace:*
         version: link:../../packages/react-markdown

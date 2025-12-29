@@ -13,6 +13,7 @@ import {
   type ThreadMessage,
 } from "@assistant-ui/react";
 import { useAISDKRuntime } from "@assistant-ui/react-ai-sdk";
+import { DevToolsModal } from "@assistant-ui/react-devtools";
 import { useChat } from "@ai-sdk/react";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { createAssistantStream } from "assistant-stream";
@@ -111,11 +112,12 @@ function useDatabaseThreadListAdapter(
   return useMemo(() => {
     const adapter: RemoteThreadListAdapter = {
       async list() {
-        const chats = await utils.chat.list.fetch({
+        const result = await utils.chat.list.fetch({
           projectId: projectId ?? null,
+          limit: 100,
         });
         return {
-          threads: chats.map((c) => ({
+          threads: result.items.map((c) => ({
             remoteId: c.id,
             status: c.status as "regular" | "archived",
             title: c.title ?? undefined,
@@ -439,6 +441,7 @@ function RuntimeProviderInner({
       <CapabilitiesProvider>
         <ModelSelectionProvider>{children}</ModelSelectionProvider>
       </CapabilitiesProvider>
+      {process.env.NODE_ENV === "development" && <DevToolsModal />}
     </AssistantRuntimeProvider>
   );
 }
