@@ -335,8 +335,7 @@ function ProjectConversationsList({ projectId }: { projectId: string }) {
     projectId,
   });
 
-  // Filter out chats without title (new/empty chats)
-  const conversationsWithTitle = chats?.filter((chat) => chat.title);
+  const conversationsWithTitle = chats?.items.filter((chat) => chat.title);
 
   if (isLoading) {
     return (

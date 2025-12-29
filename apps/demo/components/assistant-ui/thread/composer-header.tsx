@@ -2,9 +2,8 @@
 
 import type { FC, ReactNode } from "react";
 import { Sparkles, X, Puzzle } from "lucide-react";
-import { useComposerMode } from "@/contexts/composer-mode-provider";
-import { useSelectedApps } from "@/contexts/selected-apps-provider";
-import { useProject } from "@/hooks/use-project";
+import { useComposerState } from "@/contexts/composer-state-provider";
+import { useNavigation } from "@/contexts/navigation-provider";
 import { api as trpc } from "@/utils/trpc/client";
 import { cn } from "@/lib/utils";
 
@@ -65,13 +64,12 @@ const ComposerBadge: FC<ComposerBadgeProps> = ({
 };
 
 export const ComposerHeader: FC = () => {
-  const { mode, resetMode } = useComposerMode();
-  const { currentProjectId, setCurrentProjectId } = useProject();
-  const { selectedAppIds, deselectApp } = useSelectedApps();
+  const { mode, resetMode, selectedAppIds, deselectApp } = useComposerState();
+  const { selectedProjectId, setSelectedProjectId } = useNavigation();
 
   const { data: currentProject } = trpc.project.get.useQuery(
-    { id: currentProjectId! },
-    { enabled: !!currentProjectId },
+    { id: selectedProjectId! },
+    { enabled: !!selectedProjectId },
   );
 
   const { data: connections } = trpc.application.userConnections.useQuery(
@@ -85,7 +83,7 @@ export const ComposerHeader: FC = () => {
     ) ?? [];
 
   const isImageGenerationMode = mode === "image-generation";
-  const showProjectBadge = currentProjectId && currentProject;
+  const showProjectBadge = selectedProjectId && currentProject;
   const showAppBadges = selectedApps.length > 0;
 
   if (!isImageGenerationMode && !showProjectBadge && !showAppBadges)
@@ -104,7 +102,7 @@ export const ComposerHeader: FC = () => {
       {showProjectBadge && (
         <ComposerBadge
           label={currentProject.name}
-          onRemove={() => setCurrentProjectId(null)}
+          onRemove={() => setSelectedProjectId(null)}
           colorDot={currentProject.color || "#3b82f6"}
         />
       )}

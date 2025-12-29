@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAssistantState } from "@assistant-ui/react";
 import { useIncognitoOptional } from "@/contexts/incognito-provider";
-import { useChatPageOptional } from "@/contexts/chat-page-provider";
+import { useNavigationOptional } from "@/contexts/navigation-provider";
 
 export function useSyncThreadUrl() {
   const router = useRouter();
@@ -12,7 +12,7 @@ export function useSyncThreadUrl() {
   const prevRemoteIdRef = useRef<string | undefined>(undefined);
   const incognito = useIncognitoOptional();
   const isIncognito = incognito?.isIncognito ?? false;
-  const chatPage = useChatPageOptional();
+  const navigation = useNavigationOptional();
 
   const remoteId = useAssistantState(
     ({ threadListItem }) => threadListItem.remoteId,
@@ -38,11 +38,11 @@ export function useSyncThreadUrl() {
     ) {
       // Update the chatId in context immediately before navigation
       // This ensures ChatContent has the correct chatId during the transition
-      chatPage?.setChatId(remoteId);
+      navigation?.setChatId(remoteId);
 
       router.replace(`/chat/${remoteId}`);
     }
 
     prevRemoteIdRef.current = remoteId;
-  }, [pathname, remoteId, isEmpty, router, isIncognito, chatPage]);
+  }, [pathname, remoteId, isEmpty, router, isIncognito, navigation]);
 }

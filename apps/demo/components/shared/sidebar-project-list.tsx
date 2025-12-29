@@ -53,7 +53,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { api } from "@/utils/trpc/client";
 import { toast } from "sonner";
-import { useProject } from "@/hooks/use-project";
+import { useNavigation } from "@/contexts/navigation-provider";
 import {
   Collapsible,
   CollapsibleContent,
@@ -112,7 +112,7 @@ const ProjectListEmpty: FC = () => {
 
 const SidebarProjectListContent: FC = () => {
   const { data: projects, isLoading } = api.project.list.useQuery();
-  const { currentProjectId } = useProject();
+  const { selectedProjectId } = useNavigation();
 
   const visibleProjects = projects?.slice(0, MAX_VISIBLE_PROJECTS) ?? [];
   const hasMore = (projects?.length ?? 0) > MAX_VISIBLE_PROJECTS;
@@ -138,7 +138,7 @@ const SidebarProjectListContent: FC = () => {
                   <SidebarProjectListItem
                     key={project.id}
                     project={project}
-                    isActive={project.id === currentProjectId}
+                    isActive={project.id === selectedProjectId}
                   />
                 ))}
                 {hasMore && (

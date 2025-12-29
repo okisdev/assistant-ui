@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  type ReactNode,
+} from "react";
 import { nanoid } from "nanoid";
 import {
   AssistantRuntimeProvider,
@@ -46,21 +53,44 @@ import {
 import { ChatLayout } from "@/components/assistant-ui/chat-layout";
 import { ChatContent } from "@/components/app/chat/chat-content";
 import {
-  ProjectContext,
-  useProject,
-  type ProjectContextValue,
-} from "@/hooks/use-project";
-import { ChatPageProvider } from "@/contexts/chat-page-provider";
+  NavigationProvider,
+  useNavigation,
+} from "@/contexts/navigation-provider";
 import {
   IncognitoProvider,
   useIncognito,
   useIncognitoOptional,
 } from "@/contexts/incognito-provider";
-import { ComposerModeProvider } from "@/contexts/composer-mode-provider";
 import {
-  SelectedAppsProvider,
-  useSelectedApps,
-} from "@/contexts/selected-apps-provider";
+  ComposerStateProvider,
+  useComposerState,
+} from "@/contexts/composer-state-provider";
+import type { ResolvedUserCapabilities } from "@/lib/database/types";
+
+type UserProfile = {
+  id: string;
+  name: string | null;
+  email: string;
+  nickname: string | null;
+  workType: string | null;
+} | null;
+
+type InitialData = {
+  profile: UserProfile;
+  capabilities: ResolvedUserCapabilities;
+};
+
+const InitialDataContext = createContext<InitialData | null>(null);
+
+export function useInitialProfile(): UserProfile {
+  const ctx = useContext(InitialDataContext);
+  return ctx?.profile ?? null;
+}
+
+export function useInitialCapabilities(): ResolvedUserCapabilities | undefined {
+  const ctx = useContext(InitialDataContext);
+  return ctx?.capabilities;
+}
 
 function HistoryProvider({ children }: { children?: ReactNode }) {
   const threadListItem = useAssistantState(
@@ -431,6 +461,7 @@ function RuntimeProviderInner({
   children: ReactNode;
   adapter: RemoteThreadListAdapter;
 }) {
+  const initialCapabilities = useInitialCapabilities();
   const runtime = useRemoteThreadListRuntime({
     runtimeHook: useCustomChatRuntime,
     adapter,
@@ -438,7 +469,7 @@ function RuntimeProviderInner({
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <CapabilitiesProvider>
+      <CapabilitiesProvider initialData={initialCapabilities}>
         <ModelSelectionProvider>{children}</ModelSelectionProvider>
       </CapabilitiesProvider>
       {process.env.NODE_ENV === "development" && <DevToolsModal />}
@@ -447,8 +478,8 @@ function RuntimeProviderInner({
 }
 
 function ComposerContextBinding({ children }: { children: ReactNode }) {
-  const { selectedAppIds, clearApps } = useSelectedApps();
-  const { setCurrentProjectId } = useProject();
+  const { selectedAppIds, resetAll } = useComposerState();
+  const { setSelectedProjectId } = useNavigation();
   const threadId = useAssistantState(({ threadListItem }) => threadListItem.id);
   const prevThreadIdRef = useRef<string | undefined>(undefined);
 
@@ -461,25 +492,20 @@ function ComposerContextBinding({ children }: { children: ReactNode }) {
       prevThreadIdRef.current !== undefined &&
       prevThreadIdRef.current !== threadId
     ) {
-      clearApps();
-      setCurrentProjectId(null);
+      resetAll();
+      setSelectedProjectId(null);
     }
     prevThreadIdRef.current = threadId;
-  }, [threadId, clearApps, setCurrentProjectId]);
+  }, [threadId, resetAll, setSelectedProjectId]);
 
   return <>{children}</>;
 }
 
-function ChatProviderInner({
-  children,
-  projectId,
-}: {
-  children: ReactNode;
-  projectId: string | null;
-}) {
+function ChatProviderInner({ children }: { children: ReactNode }) {
   const { isIncognito } = useIncognito();
+  const { selectedProjectId } = useNavigation();
 
-  const databaseAdapter = useDatabaseThreadListAdapter(projectId);
+  const databaseAdapter = useDatabaseThreadListAdapter(selectedProjectId);
   const incognitoAdapter = useIncognitoThreadListAdapter();
 
   const adapter = isIncognito ? incognitoAdapter : databaseAdapter;
@@ -494,16 +520,25 @@ function ChatProviderInner({
   );
 }
 
-export function ChatProvider({ children }: { children: ReactNode }) {
-  const isTRPCReady = useTRPCReady();
-  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+type ChatProviderProps = {
+  children: ReactNode;
+  initialProfile?: UserProfile;
+  initialCapabilities?: ResolvedUserCapabilities;
+};
 
-  const projectContextValue: ProjectContextValue = useMemo(
-    () => ({
-      currentProjectId,
-      setCurrentProjectId,
-    }),
-    [currentProjectId],
+export function ChatProvider({
+  children,
+  initialProfile,
+  initialCapabilities,
+}: ChatProviderProps) {
+  const isTRPCReady = useTRPCReady();
+
+  const initialData = useMemo<InitialData | null>(
+    () =>
+      initialProfile !== undefined && initialCapabilities !== undefined
+        ? { profile: initialProfile, capabilities: initialCapabilities }
+        : null,
+    [initialProfile, initialCapabilities],
   );
 
   if (!isTRPCReady) {
@@ -511,21 +546,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ProjectContext.Provider value={projectContextValue}>
-      <ChatPageProvider>
+    <InitialDataContext.Provider value={initialData}>
+      <NavigationProvider>
         <IncognitoProvider>
           <SidePanelProvider>
-            <ComposerModeProvider>
-              <SelectedAppsProvider>
-                <ChatProviderInner projectId={currentProjectId}>
-                  {children}
-                </ChatProviderInner>
-              </SelectedAppsProvider>
-            </ComposerModeProvider>
+            <ComposerStateProvider>
+              <ChatProviderInner>{children}</ChatProviderInner>
+            </ComposerStateProvider>
           </SidePanelProvider>
         </IncognitoProvider>
-      </ChatPageProvider>
-    </ProjectContext.Provider>
+      </NavigationProvider>
+    </InitialDataContext.Provider>
   );
 }
 

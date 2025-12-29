@@ -10,18 +10,17 @@ import { ChatHeaderTitle } from "@/components/shared/chat-header-title";
 import { ChatHeaderBreadcrumb } from "@/components/shared/chat-header-breadcrumb";
 import { IncognitoToggle } from "@/components/shared/incognito-toggle";
 import { useSyncThreadUrl } from "@/hooks/use-sync-thread-url";
-import { useChatPage } from "@/contexts/chat-page-provider";
+import { useNavigation } from "@/contexts/navigation-provider";
 import { useIncognitoOptional } from "@/contexts/incognito-provider";
-import { authClient } from "@/lib/auth.client";
-import { api } from "@/utils/trpc/client";
+import { useInitialProfile } from "@/app/(app)/(chat)/provider";
 
 function HeaderRight() {
-  const { chatId, project } = useChatPage();
+  const { chatId, chatProject } = useNavigation();
   const incognito = useIncognitoOptional();
   const isIncognito = incognito?.isIncognito ?? false;
 
   // On chat page with project, don't show incognito toggle
-  if (chatId && project) {
+  if (chatId && chatProject) {
     return <ChatHeaderShare />;
   }
 
@@ -34,13 +33,13 @@ function HeaderRight() {
 }
 
 function HeaderLeft() {
-  const { chatId, project } = useChatPage();
+  const { chatId, chatProject } = useNavigation();
   const incognito = useIncognitoOptional();
   const isIncognito = incognito?.isIncognito ?? false;
 
   // On chat detail page, show breadcrumb (which includes title)
   if (chatId) {
-    return <ChatHeaderBreadcrumb project={project} />;
+    return <ChatHeaderBreadcrumb project={chatProject} />;
   }
 
   // On home page, show title only if not incognito
@@ -52,11 +51,8 @@ function HeaderLeft() {
 }
 
 function useWelcomeMessage(): string | undefined {
-  const { chatId } = useChatPage();
-  const { data: session } = authClient.useSession();
-  const { data: profile } = api.user.profile.get.useQuery(undefined, {
-    enabled: !!session?.user,
-  });
+  const { chatId } = useNavigation();
+  const profile = useInitialProfile();
   const incognito = useIncognitoOptional();
   const isIncognito = incognito?.isIncognito ?? false;
 
@@ -77,7 +73,7 @@ function useWelcomeMessage(): string | undefined {
 
 export function ChatContent() {
   const assistantApi = useAssistantApi();
-  const { chatId } = useChatPage();
+  const { chatId } = useNavigation();
   const incognito = useIncognitoOptional();
   const isIncognito = incognito?.isIncognito ?? false;
   const prevChatIdRef = useRef<string | null | undefined>(undefined);

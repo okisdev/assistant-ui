@@ -7,7 +7,7 @@ import {
   useAssistantState,
 } from "@assistant-ui/react";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
-import { useComposerMode } from "@/contexts/composer-mode-provider";
+import { useComposerState } from "@/contexts/composer-state-provider";
 import { modelTransport } from "@/app/(app)/(chat)/provider";
 import { ComposerHeader } from "./composer-header";
 import { ComposerInput } from "./composer-input";
@@ -22,7 +22,7 @@ export const Composer: FC<ComposerProps> = ({
   placeholder = "Ask anything...",
 }) => {
   const api = useAssistantApi();
-  const { mode, resetMode } = useComposerMode();
+  const { mode, resetMode } = useComposerState();
   const isImageGenerationMode = mode === "image-generation";
   const hasUploadingAttachments = useAssistantState(({ composer }) =>
     composer.attachments.some((a) => a.status.type === "running"),

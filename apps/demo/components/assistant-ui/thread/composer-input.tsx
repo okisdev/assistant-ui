@@ -36,9 +36,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { useModelSelection } from "@/contexts/model-selection-provider";
 import { useCapabilities } from "@/contexts/capabilities-provider";
-import { useComposerMode } from "@/contexts/composer-mode-provider";
-import { useSelectedApps } from "@/contexts/selected-apps-provider";
-import { useProject } from "@/hooks/use-project";
+import { useComposerState } from "@/contexts/composer-state-provider";
+import { useNavigation } from "@/contexts/navigation-provider";
 import { api } from "@/utils/trpc/client";
 import { getFileIcon } from "@/utils/file";
 import { createExistingAttachmentFile } from "@/lib/adapters/blob-attachment-adapter";
@@ -112,7 +111,7 @@ const RecentAttachmentsSubmenu: FC = () => {
 
 const ProjectsSubmenu: FC = () => {
   const { data: projects, isLoading } = api.project.list.useQuery();
-  const { currentProjectId, setCurrentProjectId } = useProject();
+  const { selectedProjectId, setSelectedProjectId } = useNavigation();
 
   const visibleProjects = projects?.slice(0, MAX_VISIBLE_ITEMS) ?? [];
   const hasMore = (projects?.length ?? 0) > MAX_VISIBLE_ITEMS;
@@ -158,14 +157,14 @@ const ProjectsSubmenu: FC = () => {
               <DropdownMenuItem
                 key={project.id}
                 className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
-                onClick={() => setCurrentProjectId(project.id)}
+                onClick={() => setSelectedProjectId(project.id)}
               >
                 <div
                   className="size-3 shrink-0 rounded"
                   style={{ backgroundColor: project.color || "#3b82f6" }}
                 />
                 <span className="truncate">{project.name}</span>
-                {currentProjectId === project.id && (
+                {selectedProjectId === project.id && (
                   <Check className="ml-auto size-4 text-primary" />
                 )}
               </DropdownMenuItem>
@@ -184,12 +183,12 @@ const ProjectsSubmenu: FC = () => {
                 </DropdownMenuItem>
               </>
             )}
-            {currentProjectId && (
+            {selectedProjectId && (
               <>
                 <DropdownMenuSeparator className="-mx-2 my-2" />
                 <DropdownMenuItem
                   className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
-                  onClick={() => setCurrentProjectId(null)}
+                  onClick={() => setSelectedProjectId(null)}
                 >
                   <X className="size-4" />
                   <span>Clear selection</span>
@@ -206,7 +205,7 @@ const ProjectsSubmenu: FC = () => {
 const AppsSubmenu: FC = () => {
   const { data: connections, isLoading } =
     api.application.userConnections.useQuery();
-  const { selectedAppIds, toggleApp, clearApps } = useSelectedApps();
+  const { selectedAppIds, toggleApp, clearApps } = useComposerState();
 
   const connectedApps =
     connections?.filter((c) => c.isConnected && c.enabled) ?? [];
@@ -312,7 +311,7 @@ const ComposerDropdown: FC = () => {
   const assistantApi = useAssistantApi();
   const { model } = useModelSelection();
   const { capabilities } = useCapabilities();
-  const { setMode } = useComposerMode();
+  const { setMode } = useComposerState();
 
   const isNewThread = useAssistantState(({ thread }) => thread.isEmpty);
 

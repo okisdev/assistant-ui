@@ -37,8 +37,19 @@ export function useCapabilities(): CapabilitiesContextValue {
   return ctx;
 }
 
-export function CapabilitiesProvider({ children }: { children: ReactNode }) {
-  const { data, isLoading } = api.user.capability.list.useQuery();
+type CapabilitiesProviderProps = {
+  children: ReactNode;
+  initialData?: ResolvedUserCapabilities;
+};
+
+export function CapabilitiesProvider({
+  children,
+  initialData,
+}: CapabilitiesProviderProps) {
+  const { data, isLoading } = api.user.capability.list.useQuery(undefined, {
+    initialData,
+    staleTime: initialData ? 1000 * 60 : 0, // 1 minute if we have initial data
+  });
   const utils = api.useUtils();
 
   const updateMutation = api.user.capability.update.useMutation({
@@ -62,11 +73,17 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
   const value = useMemo<CapabilitiesContextValue>(
     () => ({
       capabilities,
-      isLoading,
+      isLoading: initialData ? false : isLoading,
       updateCapabilities,
       isUpdating: updateMutation.isPending,
     }),
-    [capabilities, isLoading, updateCapabilities, updateMutation.isPending],
+    [
+      capabilities,
+      initialData,
+      isLoading,
+      updateCapabilities,
+      updateMutation.isPending,
+    ],
   );
 
   return (
