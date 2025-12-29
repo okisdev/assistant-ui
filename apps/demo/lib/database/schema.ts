@@ -49,6 +49,7 @@ export const user = pgTable("user", {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
 });
 
 export const session = pgTable(
@@ -162,6 +163,22 @@ export const invitation = pgTable(
   (table) => [
     index("invitation_organizationId_idx").on(table.organizationId),
     index("invitation_email_idx").on(table.email),
+  ],
+);
+
+export const twoFactor = pgTable(
+  "two_factor",
+  {
+    id: text("id").primaryKey(),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    index("twoFactor_secret_idx").on(table.secret),
+    index("twoFactor_userId_idx").on(table.userId),
   ],
 );
 

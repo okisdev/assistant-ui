@@ -34,10 +34,10 @@ function AppLayoutContent({
   headerLeft,
   headerRight,
 }: AppLayoutProps) {
-  const { state } = useSidebar();
+  const { state, isMobile } = useSidebar();
   const incognito = useIncognitoOptional();
   const isIncognito = incognito?.isIncognito ?? false;
-  const hasHeader = headerLeft || headerRight || isIncognito;
+  const hasHeader = headerLeft || headerRight || isIncognito || isMobile;
 
   return (
     <SidebarInset
@@ -55,7 +55,7 @@ function AppLayoutContent({
         <SidebarTrigger
           className={cn(
             "pointer-events-auto -ml-1 transition-all duration-200",
-            state === "collapsed"
+            isMobile || state === "collapsed"
               ? "w-7 opacity-100"
               : "w-0 overflow-hidden opacity-0",
           )}

@@ -75,7 +75,7 @@ function AppIcon({
     <img
       src={iconUrl}
       alt={name}
-      className={cn("rounded-lg object-contain", className)}
+      className={cn("object-contain", className)}
       onError={() => setHasError(true)}
     />
   );
@@ -96,7 +96,7 @@ function ApplicationCard({
       <AppIcon
         iconUrl={app.iconUrl}
         name={app.name}
-        className="size-10 shrink-0"
+        className="size-8 shrink-0"
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -173,7 +173,7 @@ export default function AppsPage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-auto">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-10 md:px-8">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 pt-12 pb-8 md:px-8">
         <div className="flex flex-col gap-1">
           <h1 className="font-semibold text-2xl tracking-tight">Apps</h1>
           <p className="text-muted-foreground">

@@ -263,7 +263,7 @@ export function SessionList() {
         ) : (
           sessions.map((session) => (
             <SessionItem
-              key={session.id}
+              key={session.token}
               session={session}
               isCurrentSession={session.token === currentSessionToken}
               isRevoking={isRevoking === session.token}

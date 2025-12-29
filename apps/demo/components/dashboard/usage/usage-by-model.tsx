@@ -31,9 +31,9 @@ const CHART_COLORS = [
 
 function ModelBarSkeleton() {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-4">
       <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-      <div className="h-48 w-full animate-pulse rounded bg-muted/50" />
+      <div className="h-48 w-full animate-pulse rounded bg-muted" />
     </div>
   );
 }
@@ -61,7 +61,7 @@ export function UsageByModel({ timeRange }: { timeRange: UsageTimeRange }) {
 
   if (!data || data.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-4 rounded-lg bg-muted/50 py-8">
+      <div className="flex flex-col items-center gap-4 rounded-lg bg-muted/50 py-12">
         <div className="flex size-12 items-center justify-center rounded-full bg-muted/50">
           <Bot className="size-6 text-muted-foreground" />
         </div>
@@ -71,8 +71,8 @@ export function UsageByModel({ timeRange }: { timeRange: UsageTimeRange }) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <h3 className="font-medium text-sm">Usage by Model</h3>
+    <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-4">
+      <h3 className="font-medium text-sm">By Model</h3>
       <ChartContainer config={chartConfig} className="h-48 w-full">
         <BarChart
           accessibilityLayer

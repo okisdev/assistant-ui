@@ -8,10 +8,8 @@ export const metadata: Metadata = {
 
 export default function ModelsPage() {
   return (
-    <div className="flex flex-1 flex-col gap-10 px-4 py-8 md:px-8">
-      <div className="flex w-full flex-col gap-10">
-        <ModelsSection />
-      </div>
+    <div className="flex flex-1 flex-col pt-4 pb-8 sm:py-8">
+      <ModelsSection />
     </div>
   );
 }

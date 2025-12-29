@@ -280,7 +280,7 @@ export default function AppDetailPage({
   if (!app) {
     return (
       <div className="flex flex-1 flex-col overflow-auto">
-        <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-10 md:px-8">
+        <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pt-12 pb-8 md:px-8">
           <Button variant="ghost" size="sm" className="-ml-2 w-fit" asChild>
             <Link href="/apps">
               <ArrowLeft className="mr-1.5 size-4" />
@@ -314,7 +314,7 @@ export default function AppDetailPage({
           </Link>
         </Button>
 
-        <div className="flex items-center gap-4">
+        <div className="relative flex items-center gap-4">
           <AppIcon
             iconUrl={app.iconUrl}
             name={app.name}
@@ -369,7 +369,11 @@ export default function AppDetailPage({
           {isConnected && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="size-8 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-0 right-0 size-8"
+                >
                   <MoreHorizontal className="size-4" />
                 </Button>
               </DropdownMenuTrigger>

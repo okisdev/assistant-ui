@@ -97,9 +97,9 @@ function UsageItemRow({ item }: { item: UsageItem }) {
   const Icon = model?.icon ?? MessageSquare;
 
   return (
-    <div className="group flex items-center gap-1 rounded-lg bg-muted/50 px-4 py-3 transition-colors hover:bg-muted">
-      <div className="flex size-10 items-center justify-center rounded-full bg-muted/50">
-        <Icon className="size-5 text-muted-foreground" />
+    <div className="group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-muted/50">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted/50">
+        <Icon className="size-4 text-muted-foreground" />
       </div>
 
       <div className="min-w-0 flex-1">
@@ -110,26 +110,25 @@ function UsageItemRow({ item }: { item: UsageItem }) {
           {item.chatId && (
             <Link
               href={`/chat/${item.chatId}`}
-              className="inline-flex items-center gap-1 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+              className="inline-flex items-center text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
             >
               <ExternalLink className="size-3" />
             </Link>
           )}
         </div>
-        <div className="flex items-center gap-2 text-muted-foreground text-xs">
-          <span>{formatTokens(item.inputTokens)} in</span>
-          <span className="text-muted-foreground/50">·</span>
-          <span>{formatTokens(item.outputTokens)} out</span>
+        <p className="text-muted-foreground text-xs">
+          {formatTokens(item.inputTokens)} in ·{" "}
+          {formatTokens(item.outputTokens)} out
           {item.reasoningTokens ? (
-            <>
-              <span className="text-muted-foreground/50">·</span>
-              <span>{formatTokens(item.reasoningTokens)} reasoning</span>
-            </>
+            <span className="hidden sm:inline">
+              {" "}
+              · {formatTokens(item.reasoningTokens)} reasoning
+            </span>
           ) : null}
-        </div>
+        </p>
       </div>
 
-      <div className="flex flex-col items-end gap-0.5">
+      <div className="flex shrink-0 flex-col items-end gap-0.5">
         <span className="font-medium text-sm tabular-nums">
           {formatTokens(item.totalTokens)}
         </span>
@@ -138,7 +137,7 @@ function UsageItemRow({ item }: { item: UsageItem }) {
         </span>
       </div>
 
-      <div className="w-16 text-right">
+      <div className="hidden w-14 shrink-0 text-right sm:block">
         <span className="text-muted-foreground text-xs">
           {formatRelativeTime(new Date(item.createdAt))}
         </span>
@@ -149,22 +148,19 @@ function UsageItemRow({ item }: { item: UsageItem }) {
 
 function RecentSkeleton() {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1">
       {[1, 2, 3, 4, 5].map((i) => (
-        <div
-          key={i}
-          className="flex items-center gap-4 rounded-lg bg-muted/50 px-4 py-3"
-        >
-          <div className="size-10 animate-pulse rounded-full bg-muted" />
-          <div className="flex-1 space-y-2">
-            <div className="h-4 w-28 animate-pulse rounded bg-muted" />
-            <div className="h-3 w-40 animate-pulse rounded bg-muted" />
+        <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2.5">
+          <div className="size-9 animate-pulse rounded-full bg-muted" />
+          <div className="flex-1 space-y-1.5">
+            <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+            <div className="h-3 w-32 animate-pulse rounded bg-muted" />
           </div>
           <div className="space-y-1">
             <div className="h-4 w-12 animate-pulse rounded bg-muted" />
             <div className="h-3 w-10 animate-pulse rounded bg-muted" />
           </div>
-          <div className="h-3 w-14 animate-pulse rounded bg-muted" />
+          <div className="hidden h-3 w-12 animate-pulse rounded bg-muted sm:block" />
         </div>
       ))}
     </div>
@@ -173,7 +169,7 @@ function RecentSkeleton() {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center gap-4 rounded-lg bg-muted/50 py-12">
+    <div className="flex flex-col items-center gap-4 py-8">
       <div className="flex size-12 items-center justify-center rounded-full bg-muted/50">
         <Clock className="size-6 text-muted-foreground" />
       </div>
@@ -211,10 +207,8 @@ export function RecentUsage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h3 className="font-medium text-sm">Recent Activity</h3>
-        </div>
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-4">
+        <h3 className="font-medium text-sm">Recent</h3>
         <RecentSkeleton />
       </div>
     );
@@ -222,17 +216,17 @@ export function RecentUsage() {
 
   if (!data || data.length === 0) {
     return (
-      <div className="flex flex-col gap-4">
-        <h3 className="font-medium text-sm">Recent Activity</h3>
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-4">
+        <h3 className="font-medium text-sm">Recent</h3>
         <EmptyState />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-medium text-sm">Recent Activity</h3>
+        <h3 className="font-medium text-sm">Recent</h3>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2">
@@ -258,7 +252,7 @@ export function RecentUsage() {
         </DropdownMenu>
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1">
         {table.getRowModel().rows.map((row) => (
           <UsageItemRow key={row.id} item={row.original} />
         ))}

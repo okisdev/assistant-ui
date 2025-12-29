@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut, ChevronsUpDown, User } from "lucide-react";
+import { useTheme } from "next-themes";
+import { LogOut, ChevronsUpDown, User, Sun, Moon, Monitor } from "lucide-react";
 
 import { authClient } from "@/lib/auth.client";
 import {
@@ -15,18 +17,40 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function SidebarUserMenu() {
   const router = useRouter();
   const { data: session } = authClient.useSession();
+  const { theme, setTheme } = useTheme();
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
 
   const handleSignOut = async () => {
-    await authClient.signOut();
-    router.push("/");
-    router.refresh();
+    await authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          router.push("/");
+          router.refresh();
+        },
+      },
+    });
   };
 
   const getInitials = (name: string) => {
@@ -79,10 +103,47 @@ export function SidebarUserMenu() {
                 Account
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="cursor-pointer">
+                {theme === "dark" ? (
+                  <Moon className="mr-2 size-4" />
+                ) : theme === "light" ? (
+                  <Sun className="mr-2 size-4" />
+                ) : (
+                  <Monitor className="mr-2 size-4" />
+                )}
+                Theme
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
+                  <DropdownMenuRadioItem
+                    value="system"
+                    className="cursor-pointer"
+                  >
+                    <Monitor className="mr-2 size-4" />
+                    System
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem
+                    value="light"
+                    className="cursor-pointer"
+                  >
+                    <Sun className="mr-2 size-4" />
+                    Light
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem
+                    value="dark"
+                    className="cursor-pointer"
+                  >
+                    <Moon className="mr-2 size-4" />
+                    Dark
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="cursor-pointer text-destructive focus:text-destructive"
-              onClick={handleSignOut}
+              onClick={() => setShowSignOutConfirm(true)}
             >
               <LogOut className="mr-2 size-4" />
               Sign out
@@ -90,6 +151,29 @@ export function SidebarUserMenu() {
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
+
+      <AlertDialog
+        open={showSignOutConfirm}
+        onOpenChange={setShowSignOutConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign out</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to sign out?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={handleSignOut}
+            >
+              Sign out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarMenu>
   );
 }

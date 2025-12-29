@@ -9,17 +9,12 @@ export const metadata: Metadata = {
 
 export default function SharesPage() {
   return (
-    <div className="flex flex-1 flex-col gap-10 px-4 py-8 md:px-8">
-      <div className="flex w-full flex-col gap-10">
-        <div className="flex flex-col gap-4">
-          <SettingHeader
-            title="Shared Links"
-            parent={{ title: "Data", href: "/data" }}
-          />
-
-          <SharesList />
-        </div>
-      </div>
+    <div className="flex flex-1 flex-col gap-4 pt-4 pb-8 sm:gap-6 sm:py-8">
+      <SettingHeader
+        title="Shared Links"
+        parent={{ title: "Data", href: "/data" }}
+      />
+      <SharesList />
     </div>
   );
 }

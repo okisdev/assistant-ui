@@ -18,6 +18,7 @@ import {
   mcpServer,
   application,
   userApplication,
+  twoFactor,
 } from "./schema";
 
 export const userRelations = relations(user, ({ many }) => ({
@@ -25,6 +26,7 @@ export const userRelations = relations(user, ({ many }) => ({
   accounts: many(account),
   members: many(member),
   invitations: many(invitation),
+  twoFactors: many(twoFactor),
   projects: many(project),
   chats: many(chat),
   shares: many(share),
@@ -73,6 +75,13 @@ export const invitationRelations = relations(invitation, ({ one }) => ({
   }),
   user: one(user, {
     fields: [invitation.inviterId],
+    references: [user.id],
+  }),
+}));
+
+export const twoFactorRelations = relations(twoFactor, ({ one }) => ({
+  user: one(user, {
+    fields: [twoFactor.userId],
     references: [user.id],
   }),
 }));

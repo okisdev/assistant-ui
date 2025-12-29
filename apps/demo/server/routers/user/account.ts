@@ -2,6 +2,7 @@ import { z } from "zod";
 import { eq, and, ne } from "drizzle-orm";
 
 import { account } from "@/lib/database/schema";
+import { auth } from "@/lib/auth";
 import { protectedProcedure, createTRPCRouter } from "../../trpc";
 
 export const accountRouter = createTRPCRouter({
@@ -22,6 +23,21 @@ export const accountRouter = createTRPCRouter({
       );
 
     return accounts;
+  }),
+
+  hasPassword: protectedProcedure.query(async ({ ctx }) => {
+    const credentialAccount = await ctx.db
+      .select({ id: account.id })
+      .from(account)
+      .where(
+        and(
+          eq(account.userId, ctx.session.user.id),
+          eq(account.providerId, "credential"),
+        ),
+      )
+      .limit(1);
+
+    return credentialAccount.length > 0;
   }),
 
   unlink: protectedProcedure
@@ -53,6 +69,32 @@ export const accountRouter = createTRPCRouter({
             eq(account.providerId, input.providerId),
           ),
         );
+
+      return { success: true };
+    }),
+
+  setPassword: protectedProcedure
+    .input(z.object({ newPassword: z.string().min(8) }))
+    .mutation(async ({ ctx, input }) => {
+      const hasCredential = await ctx.db
+        .select({ id: account.id })
+        .from(account)
+        .where(
+          and(
+            eq(account.userId, ctx.session.user.id),
+            eq(account.providerId, "credential"),
+          ),
+        )
+        .limit(1);
+
+      if (hasCredential.length > 0) {
+        throw new Error("Password already set. Use change password instead.");
+      }
+
+      await auth.api.setPassword({
+        body: { newPassword: input.newPassword },
+        headers: ctx.headers,
+      });
 
       return { success: true };
     }),

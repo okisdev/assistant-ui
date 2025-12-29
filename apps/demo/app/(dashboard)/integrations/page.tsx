@@ -9,11 +9,9 @@ export const metadata: Metadata = {
 
 export default function IntegrationsPage() {
   return (
-    <div className="flex flex-1 flex-col gap-10 px-4 py-8 md:px-8">
-      <div className="flex w-full flex-col gap-10">
-        <ApplicationsSection />
-        <MCPServerSection />
-      </div>
+    <div className="flex flex-1 flex-col gap-5 pt-4 pb-8 sm:gap-8 sm:py-8">
+      <ApplicationsSection />
+      <MCPServerSection />
     </div>
   );
 }

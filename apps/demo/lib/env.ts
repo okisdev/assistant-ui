@@ -31,6 +31,10 @@ export const env = createEnv({
     INTEGRATION_FIGMA_CLIENT_ID: z.string().optional(),
     INTEGRATION_FIGMA_CLIENT_SECRET: z.string().optional(),
     SERPAPI_API_KEY: z.string().min(1, "SERPAPI_API_KEY is required"),
+    E2B_API_KEY: z.string().min(1, "E2B_API_KEY is required"),
+    REDIS_API_URL: z.string().min(1, "REDIS_API_URL is required"),
+    REDIS_API_TOKEN: z.string().min(1, "REDIS_API_TOKEN is required"),
+    RESEND_API_KEY: z.string().min(1, "RESEND_API_KEY is required"),
   },
   clientPrefix: "NEXT_PUBLIC_",
   client: {
@@ -62,6 +66,10 @@ export const env = createEnv({
     INTEGRATION_FIGMA_CLIENT_SECRET:
       process.env.INTEGRATION_FIGMA_CLIENT_SECRET,
     SERPAPI_API_KEY: process.env.SERPAPI_API_KEY,
+    E2B_API_KEY: process.env.E2B_API_KEY,
+    REDIS_API_URL: process.env.REDIS_API_URL,
+    REDIS_API_TOKEN: process.env.REDIS_API_TOKEN,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
   },
   emptyStringAsUndefined: true,
   extends: [vercel()],

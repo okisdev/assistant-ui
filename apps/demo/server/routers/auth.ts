@@ -15,7 +15,7 @@ export const authRouter = createTRPCRouter({
         ctx.headers.get("x-real-ip") ??
         "unknown";
 
-      const { success } = rateLimiters.auth.check(ip);
+      const { success } = await rateLimiters.auth.check(ip);
       if (!success) {
         throw new TRPCError({
           code: "TOO_MANY_REQUESTS",

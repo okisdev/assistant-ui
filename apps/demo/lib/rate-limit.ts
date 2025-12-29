@@ -1,13 +1,10 @@
 import { ApiError } from "@/lib/error";
-
-type RateLimitRecord = {
-  count: number;
-  resetAt: number;
-};
+import { redis } from "@/lib/redis";
 
 type RateLimitOptions = {
   window?: number;
   max?: number;
+  prefix?: string;
 };
 
 type RateLimitResult = {
@@ -18,42 +15,56 @@ type RateLimitResult = {
 
 const DEFAULT_WINDOW = 60 * 1000;
 const DEFAULT_MAX = 5;
+const KEY_PREFIX = "rl:";
 
 class RateLimiter {
-  private store = new Map<string, RateLimitRecord>();
   private window: number;
   private max: number;
+  private prefix: string;
 
   constructor(options: RateLimitOptions = {}) {
     this.window = options.window ?? DEFAULT_WINDOW;
     this.max = options.max ?? DEFAULT_MAX;
-    this.startCleanup();
+    this.prefix = options.prefix ?? "";
   }
 
-  check(identifier: string): RateLimitResult {
+  private getKey(identifier: string): string {
+    return `${KEY_PREFIX}${this.prefix}${identifier}`;
+  }
+
+  async check(identifier: string): Promise<RateLimitResult> {
+    const key = this.getKey(identifier);
     const now = Date.now();
-    const record = this.store.get(identifier);
+    const windowSeconds = Math.ceil(this.window / 1000);
 
-    if (!record || now > record.resetAt) {
-      const resetAt = now + this.window;
-      this.store.set(identifier, { count: 1, resetAt });
-      return { success: true, remaining: this.max - 1, resetAt };
+    const results = await redis
+      .pipeline()
+      .incr(key)
+      .pttl(key)
+      .exec<[number, number]>();
+
+    const count = results[0];
+    const ttl = results[1];
+
+    if (ttl === -1) {
+      await redis.pexpire(key, this.window);
     }
 
-    if (record.count >= this.max) {
-      return { success: false, remaining: 0, resetAt: record.resetAt };
+    const resetAt = ttl > 0 ? now + ttl : now + windowSeconds * 1000;
+
+    if (count > this.max) {
+      return { success: false, remaining: 0, resetAt };
     }
 
-    record.count++;
     return {
       success: true,
-      remaining: this.max - record.count,
-      resetAt: record.resetAt,
+      remaining: this.max - count,
+      resetAt,
     };
   }
 
-  checkOrThrow(identifier: string): RateLimitResult {
-    const result = this.check(identifier);
+  async checkOrThrow(identifier: string): Promise<RateLimitResult> {
+    const result = await this.check(identifier);
     if (!result.success) {
       const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000);
       throw ApiError.rateLimit(
@@ -63,8 +74,8 @@ class RateLimiter {
     return result;
   }
 
-  checkOrRespond(identifier: string): Response | null {
-    const result = this.check(identifier);
+  async checkOrRespond(identifier: string): Promise<Response | null> {
+    const result = await this.check(identifier);
     if (!result.success) {
       const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000);
       return new Response(JSON.stringify({ error: "Too many requests" }), {
@@ -81,31 +92,21 @@ class RateLimiter {
     return null;
   }
 
-  reset(identifier: string): void {
-    this.store.delete(identifier);
-  }
-
-  private startCleanup(): void {
-    setInterval(
-      () => {
-        const now = Date.now();
-        for (const [key, value] of this.store.entries()) {
-          if (now > value.resetAt) {
-            this.store.delete(key);
-          }
-        }
-      },
-      5 * 60 * 1000,
-    );
+  async reset(identifier: string): Promise<void> {
+    await redis.del(this.getKey(identifier));
   }
 }
 
 export const rateLimiters = {
-  auth: new RateLimiter({ window: 60 * 1000, max: 5 }),
-  sensitive: new RateLimiter({ window: 60 * 1000, max: 3 }),
-  api: new RateLimiter({ window: 60 * 1000, max: 100 }),
-  chat: new RateLimiter({ window: 60 * 1000, max: 30 }),
-  imageGeneration: new RateLimiter({ window: 60 * 1000, max: 10 }),
+  auth: new RateLimiter({ window: 60 * 1000, max: 5, prefix: "auth:" }),
+  sensitive: new RateLimiter({ window: 60 * 1000, max: 3, prefix: "sens:" }),
+  api: new RateLimiter({ window: 60 * 1000, max: 100, prefix: "api:" }),
+  chat: new RateLimiter({ window: 60 * 1000, max: 30, prefix: "chat:" }),
+  imageGeneration: new RateLimiter({
+    window: 60 * 1000,
+    max: 10,
+    prefix: "img:",
+  }),
 };
 
 export { RateLimiter };

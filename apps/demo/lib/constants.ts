@@ -1,3 +1,8 @@
+export const KEY_PREFIX = {
+  auth: "auth:",
+  rateLimit: "rl:",
+} as const;
+
 export const workTypeOptions = [
   { value: "developer", label: "Developer" },
   { value: "designer", label: "Designer" },

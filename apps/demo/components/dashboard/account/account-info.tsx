@@ -21,28 +21,6 @@ import {
 import { cn } from "@/lib/utils";
 import { SettingHeader } from "@/components/dashboard/setting-header";
 
-function AccountInfoSkeleton() {
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="h-7 w-32 animate-pulse rounded bg-muted" />
-      <div className="flex flex-col gap-2">
-        <div className="flex h-14 items-center justify-between rounded-lg bg-muted/50 px-4">
-          <div className="h-4 w-12 animate-pulse rounded bg-muted" />
-          <div className="h-5 w-40 animate-pulse rounded bg-muted" />
-        </div>
-        <div className="flex h-14 items-center justify-between rounded-lg bg-muted/50 px-4">
-          <div className="h-4 w-16 animate-pulse rounded bg-muted" />
-          <div className="h-5 w-24 animate-pulse rounded bg-muted" />
-        </div>
-        <div className="flex h-14 items-center justify-between rounded-lg bg-muted/50 px-4">
-          <div className="h-4 w-16 animate-pulse rounded bg-muted" />
-          <div className="h-5 w-20 animate-pulse rounded bg-muted" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function AccountInfo() {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
@@ -76,10 +54,6 @@ export function AccountInfo() {
     }
   };
 
-  if (isPending) {
-    return <AccountInfoSkeleton />;
-  }
-
   return (
     <div className="flex flex-col gap-4">
       <SettingHeader title="Account" />
@@ -87,7 +61,9 @@ export function AccountInfo() {
       <div className="flex flex-col gap-2">
         <div className="flex h-14 items-center justify-between rounded-lg bg-muted/50 px-4 transition-colors duration-200 hover:bg-muted">
           <span className="text-muted-foreground text-sm">Email</span>
-          {email && (
+          {isPending ? (
+            <span className="h-4 w-32 animate-pulse rounded bg-muted" />
+          ) : email ? (
             <Button
               variant="ghost"
               size="sm"
@@ -115,12 +91,14 @@ export function AccountInfo() {
                 )}
               </span>
             </Button>
-          )}
+          ) : null}
         </div>
 
         <div className="flex h-14 items-center justify-between rounded-lg bg-muted/50 px-4 transition-colors duration-200 hover:bg-muted">
           <span className="text-muted-foreground text-sm">User ID</span>
-          {userId && (
+          {isPending ? (
+            <span className="h-4 w-20 animate-pulse rounded bg-muted" />
+          ) : userId ? (
             <Button
               variant="ghost"
               size="sm"
@@ -148,7 +126,7 @@ export function AccountInfo() {
                 )}
               </span>
             </Button>
-          )}
+          ) : null}
         </div>
 
         <div className="group flex h-14 items-center justify-between rounded-lg bg-muted/50 px-4 transition-colors duration-200 hover:bg-muted">
@@ -158,7 +136,7 @@ export function AccountInfo() {
               <Button
                 variant="ghost"
                 size="icon-sm"
-                disabled={isSigningOut}
+                disabled={isPending || isSigningOut}
                 className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
               >
                 {isSigningOut ? (

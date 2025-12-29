@@ -25,11 +25,18 @@ function formatDate(dateStr: string): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+function formatAxisTokens(value: number): string {
+  if (value === 0) return "0";
+  if (value < 1000) return value.toLocaleString();
+  if (value < 1_000_000) return `${Math.round(value / 1000)}K`;
+  return `${(value / 1_000_000).toFixed(1)}M`;
+}
+
 function ChartSkeleton() {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-4">
       <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-      <div className="h-48 w-full animate-pulse rounded bg-muted/50" />
+      <div className="h-48 w-full animate-pulse rounded bg-muted" />
     </div>
   );
 }
@@ -53,7 +60,7 @@ export function UsageChart({ timeRange }: { timeRange: UsageTimeRange }) {
 
   if (!data || data.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-4 rounded-lg bg-muted/50 py-8">
+      <div className="flex flex-col items-center gap-4 rounded-lg bg-muted/50 py-12">
         <div className="flex size-12 items-center justify-center rounded-full bg-muted/50">
           <TrendingUp className="size-6 text-muted-foreground" />
         </div>
@@ -63,13 +70,13 @@ export function UsageChart({ timeRange }: { timeRange: UsageTimeRange }) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <h3 className="font-medium text-sm">Daily Usage Trend</h3>
+    <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-4">
+      <h3 className="font-medium text-sm">Daily Trend</h3>
       <ChartContainer config={chartConfig} className="h-48 w-full">
         <AreaChart
           accessibilityLayer
           data={chartData}
-          margin={{ left: -20, right: 12 }}
+          margin={{ left: 0, right: 12 }}
         >
           <CartesianGrid vertical={false} strokeDasharray="3 3" />
           <XAxis
@@ -83,7 +90,8 @@ export function UsageChart({ timeRange }: { timeRange: UsageTimeRange }) {
             tickLine={false}
             axisLine={false}
             tickMargin={8}
-            tickFormatter={(value) => formatTokens(value)}
+            tickFormatter={formatAxisTokens}
+            width={45}
           />
           <ChartTooltip
             cursor={false}
