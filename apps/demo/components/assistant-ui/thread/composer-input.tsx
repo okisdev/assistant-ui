@@ -315,7 +315,7 @@ const ComposerDropdown: FC = () => {
 
   const isNewThread = useAssistantState(({ thread }) => thread.isEmpty);
 
-  const supportsAttachments = model.capabilities.includes("image");
+  const supportsAttachments = model.capabilities.includes("vision");
   const supportsImageGeneration = capabilities.tools.imageGeneration;
 
   const handleAddAttachment = () => {

@@ -44,7 +44,7 @@ export const ModelSelector: FC<{ className?: string }> = ({ className }) => {
       >
         {enabledModels.map((m) => {
           const ItemIcon = m.icon;
-          const hasVision = m.capabilities.includes("image");
+          const hasVision = m.capabilities.includes("vision");
           const hasReasoning = m.capabilities.includes("reasoning");
 
           return (

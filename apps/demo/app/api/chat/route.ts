@@ -22,7 +22,7 @@ import { recordUsage } from "@/lib/ai/usage";
 import { getMCPTools, closeMCPClients } from "@/lib/ai/mcp";
 import { api } from "@/utils/trpc/server";
 import { getAuthenticatedUser, unauthorizedResponse } from "@/lib/api/auth";
-import type { ComposerMode } from "@/contexts/composer-mode-provider";
+import type { ComposerMode } from "@/contexts/composer-state-provider";
 
 export const maxDuration = 300;
 

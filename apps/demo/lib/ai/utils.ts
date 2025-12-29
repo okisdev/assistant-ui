@@ -7,8 +7,10 @@ export function calculateCost(
 ): number {
   const pricing = getModelPricing(modelId);
 
-  const inputCost = (inputTokens / 1_000_000) * pricing.input * 1_000_000;
-  const outputCost = (outputTokens / 1_000_000) * pricing.output * 1_000_000;
+  const inputCost =
+    (inputTokens / 1_000_000) * (pricing.input ?? 0) * 1_000_000;
+  const outputCost =
+    (outputTokens / 1_000_000) * (pricing.output ?? 0) * 1_000_000;
 
   return Math.round(inputCost + outputCost);
 }

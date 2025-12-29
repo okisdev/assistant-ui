@@ -15,7 +15,7 @@ export const DEFAULT_CAPABILITIES: ResolvedUserCapabilities = {
     artifacts: true,
     webSearch: false,
     imageGeneration: true,
-    defaultImageModel: "dall-e-2",
+    defaultImageModel: "gpt-image-1",
   },
   model: {
     defaultId: DEFAULT_MODEL_ID,
