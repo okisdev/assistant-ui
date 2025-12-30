@@ -14,15 +14,14 @@ type ProjectInfo = {
 };
 
 type NavigationContextValue = {
-  // Current page state (set by route pages via NavigationSetter)
   chatId: string | null;
   setChatId: (id: string | null) => void;
   chatProject: ProjectInfo | null;
   setChatProject: (project: ProjectInfo | null) => void;
-
-  // Selected project for new chats (set via composer dropdown)
   selectedProjectId: string | null;
   setSelectedProjectId: (id: string | null) => void;
+  isChatPageInitialized: boolean;
+  setIsChatPageInitialized: (initialized: boolean) => void;
 };
 
 const NavigationContext = createContext<NavigationContextValue | null>(null);
@@ -33,6 +32,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const [selectedProjectId, setSelectedProjectIdState] = useState<
     string | null
   >(null);
+  const [isChatPageInitialized, setIsChatPageInitializedState] =
+    useState(false);
 
   const setChatId = useCallback((id: string | null) => {
     setChatIdState(id);
@@ -46,6 +47,10 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     setSelectedProjectIdState(id);
   }, []);
 
+  const setIsChatPageInitialized = useCallback((initialized: boolean) => {
+    setIsChatPageInitializedState(initialized);
+  }, []);
+
   return (
     <NavigationContext.Provider
       value={{
@@ -55,6 +60,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         setChatProject,
         selectedProjectId,
         setSelectedProjectId,
+        isChatPageInitialized,
+        setIsChatPageInitialized,
       }}
     >
       {children}

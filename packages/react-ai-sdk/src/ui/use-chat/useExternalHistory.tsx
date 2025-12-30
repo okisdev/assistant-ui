@@ -10,8 +10,9 @@ import {
   ExportedMessageRepository,
   INTERNAL,
   useAssistantApi,
+  useAssistantState,
 } from "@assistant-ui/react";
-import { useRef, useEffect, useState, RefObject, useCallback } from "react";
+import { useRef, useEffect, useState, RefObject } from "react";
 
 const { MessageRepository } = INTERNAL;
 
@@ -41,9 +42,8 @@ export const useExternalHistory = <TMessage,>(
   const loadedRef = useRef(false);
 
   const api = useAssistantApi();
-  const optionalThreadListItem = useCallback(
-    () => (api.threadListItem.source ? api.threadListItem() : null),
-    [api],
+  const remoteId = useAssistantState(({ threadListItem }) =>
+    api.threadListItem.source ? threadListItem.remoteId : undefined,
   );
 
   const [isLoading, setIsLoading] = useState(false);
@@ -57,7 +57,7 @@ export const useExternalHistory = <TMessage,>(
 
   // Load messages from history adapter on mount
   useEffect(() => {
-    if (!historyAdapter || loadedRef.current) return;
+    if (!historyAdapter || !remoteId || loadedRef.current) return;
 
     const loadHistory = async () => {
       setIsLoading(true);
@@ -88,22 +88,14 @@ export const useExternalHistory = <TMessage,>(
       }
     };
 
-    if (!loadedRef.current) {
-      loadedRef.current = true;
-      if (!optionalThreadListItem()?.getState().remoteId) {
-        setIsLoading(false);
-        return;
-      }
-
-      loadHistory();
-    }
+    loadedRef.current = true;
+    loadHistory();
   }, [
-    api,
     historyAdapter,
+    remoteId,
     storageFormatAdapter,
     toThreadMessages,
     runtimeRef,
-    optionalThreadListItem,
   ]);
 
   useEffect(() => {

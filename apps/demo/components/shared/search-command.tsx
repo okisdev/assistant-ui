@@ -221,7 +221,7 @@ export function SearchCommand() {
                     key={memory.id}
                     memory={memory}
                     onSelect={() =>
-                      handleSelect(() => router.push("/settings/data"))
+                      handleSelect(() => router.push("/data/memories"))
                     }
                   />
                 ))}

@@ -54,7 +54,7 @@
     - [x] Days remaining display
   - [ ] Pinned / Starred chats
   - [ ] Folders / Tags
-  - [ ] Bulk delete
+  - [x] Bulk actions
   - [ ] Full-text search (message content)
 - [x] Messaging
   - [x] Send message
@@ -121,6 +121,12 @@
   - [x] Resizable side panel
   - [x] Compact inline card with "View" button
   - [x] Auto-open on artifact creation
+- [x] Side panel
+  - [x] Artifact preview
+  - [x] File preview (text, code, images)
+  - [x] Copy content
+  - [x] Download file
+  - [x] Open in new tab
 - [x] Web search
   - [x] Enable/disable toggle (settings)
   - [x] Search provider integration (OpenAI web_search, xAI search)
@@ -409,6 +415,49 @@
 - [ ] API key management (BYOK - Bring Your Own Key)
 - [ ] ~~Integrations (coming soon placeholder)~~ *(meaningless placeholder)*
 
+## Applications (App Store)
+
+- [x] App marketplace
+  - [x] Browse available apps
+  - [x] Category filtering (Productivity, Communication, Development, Design)
+  - [x] Search apps
+  - [x] App detail page
+- [x] Built-in apps
+  - [x] Google Calendar (list, create, update, delete events)
+  - [x] Google Drive (list, search, get, upload files)
+  - [x] Google Hotels (search hotels)
+  - [ ] Slack *(WIP)*
+  - [ ] Notion *(WIP)*
+  - [ ] Figma *(WIP)*
+  - [ ] GitHub *(WIP)*
+- [x] App connections
+  - [x] OAuth authentication
+  - [x] Token refresh handling
+  - [x] Enable/disable per app
+  - [x] Connection status display
+- [x] App tools
+  - [x] Tool discovery from connected apps
+  - [x] Custom tool UI (Hotels search UI)
+  - [x] Google Drive file picker
+
+## Library
+
+- [x] Attachments
+  - [x] List all uploaded files
+  - [x] Search by filename
+  - [x] Delete attachments
+  - [x] Link to source chat
+- [x] Generated images
+  - [x] List all AI-generated images
+  - [x] Search by prompt
+  - [x] Delete images
+  - [x] Model info display
+- [x] Artifacts
+  - [x] List all artifacts
+  - [x] Search by title
+  - [x] Version count display
+  - [x] Link to source chat
+
 ## UI Components
 
 - [x] Layout
@@ -432,9 +481,11 @@
   - [x] Message timing display (hover tooltip)
   - [x] Activity progress indicators
     - [x] Reasoning progress
+    - [x] Chain-of-Thought progress
     - [x] Web search progress
     - [x] Image generation progress
     - [x] MCP tool progress
+    - [x] App tool progress
   - [x] Share individual message
   - [ ] Tool call grouping (ToolGroup)
   - [ ] Reasoning grouping (ReasoningGroup)
@@ -451,8 +502,9 @@
   - [x] Toast notifications
   - [x] Confirmation dialogs
   - [x] Loading skeletons
-- [ ] Navigation
-  - [ ] Command palette (Cmd+K)
+- [x] Navigation
+  - [x] Command palette (Cmd+K)
+  - [x] Global search (chats, messages, projects, artifacts, attachments, memories)
   - [ ] Keyboard shortcuts
   - [ ] Focus management
 
@@ -589,11 +641,11 @@
   - [ ] Plugin marketplace
   - [ ] Install/Uninstall plugins
   - [ ] Plugin settings
-- [ ] Built-in integrations
-  - [ ] Google Drive
-  - [ ] Notion
-  - [ ] Slack
-  - [ ] GitHub
+- [x] ~~Built-in integrations~~ *(see Applications section)*
+  - [x] ~~Google Drive~~
+  - [ ] ~~Notion~~
+  - [ ] ~~Slack~~
+  - [ ] ~~GitHub~~
   - [ ] Linear
 - [ ] Custom actions
   - [ ] Define custom actions
