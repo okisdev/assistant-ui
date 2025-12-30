@@ -84,7 +84,7 @@ export async function GET(
     : null;
 
   try {
-    await api.application.saveOAuthConnection({
+    await api.apps.application.saveOAuthConnection({
       applicationId: app.id,
       accessToken: tokenResponse.access_token,
       refreshToken: tokenResponse.refresh_token ?? null,

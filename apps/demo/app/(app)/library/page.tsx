@@ -75,7 +75,7 @@ function AttachmentItem({
     url: string;
     pathname: string;
     contentType: string;
-    size: number;
+    size: number | null;
     chatId: string | null;
     chatTitle: string | null;
     createdAt: Date;
@@ -101,8 +101,12 @@ function AttachmentItem({
       <div className="min-w-0 flex-1">
         <div className="truncate font-medium text-sm">{fileName}</div>
         <div className="flex items-center gap-2 text-muted-foreground text-xs">
-          <span>{formatFileSize(item.size)}</span>
-          <span>·</span>
+          {item.size && (
+            <>
+              <span>{formatFileSize(item.size)}</span>
+              <span>·</span>
+            </>
+          )}
           <span>
             {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
           </span>
@@ -177,27 +181,29 @@ function GeneratedImageItem({
   item: {
     id: string;
     url: string;
-    prompt: string;
-    model: string;
+    generationMetadata: {
+      prompt: string;
+      model: string;
+      type: string;
+    } | null;
     chatId: string | null;
     chatTitle: string | null;
     createdAt: Date;
   };
   onDelete: () => void;
 }) {
+  const prompt = item.generationMetadata?.prompt ?? "Generated image";
+  const model = item.generationMetadata?.model ?? "Unknown";
+
   return (
     <div className="group flex items-center gap-4 rounded-lg bg-muted/50 px-4 py-3 transition-colors hover:bg-muted">
       <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted/50">
-        <img
-          src={item.url}
-          alt={item.prompt}
-          className="size-full object-cover"
-        />
+        <img src={item.url} alt={prompt} className="size-full object-cover" />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="truncate font-medium text-sm">{item.prompt}</div>
+        <div className="truncate font-medium text-sm">{prompt}</div>
         <div className="flex items-center gap-2 text-muted-foreground text-xs">
-          <span>{item.model}</span>
+          <span>{model}</span>
           <span>·</span>
           <span>
             {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
@@ -316,7 +322,9 @@ function ArtifactItem({
 
 function AttachmentsTab({ search }: { search: string }) {
   const utils = api.useUtils();
-  const { data, isLoading } = api.attachment.list.useQuery();
+  const { data, isLoading } = api.attachment.list.useQuery({
+    source: "upload",
+  });
 
   const deleteMutation = api.attachment.delete.useMutation({
     onSuccess: () => {
@@ -393,11 +401,13 @@ function AttachmentsTab({ search }: { search: string }) {
 
 function ImagesTab({ search }: { search: string }) {
   const utils = api.useUtils();
-  const { data, isLoading } = api.generatedImage.list.useQuery();
+  const { data, isLoading } = api.attachment.list.useQuery({
+    source: "generated",
+  });
 
-  const deleteMutation = api.generatedImage.delete.useMutation({
+  const deleteMutation = api.attachment.delete.useMutation({
     onSuccess: () => {
-      utils.generatedImage.list.invalidate();
+      utils.attachment.list.invalidate();
       toast.success("Image deleted");
     },
     onError: () => {
@@ -409,7 +419,7 @@ function ImagesTab({ search }: { search: string }) {
     if (!data?.items || !search.trim()) return data?.items ?? [];
     const query = search.toLowerCase().trim();
     return data.items.filter((item) =>
-      item.prompt.toLowerCase().includes(query),
+      item.generationMetadata?.prompt?.toLowerCase().includes(query),
     );
   }, [data?.items, search]);
 
@@ -460,7 +470,14 @@ function ImagesTab({ search }: { search: string }) {
       {filteredItems.map((item) => (
         <GeneratedImageItem
           key={item.id}
-          item={item}
+          item={{
+            id: item.id,
+            url: item.url,
+            generationMetadata: item.generationMetadata,
+            chatId: item.chatId,
+            chatTitle: item.chatTitle,
+            createdAt: item.createdAt,
+          }}
           onDelete={() => deleteMutation.mutate({ id: item.id })}
         />
       ))}

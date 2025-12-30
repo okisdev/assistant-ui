@@ -208,7 +208,7 @@ const ProjectsSubmenu: FC = () => {
 
 const AppsSubmenu: FC = () => {
   const { data: connections, isLoading } =
-    api.application.userConnections.useQuery();
+    api.apps.application.userConnections.useQuery();
   const { selectedAppIds, toggleApp, clearApps } = useComposerState();
 
   const connectedApps =
@@ -321,7 +321,7 @@ const AttachmentsSubmenu: FC<AttachmentsSubmenuProps> = ({
   onOpenDrivePicker,
 }) => {
   const assistantApi = useAssistantApi();
-  const { data: connections } = api.application.userConnections.useQuery();
+  const { data: connections } = api.apps.application.userConnections.useQuery();
 
   const googleDriveConnection = connections?.find(
     (c) => c.applicationId === GOOGLE_DRIVE_APP_ID,

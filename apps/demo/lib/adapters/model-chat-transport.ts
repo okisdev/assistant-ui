@@ -1,7 +1,7 @@
 import { AssistantChatTransport } from "@assistant-ui/react-ai-sdk";
 import type { AssistantRuntime } from "@assistant-ui/react";
 import type { HttpChatTransportInitOptions, UIMessage } from "ai";
-import type { MessageTiming } from "@/lib/types/timing";
+import type { MessageTiming } from "@/types/message";
 import type { ComposerMode } from "@/contexts/composer-state-provider";
 
 type InitializeThreadFn = () => Promise<{

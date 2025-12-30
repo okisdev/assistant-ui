@@ -59,7 +59,7 @@ export const FileHighlighter: FC<FileHighlighterProps> = ({
       showLanguage={false}
       defaultColor="light-dark()"
       className={cn(
-        "[&_code]:whitespace-pre-wrap [&_code]:break-words [&_pre]:m-0 [&_pre]:bg-transparent [&_pre]:p-0",
+        "[&_code]:wrap-break-word [&_code]:whitespace-pre-wrap [&_pre]:m-0 [&_pre]:bg-transparent [&_pre]:p-0",
         className,
       )}
     >

@@ -75,7 +75,7 @@ function ToolBadgeSkeleton() {
   return <div className="h-6 w-20 animate-pulse rounded-full bg-muted" />;
 }
 
-type MCPServer = RouterOutputs["mcpServer"]["list"][number];
+type MCPServer = RouterOutputs["apps"]["mcp"]["list"][number];
 
 type OAuthStatus = "connected" | "expired" | "required" | "not-required";
 
@@ -98,7 +98,7 @@ export function MCPServerSection() {
     null,
   );
 
-  const { data: servers, isLoading } = api.mcpServer.list.useQuery();
+  const { data: servers, isLoading } = api.apps.mcp.list.useQuery();
   const utils = api.useUtils();
 
   useEffect(() => {
@@ -110,24 +110,24 @@ export function MCPServerSection() {
       window.history.replaceState({}, "", "/integrations");
     } else if (oauthSuccess) {
       toast.success("OAuth connected successfully");
-      utils.mcpServer.list.invalidate();
+      utils.apps.mcp.list.invalidate();
       window.history.replaceState({}, "", "/integrations");
     }
-  }, [searchParams, utils.mcpServer.list]);
+  }, [searchParams, utils.apps.mcp.list]);
 
-  const updateMutation = api.mcpServer.update.useMutation({
+  const updateMutation = api.apps.mcp.update.useMutation({
     onSuccess: () => {
-      utils.mcpServer.list.invalidate();
+      utils.apps.mcp.list.invalidate();
     },
     onError: () => {
       toast.error("Failed to update server");
     },
   });
 
-  const deleteMutation = api.mcpServer.delete.useMutation({
+  const deleteMutation = api.apps.mcp.delete.useMutation({
     onSuccess: () => {
       toast.success("Server deleted");
-      utils.mcpServer.list.invalidate();
+      utils.apps.mcp.list.invalidate();
       setDeleteServer(null);
     },
     onError: () => {
@@ -135,10 +135,10 @@ export function MCPServerSection() {
     },
   });
 
-  const disconnectMutation = api.mcpServer.disconnectOAuth.useMutation({
+  const disconnectMutation = api.apps.mcp.disconnectOAuth.useMutation({
     onSuccess: () => {
       toast.success("OAuth disconnected");
-      utils.mcpServer.list.invalidate();
+      utils.apps.mcp.list.invalidate();
       setDisconnectServer(null);
     },
     onError: () => {
@@ -339,7 +339,7 @@ function MCPServerRow({
     }
   }, [canShowTools]);
 
-  const checkConnectionMutation = api.mcpServer.checkConnection.useMutation({
+  const checkConnectionMutation = api.apps.mcp.checkConnection.useMutation({
     onSuccess: (result) => {
       if (result.connected) {
         toast.success(`Connection OK - ${result.toolCount} tools available`);
@@ -353,7 +353,7 @@ function MCPServerRow({
   });
 
   const { data: tools, isLoading: isLoadingTools } =
-    api.mcpServer.getTools.useQuery(
+    api.apps.mcp.getTools.useQuery(
       { id: server.id },
       {
         staleTime: 5 * 60 * 1000,

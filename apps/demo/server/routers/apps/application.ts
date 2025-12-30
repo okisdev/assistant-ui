@@ -15,7 +15,11 @@ import {
   getBuiltinAppById,
   type AppConnectionConfig,
 } from "@/lib/integrations/apps";
-import { protectedProcedure, publicProcedure, createTRPCRouter } from "../trpc";
+import {
+  protectedProcedure,
+  publicProcedure,
+  createTRPCRouter,
+} from "../../trpc";
 
 type AppOutput = {
   id: string;

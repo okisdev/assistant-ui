@@ -34,7 +34,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { type DeviceType, parseUserAgent } from "@/lib/user-agent";
+import { type DeviceType, parseUserAgent } from "@/utils/user-agent";
 import { SettingHeader } from "@/components/dashboard/setting-header";
 
 function DeviceIcon({ device }: { device: DeviceType }) {

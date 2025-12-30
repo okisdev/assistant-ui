@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
   const redirectUri = callbackUrl.toString();
 
   try {
-    await api.mcpServer.exchangeOAuthCode({
+    await api.apps.mcp.exchangeOAuthCode({
       id: serverId,
       code,
       redirectUri,

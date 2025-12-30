@@ -16,7 +16,7 @@ import {
   exchangeCodeForTokens,
 } from "@/lib/mcp-auth";
 import { encrypt, decrypt } from "@/lib/crypto";
-import { protectedProcedure, createTRPCRouter } from "../trpc";
+import { protectedProcedure, createTRPCRouter } from "../../trpc";
 
 const MCP_CONNECTION_TIMEOUT_MS = 10000;
 
@@ -138,7 +138,7 @@ const authSelectFields = {
   oauthTokenExpiresAt: mcpServer.oauthTokenExpiresAt,
 };
 
-export const mcpServerRouter = createTRPCRouter({
+export const mcpRouter = createTRPCRouter({
   list: protectedProcedure.query(async ({ ctx }) => {
     const servers = await ctx.db
       .select(listSelectFields)

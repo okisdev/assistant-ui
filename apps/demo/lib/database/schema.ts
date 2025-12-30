@@ -321,6 +321,16 @@ export const chatVote = pgTable(
   ],
 );
 
+export type AttachmentSource = "upload" | "generated";
+
+export type GenerationType = "image" | "code" | "document" | "audio" | "video";
+
+export type GenerationMetadata = {
+  prompt: string;
+  model: string;
+  type: GenerationType;
+};
+
 export const attachment = pgTable(
   "attachment",
   {
@@ -332,12 +342,20 @@ export const attachment = pgTable(
     url: text("url").notNull(),
     pathname: text("pathname").notNull(),
     contentType: text("content_type").notNull(),
-    size: integer("size").notNull(),
+    size: integer("size"),
+    source: text("source")
+      .$type<AttachmentSource>()
+      .default("upload")
+      .notNull(),
+    generationMetadata: jsonb(
+      "generation_metadata",
+    ).$type<GenerationMetadata>(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
     index("attachment_userId_idx").on(table.userId),
     index("attachment_chatId_idx").on(table.chatId),
+    index("attachment_source_idx").on(table.source),
   ],
 );
 
@@ -505,26 +523,6 @@ export const userApplication = pgTable(
       table.userId,
       table.applicationId,
     ),
-  ],
-);
-
-export const generatedImage = pgTable(
-  "generated_image",
-  {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    chatId: text("chat_id").references(() => chat.id, { onDelete: "set null" }),
-    url: text("url").notNull(),
-    pathname: text("pathname").notNull(),
-    prompt: text("prompt").notNull(),
-    model: text("model").notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-  },
-  (table) => [
-    index("generated_image_userId_idx").on(table.userId),
-    index("generated_image_chatId_idx").on(table.chatId),
   ],
 );
 

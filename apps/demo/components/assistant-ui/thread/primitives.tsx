@@ -40,7 +40,7 @@ import {
 import { toast } from "sonner";
 
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
-import { MCPAppToolFallback } from "@/components/assistant-ui/mcp-app-tool-ui";
+import { MCPAppToolFallback } from "@/components/assistant-ui/tool-ui/mcp-app-tool-ui";
 import { ReasoningContent } from "@/components/assistant-ui/reasoning-content";
 import { SourceContent } from "@/components/assistant-ui/source-content";
 import { TextWithChainOfThought } from "@/components/assistant-ui/text-with-chain-of-thought";
@@ -53,7 +53,7 @@ import { formatTime } from "@/lib/ai/utils";
 import { hasChainOfThought } from "@/lib/ai/parse-chain-of-thought";
 import { api } from "@/utils/trpc/client";
 import { modelTransport } from "@/app/(app)/(chat)/provider";
-import type { MessageTiming } from "@/lib/types/timing";
+import type { MessageTiming } from "@/types/message";
 
 export const ThreadScrollToBottom: FC = () => {
   return (

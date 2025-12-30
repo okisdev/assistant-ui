@@ -57,7 +57,7 @@ type MCPServerDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   server?: Pick<
-    RouterOutputs["mcpServer"]["list"][number],
+    RouterOutputs["apps"]["mcp"]["list"][number],
     | "id"
     | "name"
     | "url"
@@ -129,10 +129,10 @@ export function MCPServerDialog({
     }
   }, [open, server, form]);
 
-  const createMutation = api.mcpServer.create.useMutation({
+  const createMutation = api.apps.mcp.create.useMutation({
     onSuccess: () => {
       toast.success("MCP server added");
-      utils.mcpServer.list.invalidate();
+      utils.apps.mcp.list.invalidate();
       onOpenChange(false);
     },
     onError: (error) => {
@@ -140,10 +140,10 @@ export function MCPServerDialog({
     },
   });
 
-  const updateMutation = api.mcpServer.update.useMutation({
+  const updateMutation = api.apps.mcp.update.useMutation({
     onSuccess: () => {
       toast.success("MCP server updated");
-      utils.mcpServer.list.invalidate();
+      utils.apps.mcp.list.invalidate();
       onOpenChange(false);
     },
     onError: (error) => {
@@ -151,7 +151,7 @@ export function MCPServerDialog({
     },
   });
 
-  const testMutation = api.mcpServer.test.useMutation({
+  const testMutation = api.apps.mcp.test.useMutation({
     onSuccess: (data) => {
       setTestResult({
         success: true,
@@ -166,7 +166,7 @@ export function MCPServerDialog({
     },
   });
 
-  const checkConnectionMutation = api.mcpServer.checkConnection.useMutation({
+  const checkConnectionMutation = api.apps.mcp.checkConnection.useMutation({
     onSuccess: (result) => {
       setConnectionStatus({
         checked: true,

@@ -4,7 +4,7 @@ import type { FC, ReactNode } from "react";
 import { Sparkles, X, Puzzle } from "lucide-react";
 import { useComposerState } from "@/contexts/composer-state-provider";
 import { useNavigation } from "@/contexts/navigation-provider";
-import { api as trpc } from "@/utils/trpc/client";
+import { api } from "@/utils/trpc/client";
 import { cn } from "@/lib/utils";
 
 type ComposerBadgeProps = {
@@ -67,12 +67,12 @@ export const ComposerHeader: FC = () => {
   const { mode, resetMode, selectedAppIds, deselectApp } = useComposerState();
   const { selectedProjectId, setSelectedProjectId } = useNavigation();
 
-  const { data: currentProject } = trpc.project.get.useQuery(
+  const { data: currentProject } = api.project.get.useQuery(
     { id: selectedProjectId! },
     { enabled: !!selectedProjectId },
   );
 
-  const { data: connections } = trpc.application.userConnections.useQuery(
+  const { data: connections } = api.apps.application.userConnections.useQuery(
     undefined,
     { enabled: selectedAppIds.length > 0 },
   );

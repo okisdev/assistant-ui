@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type Application = RouterOutputs["application"]["list"][number];
+type Application = RouterOutputs["apps"]["application"]["list"][number];
 type Category = Application["category"] | "all";
 
 const CATEGORY_LABELS: Record<Category, string> = {
@@ -148,9 +148,9 @@ export default function AppsPage() {
   const [activeCategory, setActiveCategory] = useState<Category>("all");
 
   const { data: apps, isLoading: isLoadingApps } =
-    api.application.list.useQuery();
+    api.apps.application.list.useQuery();
   const { data: connections, isLoading: isLoadingConnections } =
-    api.application.userConnections.useQuery();
+    api.apps.application.userConnections.useQuery();
 
   const isLoading = isLoadingApps || isLoadingConnections;
   const connectedAppIds = new Set(

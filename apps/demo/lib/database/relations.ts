@@ -19,7 +19,6 @@ import {
   application,
   userApplication,
   twoFactor,
-  generatedImage,
   artifact,
   artifactVersion,
 } from "./schema";
@@ -38,7 +37,6 @@ export const userRelations = relations(user, ({ many }) => ({
   usageRecords: many(usage),
   mcpServers: many(mcpServer),
   userApplications: many(userApplication),
-  generatedImages: many(generatedImage),
   artifacts: many(artifact),
 }));
 
@@ -102,7 +100,6 @@ export const chatRelations = relations(chat, ({ one, many }) => ({
   }),
   messages: many(chatMessage),
   attachments: many(attachment),
-  generatedImages: many(generatedImage),
   artifacts: many(artifact),
 }));
 
@@ -221,17 +218,6 @@ export const userApplicationRelations = relations(
     }),
   }),
 );
-
-export const generatedImageRelations = relations(generatedImage, ({ one }) => ({
-  user: one(user, {
-    fields: [generatedImage.userId],
-    references: [user.id],
-  }),
-  chat: one(chat, {
-    fields: [generatedImage.chatId],
-    references: [chat.id],
-  }),
-}));
 
 export const artifactRelations = relations(artifact, ({ one, many }) => ({
   user: one(user, {

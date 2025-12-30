@@ -46,8 +46,8 @@ import {
   useCapabilities,
 } from "@/contexts/capabilities-provider";
 import { ArtifactToolUI } from "@/components/assistant-ui/artifact";
-import { ImageToolUI } from "@/components/assistant-ui/image-tool-ui";
-import { HotelsToolUI } from "@/components/assistant-ui/hotels-tool-ui";
+import { ImageToolUI } from "@/components/assistant-ui/tool-ui/image-tool-ui";
+import { HotelsToolUI } from "@/components/assistant-ui/tool-ui/hotels-tool-ui";
 import {
   SidePanelProvider,
   useSidePanel,

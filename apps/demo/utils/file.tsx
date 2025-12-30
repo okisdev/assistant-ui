@@ -38,9 +38,17 @@ export const getFileTypeLabel = (mimeType: string): string => {
   return mimeType.split("/")[1]?.toUpperCase() || "File";
 };
 
-export const formatFileSize = (bytes?: number): string => {
+export const formatFileSize = (bytes?: number | null): string => {
+  if (bytes === null) return "0 B";
   if (bytes === undefined) return "";
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+
+  const sizes = ["B", "KB", "MB", "GB"];
+
+  let i = 0;
+  while (bytes >= 1024 && i < sizes.length - 1) {
+    bytes /= 1024;
+    i++;
+  }
+  return `${bytes.toFixed(1)} ${sizes[i]}`;
 };

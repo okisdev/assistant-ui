@@ -127,25 +127,26 @@ export default function AppDetailPage({
   const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
 
-  const { data: app, isLoading: isLoadingApp } = api.application.get.useQuery({
-    slug,
-  });
+  const { data: app, isLoading: isLoadingApp } =
+    api.apps.application.get.useQuery({
+      slug,
+    });
 
   const {
     data: connectionStatus,
     isLoading: isLoadingStatus,
     refetch: refetchStatus,
-  } = api.application.getConnectionStatus.useQuery(
+  } = api.apps.application.getConnectionStatus.useQuery(
     { applicationId: app?.id ?? "" },
     { enabled: !!app?.id },
   );
 
   const utils = api.useUtils();
 
-  const linkScopeMutation = api.application.linkScopeAccount.useMutation({
+  const linkScopeMutation = api.apps.application.linkScopeAccount.useMutation({
     onSuccess: () => {
       toast.success("App connected successfully");
-      utils.application.userConnections.invalidate();
+      utils.apps.application.userConnections.invalidate();
       refetchStatus();
       router.replace(`/apps/${slug}`);
     },
@@ -188,10 +189,10 @@ export default function AppDetailPage({
     linkScopeMutation,
   ]);
 
-  const disconnectMutation = api.application.disconnect.useMutation({
+  const disconnectMutation = api.apps.application.disconnect.useMutation({
     onSuccess: () => {
       toast.success("App disconnected");
-      utils.application.userConnections.invalidate();
+      utils.apps.application.userConnections.invalidate();
       refetchStatus();
       setShowDisconnectDialog(false);
     },
@@ -200,10 +201,10 @@ export default function AppDetailPage({
     },
   });
 
-  const toggleMutation = api.application.toggleEnabled.useMutation({
+  const toggleMutation = api.apps.application.toggleEnabled.useMutation({
     onSuccess: () => {
       refetchStatus();
-      utils.application.userConnections.invalidate();
+      utils.apps.application.userConnections.invalidate();
     },
     onError: () => {
       toast.error("Failed to update app");
@@ -233,10 +234,10 @@ export default function AppDetailPage({
     window.location.href = `/api/connect/${app.connection.provider}`;
   };
 
-  const installMutation = api.application.connect.useMutation({
+  const installMutation = api.apps.application.connect.useMutation({
     onSuccess: () => {
       toast.success("App installed successfully");
-      utils.application.userConnections.invalidate();
+      utils.apps.application.userConnections.invalidate();
       refetchStatus();
       setIsConnecting(false);
     },

@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import type { UIMessage } from "@ai-sdk/react";
-import type { MessageTiming } from "@/lib/types/timing";
+import type { MessageTiming } from "@/types/message";
 
 const MAX_RETAINED_TIMINGS = 100;
 

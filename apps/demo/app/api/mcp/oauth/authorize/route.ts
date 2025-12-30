@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   const redirectUri = callbackUrl.toString();
 
   try {
-    const oauthConfig = await api.mcpServer.initiateOAuth({
+    const oauthConfig = await api.apps.mcp.initiateOAuth({
       id: serverId,
       redirectUri,
     });

@@ -4,14 +4,7 @@ import { HardDrive, File, FileImage, FileText, FileVideo } from "lucide-react";
 
 import { api } from "@/utils/trpc/client";
 import { Progress } from "@/components/ui/progress";
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
-}
+import { formatFileSize } from "@/utils/file";
 
 function getFileIcon(contentType: string) {
   if (contentType.startsWith("image/")) {
@@ -73,7 +66,7 @@ export function StorageUsage() {
         <div className="flex items-center justify-between">
           <span className="font-medium text-sm">Storage Used</span>
           <span className="text-muted-foreground text-sm">
-            {formatBytes(usedBytes)} / {formatBytes(limitBytes)}
+            {formatFileSize(usedBytes)} / {formatFileSize(limitBytes)}
           </span>
         </div>
         <Progress value={percentage} className="h-2" />
@@ -103,7 +96,7 @@ export function StorageUsage() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-sm">{fileName}</p>
                     <p className="text-muted-foreground text-xs">
-                      {formatBytes(file.size)}
+                      {formatFileSize(file.size)}
                     </p>
                   </div>
                 </div>

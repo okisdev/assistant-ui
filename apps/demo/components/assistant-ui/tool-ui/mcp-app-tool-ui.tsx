@@ -4,7 +4,7 @@ import type { FC } from "react";
 import { AppWindow, Terminal } from "lucide-react";
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useSidePanel } from "@/contexts/side-panel-provider";
-import { MCPAppRenderer } from "./mcp-app-renderer";
+import { MCPAppRenderer } from "../mcp-app-renderer";
 
 type MCPResourceContent = {
   type: "resource";

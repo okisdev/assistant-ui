@@ -101,13 +101,19 @@ export async function POST(req: Request) {
       contentType: "image/png",
     });
 
-    await api.generatedImage.create({
+    await api.attachment.create({
       id,
       chatId: chatId || null,
       url: blob.url,
       pathname: blob.pathname,
-      prompt,
-      model: modelId,
+      contentType: "image/png",
+      size: imageBuffer.length,
+      source: "generated",
+      generationMetadata: {
+        prompt,
+        model: modelId,
+        type: "image",
+      },
     });
 
     return Response.json({

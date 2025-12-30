@@ -27,7 +27,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SettingHeader } from "@/components/dashboard/setting-header";
 
-type UserConnection = RouterOutputs["application"]["userConnections"][number];
+type UserConnection =
+  RouterOutputs["apps"]["application"]["userConnections"][number];
 
 const CATEGORY_ICONS: Record<string, typeof Calendar> = {
   productivity: Calendar,
@@ -171,12 +172,12 @@ export function ApplicationsSection() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const { data: connections, isLoading } =
-    api.application.userConnections.useQuery();
+    api.apps.application.userConnections.useQuery();
   const utils = api.useUtils();
 
-  const toggleMutation = api.application.toggleEnabled.useMutation({
+  const toggleMutation = api.apps.application.toggleEnabled.useMutation({
     onSuccess: () => {
-      utils.application.userConnections.invalidate();
+      utils.apps.application.userConnections.invalidate();
       setTogglingId(null);
     },
     onError: () => {

@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { useAutoGenerateTitle } from "@/hooks/ai/use-auto-generate-title";
+import { useAutoGenerateTitle } from "@/lib/ai/hooks/use-auto-generate-title";
 import { useSyncFeedback } from "@/lib/adapters/feedback-adapter";
 import { api } from "@/utils/trpc/client";
 import { cn } from "@/lib/utils";

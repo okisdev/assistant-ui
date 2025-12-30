@@ -226,7 +226,7 @@ type LibraryFile = {
   url: string;
   pathname: string;
   contentType: string;
-  size: number;
+  size: number | null;
 };
 
 type LibraryFileListItemProps = {
@@ -323,7 +323,7 @@ export const DocumentPicker: FC<DocumentPickerProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
-  const { data: connections } = api.application.userConnections.useQuery();
+  const { data: connections } = api.apps.application.userConnections.useQuery();
   const googleDriveConnection = connections?.find(
     (c) => c.applicationId === GOOGLE_DRIVE_APP_ID,
   );
@@ -585,7 +585,7 @@ export const DocumentPicker: FC<DocumentPickerProps> = ({
           url: f.url,
           pathname: f.pathname,
           contentType: f.contentType,
-          size: f.size,
+          size: f.size ?? 0,
         }));
 
       if (selectedLibrary.length > 0 && selectedDriveFileIds.size === 0) {

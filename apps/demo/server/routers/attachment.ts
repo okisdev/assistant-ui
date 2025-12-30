@@ -2,7 +2,17 @@ import { z } from "zod";
 import { eq, desc, and } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { attachment, projectDocument, chat } from "@/lib/database/schema";
+import type {
+  AttachmentSource,
+  GenerationMetadata,
+} from "@/lib/database/types";
 import { protectedProcedure, createTRPCRouter } from "../trpc";
+
+const generationMetadataSchema = z.object({
+  prompt: z.string(),
+  model: z.string(),
+  type: z.enum(["image", "code", "document", "audio", "video"]),
+});
 
 export const attachmentRouter = createTRPCRouter({
   create: protectedProcedure
@@ -13,7 +23,9 @@ export const attachmentRouter = createTRPCRouter({
         url: z.string(),
         pathname: z.string(),
         contentType: z.string(),
-        size: z.number(),
+        size: z.number().nullable().optional(),
+        source: z.enum(["upload", "generated"]).default("upload"),
+        generationMetadata: generationMetadataSchema.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -24,16 +36,34 @@ export const attachmentRouter = createTRPCRouter({
         url: input.url,
         pathname: input.pathname,
         contentType: input.contentType,
-        size: input.size,
+        size: input.size ?? null,
+        source: input.source as AttachmentSource,
+        generationMetadata: input.generationMetadata as
+          | GenerationMetadata
+          | undefined,
       });
 
       return { id: input.id };
     }),
 
   recent: protectedProcedure
-    .input(z.object({ limit: z.number().min(1).max(10).default(3) }).optional())
+    .input(
+      z
+        .object({
+          limit: z.number().min(1).max(10).default(3),
+          source: z.enum(["upload", "generated"]).optional(),
+        })
+        .optional(),
+    )
     .query(async ({ ctx, input }) => {
       const limit = input?.limit ?? 3;
+      const source = input?.source;
+
+      const conditions = [eq(attachment.userId, ctx.session.user.id)];
+      if (source) {
+        conditions.push(eq(attachment.source, source));
+      }
+
       return ctx.db
         .select({
           id: attachment.id,
@@ -41,10 +71,12 @@ export const attachmentRouter = createTRPCRouter({
           pathname: attachment.pathname,
           contentType: attachment.contentType,
           size: attachment.size,
+          source: attachment.source,
+          generationMetadata: attachment.generationMetadata,
           createdAt: attachment.createdAt,
         })
         .from(attachment)
-        .where(eq(attachment.userId, ctx.session.user.id))
+        .where(and(...conditions))
         .orderBy(desc(attachment.createdAt))
         .limit(limit);
     }),
@@ -55,11 +87,18 @@ export const attachmentRouter = createTRPCRouter({
         .object({
           limit: z.number().min(1).max(100).default(50),
           cursor: z.string().optional(),
+          source: z.enum(["upload", "generated"]).optional(),
         })
         .optional(),
     )
     .query(async ({ ctx, input }) => {
       const limit = input?.limit ?? 50;
+      const source = input?.source;
+
+      const conditions = [eq(attachment.userId, ctx.session.user.id)];
+      if (source) {
+        conditions.push(eq(attachment.source, source));
+      }
 
       const attachments = await ctx.db
         .select({
@@ -68,13 +107,15 @@ export const attachmentRouter = createTRPCRouter({
           pathname: attachment.pathname,
           contentType: attachment.contentType,
           size: attachment.size,
+          source: attachment.source,
+          generationMetadata: attachment.generationMetadata,
           chatId: attachment.chatId,
           chatTitle: chat.title,
           createdAt: attachment.createdAt,
         })
         .from(attachment)
         .leftJoin(chat, eq(attachment.chatId, chat.id))
-        .where(eq(attachment.userId, ctx.session.user.id))
+        .where(and(...conditions))
         .orderBy(desc(attachment.createdAt))
         .limit(limit + 1);
 

@@ -102,7 +102,7 @@ async function refreshTokensIfNeeded(
       ? encrypt(tokens.refreshToken)
       : server.oauthRefreshToken;
 
-    await api.mcpServer.updateOAuthTokens({
+    await api.apps.mcp.updateOAuthTokens({
       id: server.id,
       accessToken: encryptedAccessToken,
       refreshToken: encryptedRefreshToken,
@@ -218,7 +218,7 @@ export async function getMCPTools(): Promise<{
 
   let servers: MCPServerConfig[];
   try {
-    servers = await api.mcpServer.listEnabled();
+    servers = await api.apps.mcp.listEnabled();
   } catch {
     return { tools, clients, toolInfos };
   }

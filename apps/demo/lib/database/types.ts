@@ -15,18 +15,26 @@ import {
   attachment,
   memory,
   usage,
-  generatedImage,
   artifact,
   artifactVersion,
   type UserCapabilities,
   type ChainOfThoughtMode,
   type ArtifactType,
+  type AttachmentSource,
+  type GenerationType,
+  type GenerationMetadata,
 } from "./schema";
 import type { DeepRequired } from "./utils";
 
 export type ResolvedUserCapabilities = DeepRequired<UserCapabilities>;
 
-export type { ChainOfThoughtMode, ArtifactType };
+export type {
+  ChainOfThoughtMode,
+  ArtifactType,
+  AttachmentSource,
+  GenerationType,
+  GenerationMetadata,
+};
 
 export type User = typeof user.$inferSelect;
 export type Session = typeof session.$inferSelect;
@@ -44,6 +52,5 @@ export type ChatVote = typeof chatVote.$inferSelect;
 export type Attachment = typeof attachment.$inferSelect;
 export type Memory = typeof memory.$inferSelect;
 export type Usage = typeof usage.$inferSelect;
-export type GeneratedImage = typeof generatedImage.$inferSelect;
 export type Artifact = typeof artifact.$inferSelect;
 export type ArtifactVersion = typeof artifactVersion.$inferSelect;
