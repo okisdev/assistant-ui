@@ -15,6 +15,8 @@ import {
   type ChatContext,
 } from "@/lib/ai/context";
 import { saveMemoryTool } from "@/lib/ai/tools/save-memory";
+import { updateMemoryTool } from "@/lib/ai/tools/update-memory";
+import { deleteMemoryTool } from "@/lib/ai/tools/delete-memory";
 import { createArtifactTool } from "@/lib/ai/tools/create-artifact";
 import { generateImageTool } from "@/lib/ai/tools/generate-image";
 import { getAppTools } from "@/lib/ai/tools/apps";
@@ -206,6 +208,8 @@ function buildTools(
 
   if (capabilities.memory.personalization) {
     tools.save_memory = saveMemoryTool;
+    tools.update_memory = updateMemoryTool;
+    tools.delete_memory = deleteMemoryTool;
   }
 
   if (capabilities.tools.artifacts) {

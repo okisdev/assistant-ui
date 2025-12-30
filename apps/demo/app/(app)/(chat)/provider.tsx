@@ -37,6 +37,8 @@ import { ModelChatTransport } from "@/lib/adapters/model-chat-transport";
 import { useStreamingTiming } from "@/hooks/use-streaming-timing";
 import { generateImageSchema } from "@/lib/ai/tools/generate-image";
 import { saveMemorySchema } from "@/lib/ai/tools/save-memory";
+import { updateMemorySchema } from "@/lib/ai/tools/update-memory";
+import { deleteMemorySchema } from "@/lib/ai/tools/delete-memory";
 import type { ImageModelId } from "@/lib/ai/models";
 import { ModelSelectionProvider } from "@/contexts/model-selection-provider";
 import {
@@ -61,6 +63,7 @@ import {
   useIncognito,
   useIncognitoOptional,
 } from "@/contexts/incognito-provider";
+import { useSearchParams } from "next/navigation";
 import {
   ComposerStateProvider,
   useComposerState,
@@ -303,11 +306,19 @@ function useCustomChatRuntime() {
   const attachments = useMemo(() => new BlobAttachmentAdapter(), []);
   const api = useAssistantApi();
   const id = useAssistantState(({ threadListItem }) => threadListItem.id);
+  const prevIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     modelTransport.setInitializeThread(() => api.threadListItem().initialize());
     return () => modelTransport.setInitializeThread(null);
   }, [api]);
+
+  useEffect(() => {
+    if (prevIdRef.current !== undefined && prevIdRef.current !== id) {
+      attachments.clear();
+    }
+    prevIdRef.current = id;
+  }, [id, attachments]);
 
   const chat = useChat({
     id,
@@ -343,7 +354,7 @@ function MemoryProvider({ children }: { children: ReactNode }) {
     memoryStore.initialize();
   }, [memoryStore]);
 
-  const memoryTool = useMemo(
+  const saveMemoryTool = useMemo(
     () => ({
       parameters: saveMemorySchema,
       execute: async (args: { content: string; category?: string }) => {
@@ -358,26 +369,137 @@ function MemoryProvider({ children }: { children: ReactNode }) {
     [memoryStore],
   );
 
+  const updateMemoryTool = useMemo(
+    () => ({
+      parameters: updateMemorySchema,
+      execute: async (args: {
+        id: string;
+        content: string;
+        category?: string;
+      }) => {
+        memoryStore.updateMemory(args.id, {
+          content: args.content,
+          category: args.category,
+        });
+        return {
+          success: true,
+          memoryId: args.id,
+          message: `Memory updated: "${args.content}"`,
+        };
+      },
+    }),
+    [memoryStore],
+  );
+
+  const deleteMemoryTool = useMemo(
+    () => ({
+      parameters: deleteMemorySchema,
+      execute: async (args: { id: string }) => {
+        memoryStore.removeMemory(args.id);
+        return {
+          success: true,
+          memoryId: args.id,
+          message: "Memory deleted",
+        };
+      },
+    }),
+    [memoryStore],
+  );
+
   useEffect(() => {
     if (!capabilities.memory.personalization) return;
     return assistantApi.modelContext().register({
-      getModelContext: () => ({ tools: { save_memory: memoryTool } }),
+      getModelContext: () => ({
+        tools: {
+          save_memory: saveMemoryTool,
+          update_memory: updateMemoryTool,
+          delete_memory: deleteMemoryTool,
+        },
+      }),
     });
-  }, [assistantApi, memoryTool, capabilities.memory.personalization]);
+  }, [
+    assistantApi,
+    saveMemoryTool,
+    updateMemoryTool,
+    deleteMemoryTool,
+    capabilities.memory.personalization,
+  ]);
 
   return <>{children}</>;
 }
 
 function ToolsProvider({ children }: { children: ReactNode }) {
   const { capabilities } = useCapabilities();
-  const { closePanel } = useSidePanel();
+  const { closePanel, openPanel } = useSidePanel();
   const assistantApi = useAssistantApi();
+  const searchParams = useSearchParams();
+  const utils = api.useUtils();
 
   const threadId = useAssistantState(
     ({ threadListItem }) => threadListItem.remoteId,
   );
 
   const prevThreadIdRef = useRef<string | undefined>(undefined);
+  const artifactIdFromUrl = searchParams.get("artifact_id");
+  const artifactVersionFromUrl = searchParams.get("artifact_version");
+  const hasOpenedArtifactRef = useRef<string | null>(null);
+
+  const { data: artifactData } = api.artifact.get.useQuery(
+    { id: artifactIdFromUrl! },
+    {
+      enabled:
+        !!artifactIdFromUrl &&
+        !artifactVersionFromUrl &&
+        artifactIdFromUrl !== hasOpenedArtifactRef.current,
+    },
+  );
+
+  const { data: artifactVersionData } = api.artifact.getVersion.useQuery(
+    { id: artifactIdFromUrl!, version: Number(artifactVersionFromUrl) },
+    {
+      enabled:
+        !!artifactIdFromUrl &&
+        !!artifactVersionFromUrl &&
+        `${artifactIdFromUrl}-${artifactVersionFromUrl}` !==
+          hasOpenedArtifactRef.current,
+    },
+  );
+
+  useEffect(() => {
+    const data = artifactVersionFromUrl ? artifactVersionData : artifactData;
+    const cacheKey = artifactVersionFromUrl
+      ? `${artifactIdFromUrl}-${artifactVersionFromUrl}`
+      : artifactIdFromUrl;
+
+    if (
+      artifactIdFromUrl &&
+      data &&
+      hasOpenedArtifactRef.current !== cacheKey
+    ) {
+      const version =
+        "version" in data
+          ? data.version
+          : "currentVersion" in data
+            ? data.currentVersion
+            : undefined;
+
+      openPanel({
+        type: "artifact",
+        title: data.title,
+        content: data.content,
+        artifactType: data.type as "html" | "react" | "svg",
+        version,
+        artifactId: artifactIdFromUrl,
+      });
+      hasOpenedArtifactRef.current = cacheKey;
+    }
+  }, [
+    artifactIdFromUrl,
+    artifactVersionFromUrl,
+    artifactData,
+    artifactVersionData,
+    openPanel,
+  ]);
 
   useEffect(() => {
     if (prevThreadIdRef.current === undefined) {
@@ -388,8 +510,11 @@ function ToolsProvider({ children }: { children: ReactNode }) {
     if (prevThreadIdRef.current !== threadId) {
       closePanel();
       prevThreadIdRef.current = threadId;
+      hasOpenedArtifactRef.current = null;
     }
   }, [threadId, closePanel]);
+
+  const chatId = threadId;
 
   const artifactTool = useMemo(
     () => ({
@@ -402,13 +527,36 @@ function ToolsProvider({ children }: { children: ReactNode }) {
         title: string;
         content: string;
         type: "html" | "react" | "svg";
-      }) => ({
-        success: true,
-        ...args,
-        message: `Created artifact: "${args.title}"`,
-      }),
+      }) => {
+        let version = 1;
+        let artifactId: string | undefined;
+
+        if (chatId) {
+          try {
+            const result = await utils.client.artifact.create.mutate({
+              id: nanoid(),
+              chatId,
+              title: args.title,
+              content: args.content,
+              type: args.type,
+            });
+            version = result.version;
+            artifactId = result.id;
+          } catch (error) {
+            console.error("Failed to save artifact:", error);
+          }
+        }
+
+        return {
+          success: true,
+          ...args,
+          version,
+          artifactId,
+          message: `Created artifact: "${args.title}"`,
+        };
+      },
     }),
-    [],
+    [chatId, utils],
   );
 
   const imageTool = useMemo(
@@ -418,7 +566,7 @@ function ToolsProvider({ children }: { children: ReactNode }) {
         const response = await fetch("/api/generate-image", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(args),
+          body: JSON.stringify({ ...args, chatId }),
         });
         if (!response.ok) {
           const error = await response.json();
@@ -427,7 +575,7 @@ function ToolsProvider({ children }: { children: ReactNode }) {
         return response.json();
       },
     }),
-    [],
+    [chatId],
   );
 
   useEffect(() => {

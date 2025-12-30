@@ -9,7 +9,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/shared/app-sidebar";
+import { SearchCommand } from "@/components/shared/search-command";
 import { useIncognitoOptional } from "@/contexts/incognito-provider";
+import { SearchProvider } from "@/contexts/search-provider";
 import { cn } from "@/lib/utils";
 
 type AppLayoutProps = {
@@ -81,11 +83,14 @@ export function AppLayout({
   headerRight,
 }: AppLayoutProps) {
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <AppLayoutContent headerLeft={headerLeft} headerRight={headerRight}>
-        {children}
-      </AppLayoutContent>
-    </SidebarProvider>
+    <SearchProvider>
+      <SidebarProvider>
+        <AppSidebar />
+        <AppLayoutContent headerLeft={headerLeft} headerRight={headerRight}>
+          {children}
+        </AppLayoutContent>
+        <SearchCommand />
+      </SidebarProvider>
+    </SearchProvider>
   );
 }

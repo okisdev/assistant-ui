@@ -16,6 +16,7 @@ export const maxDuration = 60;
 type GenerateImageRequest = {
   prompt: string;
   model?: ImageModelId;
+  chatId?: string | null;
 };
 
 function getImageModel(modelId: ImageModelId) {
@@ -61,8 +62,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { prompt, model: requestModel }: GenerateImageRequest =
-      await req.json();
+    const {
+      prompt,
+      model: requestModel,
+      chatId,
+    }: GenerateImageRequest = await req.json();
 
     const modelId = await resolveImageModel(requestModel);
 
@@ -89,14 +93,25 @@ export async function POST(req: Request) {
 
     const { image } = await generateImage(generateOptions);
 
-    const filename = `generated-${nanoid()}.png`;
+    const id = nanoid();
+    const filename = `generated-${id}.png`;
     const imageBuffer = Buffer.from(image.uint8Array);
     const blob = await put(filename, imageBuffer, {
       access: "public",
       contentType: "image/png",
     });
 
+    await api.generatedImage.create({
+      id,
+      chatId: chatId || null,
+      url: blob.url,
+      pathname: blob.pathname,
+      prompt,
+      model: modelId,
+    });
+
     return Response.json({
+      id,
       url: blob.url,
       prompt,
       model: modelId,

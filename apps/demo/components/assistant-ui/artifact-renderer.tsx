@@ -11,6 +11,7 @@ type ArtifactRendererProps = {
   content: string;
   type?: "html" | "react" | "svg";
   isLoading?: boolean;
+  isStreaming?: boolean;
   showHeader?: boolean;
 };
 
@@ -19,6 +20,7 @@ export const ArtifactRenderer: FC<ArtifactRendererProps> = ({
   content,
   type = "html",
   isLoading = false,
+  isStreaming = false,
   showHeader = true,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -27,9 +29,22 @@ export const ArtifactRenderer: FC<ArtifactRendererProps> = ({
   const [isCopied, setIsCopied] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
 
+  const prevStreamingRef = useRef<boolean | null>(null);
+
   useEffect(() => {
-    setActiveTab("preview");
-  }, [content]);
+    const wasStreaming = prevStreamingRef.current === true;
+    const streamingJustEnded = wasStreaming && !isStreaming;
+
+    if (isStreaming) {
+      setActiveTab("code");
+    }
+
+    if (streamingJustEnded && content) {
+      setActiveTab("preview");
+    }
+
+    prevStreamingRef.current = isStreaming;
+  }, [isStreaming, content]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -121,12 +136,14 @@ export const ArtifactRenderer: FC<ArtifactRendererProps> = ({
     <div className="flex items-center gap-1 rounded-full bg-muted/50 p-0.5">
       <button
         type="button"
-        onClick={() => setActiveTab("preview")}
+        onClick={() => !isStreaming && setActiveTab("preview")}
+        disabled={isStreaming}
         className={cn(
           "rounded-full px-3 py-1 font-medium text-xs transition-colors",
           activeTab === "preview"
             ? "bg-background text-foreground"
             : "text-muted-foreground hover:text-foreground",
+          isStreaming && "cursor-not-allowed opacity-50",
         )}
       >
         Preview
@@ -175,7 +192,7 @@ export const ArtifactRenderer: FC<ArtifactRendererProps> = ({
         <div className="flex shrink-0 items-center justify-between gap-2 px-3 py-2">
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm">{title}</span>
-            {isLoading && (
+            {(isLoading || isStreaming) && (
               <Loader2 className="size-4 animate-spin text-muted-foreground" />
             )}
           </div>
@@ -192,14 +209,14 @@ export const ArtifactRenderer: FC<ArtifactRendererProps> = ({
       )}
 
       <div className="relative min-h-64 flex-1">
-        {isLoading ? (
+        {isLoading && !isStreaming ? (
           <div className="flex h-full min-h-64 items-center justify-center">
             <div className="flex flex-col items-center gap-2 text-muted-foreground">
               <Loader2 className="size-6 animate-spin" />
               <span className="text-sm">Generating artifact...</span>
             </div>
           </div>
-        ) : activeTab === "preview" ? (
+        ) : activeTab === "preview" && !isStreaming ? (
           renderError ? (
             <div className="flex h-full min-h-64 items-center justify-center p-4">
               <div className="text-center text-destructive text-sm">

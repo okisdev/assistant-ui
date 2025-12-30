@@ -10,6 +10,10 @@ import { attachmentRouter } from "./routers/attachment";
 import { usageRouter } from "./routers/usage";
 import { mcpServerRouter } from "./routers/mcp-server";
 import { applicationRouter } from "./routers/application";
+import { generatedImageRouter } from "./routers/generated-image";
+import { artifactRouter } from "./routers/artifact";
+import { searchRouter } from "./routers/search";
+import { appsRouter } from "./routers/apps";
 
 export const appRouter = createTRPCRouter({
   auth: authRouter,
@@ -22,6 +26,10 @@ export const appRouter = createTRPCRouter({
   usage: usageRouter,
   mcpServer: mcpServerRouter,
   application: applicationRouter,
+  generatedImage: generatedImageRouter,
+  artifact: artifactRouter,
+  search: searchRouter,
+  apps: appsRouter,
 });
 
 export type AppRouter = typeof appRouter;

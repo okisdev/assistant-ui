@@ -13,6 +13,9 @@ export type ArtifactContent = {
   title: string;
   content: string;
   artifactType: "html" | "react" | "svg";
+  isStreaming?: boolean;
+  version?: number;
+  artifactId?: string;
 };
 
 export type FilePreviewContent = {

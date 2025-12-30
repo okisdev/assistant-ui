@@ -29,7 +29,11 @@ const emailSchema = z.object({
 });
 
 const credentialsSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters").optional(),
+  name: z
+    .string()
+    .min(2, "Name must be at least 2 characters")
+    .optional()
+    .or(z.literal("")),
   email: z.email("Please enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
@@ -110,57 +114,96 @@ export function AuthForm({ onSuccess, redirectTo }: AuthFormContentProps) {
     }
   };
 
+  const handleAuthSuccess = () => {
+    setIsLoading(null);
+    onSuccess?.();
+    router.push(callbackURL);
+    router.refresh();
+  };
+
+  const handleAuthError = (error: {
+    status?: number;
+    code?: string;
+    message?: string;
+  }) => {
+    setIsLoading(null);
+    if (error.status === 429) {
+      setError("Too many attempts. Please try again later.");
+      return;
+    }
+    if (
+      error.code === "USER_NOT_FOUND" ||
+      error.message?.toLowerCase().includes("user not found")
+    ) {
+      setIsNewUser(true);
+      setError("No account found. Please enter your name to create one.");
+      return;
+    }
+    if (
+      error.code === "INVALID_PASSWORD" ||
+      error.message?.toLowerCase().includes("invalid password")
+    ) {
+      setError("Incorrect password. Please try again.");
+      return;
+    }
+    if (
+      error.code === "CREDENTIAL_ACCOUNT_NOT_FOUND" ||
+      error.message?.toLowerCase().includes("credential")
+    ) {
+      setError(
+        "No password set for this account. Try signing in with GitHub or Google.",
+      );
+      return;
+    }
+    setError(error.message ?? "Authentication failed");
+  };
+
   const onSubmit = async (values: CredentialsFormValues) => {
     setError(null);
     setIsLoading("credentials");
 
     try {
       if (isNewUser) {
-        const result = await authClient.signUp.email({
+        const { data, error } = await authClient.signUp.email({
           name: values.name ?? "",
           email: values.email,
           password: values.password,
         });
 
-        if (result.error) {
-          if (result.error.status === 429) {
-            setError("Too many attempts. Please try again later.");
-            return;
-          }
-          setError(result.error.message ?? "Failed to create account");
+        if (error) {
+          handleAuthError(error);
+          return;
+        }
+
+        if (!data) {
+          setIsLoading(null);
+          setError("Failed to create account. Please try again.");
           return;
         }
       } else {
-        const result = await authClient.signIn.email({
+        const { data, error } = await authClient.signIn.email({
           email: values.email,
           password: values.password,
         });
 
-        if (result.error) {
-          if (result.error.status === 429) {
-            setError("Too many attempts. Please try again later.");
-            return;
-          }
-          if (
-            result.error.code === "USER_NOT_FOUND" ||
-            result.error.message?.toLowerCase().includes("user not found")
-          ) {
-            setIsNewUser(true);
-            setError("No account found. Please enter your name to create one.");
-            return;
-          }
-          setError(result.error.message ?? "Failed to sign in");
+        if (error) {
+          handleAuthError(error);
+          return;
+        }
+
+        // If no data and no error, 2FA might be required (handled by plugin)
+        if (!data) {
+          setIsLoading(null);
           return;
         }
       }
 
-      onSuccess?.();
-      router.push(callbackURL);
-      router.refresh();
-    } catch {
-      setError("An unexpected error occurred. Please try again.");
-    } finally {
+      handleAuthSuccess();
+    } catch (err) {
       setIsLoading(null);
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred",
+      );
     }
   };
 

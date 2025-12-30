@@ -4,7 +4,7 @@ import type { FC } from "react";
 import { AssistantIf, ThreadPrimitive } from "@assistant-ui/react";
 
 import { useAutoGenerateTitle } from "@/hooks/ai/use-auto-generate-title";
-import { useSyncFeedback } from "@/hooks/use-sync-feedback";
+import { useSyncFeedback } from "@/lib/adapters/feedback-adapter";
 
 import {
   AssistantMessage,

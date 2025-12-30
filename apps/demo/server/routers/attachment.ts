@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { sql } from "drizzle-orm";
-import { attachment, projectDocument } from "@/lib/database/schema";
+import { attachment, projectDocument, chat } from "@/lib/database/schema";
 import { protectedProcedure, createTRPCRouter } from "../trpc";
 
 export const attachmentRouter = createTRPCRouter({
@@ -47,6 +47,62 @@ export const attachmentRouter = createTRPCRouter({
         .where(eq(attachment.userId, ctx.session.user.id))
         .orderBy(desc(attachment.createdAt))
         .limit(limit);
+    }),
+
+  list: protectedProcedure
+    .input(
+      z
+        .object({
+          limit: z.number().min(1).max(100).default(50),
+          cursor: z.string().optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const limit = input?.limit ?? 50;
+
+      const attachments = await ctx.db
+        .select({
+          id: attachment.id,
+          url: attachment.url,
+          pathname: attachment.pathname,
+          contentType: attachment.contentType,
+          size: attachment.size,
+          chatId: attachment.chatId,
+          chatTitle: chat.title,
+          createdAt: attachment.createdAt,
+        })
+        .from(attachment)
+        .leftJoin(chat, eq(attachment.chatId, chat.id))
+        .where(eq(attachment.userId, ctx.session.user.id))
+        .orderBy(desc(attachment.createdAt))
+        .limit(limit + 1);
+
+      let nextCursor: string | undefined;
+      if (attachments.length > limit) {
+        const nextItem = attachments.pop();
+        nextCursor = nextItem?.id;
+      }
+
+      return {
+        items: attachments,
+        nextCursor,
+      };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(attachment)
+        .where(
+          and(
+            eq(attachment.id, input.id),
+            eq(attachment.userId, ctx.session.user.id),
+          ),
+        );
+
+      return { success: true };
     }),
 
   getStorageUsage: protectedProcedure.query(async ({ ctx }) => {

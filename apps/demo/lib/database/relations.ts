@@ -19,6 +19,9 @@ import {
   application,
   userApplication,
   twoFactor,
+  generatedImage,
+  artifact,
+  artifactVersion,
 } from "./schema";
 
 export const userRelations = relations(user, ({ many }) => ({
@@ -35,6 +38,8 @@ export const userRelations = relations(user, ({ many }) => ({
   usageRecords: many(usage),
   mcpServers: many(mcpServer),
   userApplications: many(userApplication),
+  generatedImages: many(generatedImage),
+  artifacts: many(artifact),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -97,6 +102,8 @@ export const chatRelations = relations(chat, ({ one, many }) => ({
   }),
   messages: many(chatMessage),
   attachments: many(attachment),
+  generatedImages: many(generatedImage),
+  artifacts: many(artifact),
 }));
 
 export const messageRelations = relations(chatMessage, ({ one }) => ({
@@ -211,6 +218,39 @@ export const userApplicationRelations = relations(
     account: one(account, {
       fields: [userApplication.accountId],
       references: [account.id],
+    }),
+  }),
+);
+
+export const generatedImageRelations = relations(generatedImage, ({ one }) => ({
+  user: one(user, {
+    fields: [generatedImage.userId],
+    references: [user.id],
+  }),
+  chat: one(chat, {
+    fields: [generatedImage.chatId],
+    references: [chat.id],
+  }),
+}));
+
+export const artifactRelations = relations(artifact, ({ one, many }) => ({
+  user: one(user, {
+    fields: [artifact.userId],
+    references: [user.id],
+  }),
+  chat: one(chat, {
+    fields: [artifact.chatId],
+    references: [chat.id],
+  }),
+  versions: many(artifactVersion),
+}));
+
+export const artifactVersionRelations = relations(
+  artifactVersion,
+  ({ one }) => ({
+    artifact: one(artifact, {
+      fields: [artifactVersion.artifactId],
+      references: [artifact.id],
     }),
   }),
 );

@@ -7,13 +7,16 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { FolderOpen, Grid3X3, Plus } from "lucide-react";
+import { BookOpen, FolderOpen, Grid3X3, Plus, Search } from "lucide-react";
 import type { FC } from "react";
 import Link from "next/link";
+import { useSearchOptional } from "@/contexts/search-provider";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
 
 export const SidebarHeroSection: FC = () => {
   const router = useRouter();
   const api = useAssistantApi();
+  const search = useSearchOptional();
 
   const handleNewChat = () => {
     api.threads().switchToNewThread();
@@ -31,6 +34,19 @@ export const SidebarHeroSection: FC = () => {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => search?.setOpen(true)}
+              tooltip="Search (⌘K)"
+            >
+              <Search />
+              <span>Search</span>
+              <KbdGroup className="ml-auto group-data-[collapsible=icon]:hidden">
+                <Kbd>⌘</Kbd>
+                <Kbd>K</Kbd>
+              </KbdGroup>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Projects">
               <Link href="/projects">
                 <FolderOpen />
@@ -43,6 +59,14 @@ export const SidebarHeroSection: FC = () => {
               <Link href="/apps">
                 <Grid3X3 />
                 <span>Apps</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Library">
+              <Link href="/library">
+                <BookOpen />
+                <span>Library</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

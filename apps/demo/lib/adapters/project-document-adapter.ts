@@ -1,8 +1,3 @@
-/**
- * Project document adapter for uploading documents to a project's knowledge base.
- * Supports text extraction for various file types.
- */
-
 const TEXT_CONTENT_TYPES = [
   "text/plain",
   "text/html",
@@ -15,6 +10,8 @@ const TEXT_CONTENT_TYPES = [
   "application/javascript",
   "application/typescript",
 ];
+
+const TEXT_EXTENSIONS = [".txt", ".md", ".mdx", ".rst"];
 
 const CODE_EXTENSIONS = [
   ".js",
@@ -39,56 +36,44 @@ const CODE_EXTENSIONS = [
   ".bash",
   ".zsh",
   ".sql",
+];
+
+const CONFIG_EXTENSIONS = [
+  ".json",
   ".yaml",
   ".yml",
   ".toml",
+  ".xml",
   ".ini",
   ".cfg",
   ".conf",
   ".env",
-  ".md",
-  ".mdx",
-  ".rst",
-  ".txt",
+  ".csv",
 ];
 
-/**
- * Check if a file is a text-based file that can have its content extracted.
- */
+const ALL_TEXT_EXTENSIONS = [
+  ...TEXT_EXTENSIONS,
+  ...CODE_EXTENSIONS,
+  ...CONFIG_EXTENSIONS,
+];
+
 export function isTextFile(file: File): boolean {
-  // Check content type
   if (TEXT_CONTENT_TYPES.some((type) => file.type.startsWith(type))) {
     return true;
   }
 
-  // Check file extension
   const extension = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
-  if (CODE_EXTENSIONS.includes(extension)) {
-    return true;
-  }
-
-  return false;
+  return ALL_TEXT_EXTENSIONS.includes(extension);
 }
 
-/**
- * Extract text content from a file.
- * Currently supports text-based files.
- * PDF extraction would require a server-side library.
- */
 export async function extractTextFromFile(file: File): Promise<string | null> {
   if (!isTextFile(file)) {
-    // For PDFs and other binary formats, we'd need server-side processing
-    // Return null to indicate extraction not supported client-side
-    if (file.type === "application/pdf") {
-      return null; // PDF extraction requires server-side processing
-    }
     return null;
   }
 
   try {
     const text = await file.text();
-    // Limit extracted text to avoid extremely large content
-    const MAX_TEXT_LENGTH = 100000; // 100KB of text
+    const MAX_TEXT_LENGTH = 100000;
     if (text.length > MAX_TEXT_LENGTH) {
       return `${text.slice(0, MAX_TEXT_LENGTH)}\n\n[Content truncated...]`;
     }
@@ -108,17 +93,12 @@ export type ProjectDocumentUploadResult = {
   extractedText: string | null;
 };
 
-/**
- * Upload a document to a project's knowledge base.
- */
 export async function uploadProjectDocument(
   projectId: string,
   file: File,
 ): Promise<ProjectDocumentUploadResult> {
-  // Extract text content client-side for supported formats
   const extractedText = await extractTextFromFile(file);
 
-  // Upload file to blob storage
   const formData = new FormData();
   formData.append("file", file);
   formData.append("projectId", projectId);
@@ -150,39 +130,9 @@ export async function uploadProjectDocument(
   };
 }
 
-/**
- * Get accepted file types for project documents.
- */
 export const ACCEPTED_DOCUMENT_TYPES = [
-  // Text files
-  ".txt",
-  ".md",
-  ".mdx",
-  ".rst",
-  // Code files
-  ".js",
-  ".jsx",
-  ".ts",
-  ".tsx",
-  ".py",
-  ".rb",
-  ".go",
-  ".rs",
-  ".java",
-  ".c",
-  ".cpp",
-  ".h",
-  ".cs",
-  ".php",
-  ".swift",
-  ".kt",
-  // Config files
-  ".json",
-  ".yaml",
-  ".yml",
-  ".toml",
-  ".xml",
-  ".csv",
-  // Documents
+  ...TEXT_EXTENSIONS,
+  ...CODE_EXTENSIONS,
+  ...CONFIG_EXTENSIONS,
   ".pdf",
 ].join(",");

@@ -12,6 +12,8 @@ type ArtifactCardProps = {
   content: string;
   type: ArtifactType;
   isLoading?: boolean;
+  version?: number;
+  artifactId?: string;
 };
 
 export const ArtifactCard: FC<ArtifactCardProps> = ({
@@ -19,6 +21,8 @@ export const ArtifactCard: FC<ArtifactCardProps> = ({
   content,
   type,
   isLoading = false,
+  version,
+  artifactId,
 }) => {
   const { openPanel } = useSidePanel();
 
@@ -29,6 +33,8 @@ export const ArtifactCard: FC<ArtifactCardProps> = ({
       title,
       content,
       artifactType: type,
+      version,
+      artifactId,
     });
   };
 
@@ -73,6 +79,8 @@ type ArtifactResult = {
   title: string;
   content: string;
   type: ArtifactType;
+  version?: number;
+  artifactId?: string;
   message: string;
 };
 
@@ -81,32 +89,52 @@ export const ArtifactToolUI = makeAssistantToolUI<ArtifactArgs, ArtifactResult>(
     toolName: "create_artifact",
     render: function ArtifactToolRender({ args, result, status }) {
       const { openPanel } = useSidePanel();
-      const prevStatusRef = useRef<string | null>(null);
       const openPanelRef = useRef(openPanel);
       openPanelRef.current = openPanel;
+      const hasOpenedRef = useRef(false);
+      const prevStreamingRef = useRef<boolean | null>(null);
 
-      const isLoading = status.type === "running";
+      const isStreaming = status.type === "running";
       const title = result?.title ?? args.title ?? "Artifact";
       const content = result?.content ?? args.content ?? "";
       const type = result?.type ?? args.type ?? "html";
+      const version = result?.version;
+      const artifactId = result?.artifactId;
 
       useEffect(() => {
-        const wasRunning = prevStatusRef.current === "running";
-        const isNowComplete = status.type !== "running";
+        if (!title) return;
 
-        if (wasRunning && isNowComplete && content) {
+        const hasContent = content.length > 0;
+        const wasStreaming = prevStreamingRef.current === true;
+        const streamingJustEnded = wasStreaming && !isStreaming;
+
+        if (isStreaming && hasContent) {
           openPanelRef.current({
             type: "artifact",
             title,
             content,
             artifactType: type,
+            isStreaming: true,
+          });
+          hasOpenedRef.current = true;
+        }
+
+        if (streamingJustEnded && hasOpenedRef.current && hasContent) {
+          openPanelRef.current({
+            type: "artifact",
+            title,
+            content,
+            artifactType: type,
+            isStreaming: false,
+            version,
+            artifactId,
           });
         }
 
-        prevStatusRef.current = status.type;
-      }, [status.type, content, title, type]);
+        prevStreamingRef.current = isStreaming;
+      }, [isStreaming, title, content, type, version, artifactId]);
 
-      if (!content && !isLoading) {
+      if (!content && !isStreaming) {
         return null;
       }
 
@@ -116,7 +144,9 @@ export const ArtifactToolUI = makeAssistantToolUI<ArtifactArgs, ArtifactResult>(
             title={title}
             content={content}
             type={type}
-            isLoading={isLoading}
+            isLoading={isStreaming}
+            version={version}
+            artifactId={artifactId}
           />
         </div>
       );

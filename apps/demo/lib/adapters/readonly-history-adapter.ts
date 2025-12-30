@@ -34,16 +34,51 @@ class ReadOnlyFormattedAdapter<TMessage, TStorageFormat>
   }
 }
 
+type AISDKStorageFormat = Omit<UIMessage, "id">;
+
+const aiSDKFormatAdapter: MessageFormatAdapter<UIMessage, AISDKStorageFormat> =
+  {
+    format: "ai-sdk/v5",
+
+    encode({ message: { id, ...message } }): AISDKStorageFormat {
+      return message;
+    },
+
+    decode(
+      stored: MessageStorageEntry<AISDKStorageFormat>,
+    ): MessageFormatItem<UIMessage> {
+      return {
+        parentId: stored.parent_id,
+        message: {
+          id: stored.id,
+          ...stored.content,
+        },
+      };
+    },
+
+    getId(message: UIMessage): string {
+      return message.id;
+    },
+  };
+
 export class ReadOnlyHistoryAdapter implements ThreadHistoryAdapter {
   constructor(
     private chatId: string,
     private db: DbReadOperations,
+    private overrideFormatAdapter?: MessageFormatAdapter<
+      UIMessage,
+      AISDKStorageFormat
+    >,
   ) {}
 
   withFormat<TMessage, TStorageFormat>(
     formatAdapter: MessageFormatAdapter<TMessage, TStorageFormat>,
   ): GenericThreadHistoryAdapter<TMessage> {
-    return new ReadOnlyFormattedAdapter(this, formatAdapter);
+    const adapter = this.overrideFormatAdapter ?? formatAdapter;
+    return new ReadOnlyFormattedAdapter(
+      this,
+      adapter as MessageFormatAdapter<TMessage, TStorageFormat>,
+    );
   }
 
   async _loadWithFormat<TMessage, TStorageFormat>(
@@ -91,53 +126,8 @@ export class ReadOnlyHistoryAdapter implements ThreadHistoryAdapter {
   async append(): Promise<void> {}
 }
 
-type AISDKStorageFormat = Omit<UIMessage, "id">;
-
-const aiSDKFormatAdapter: MessageFormatAdapter<UIMessage, AISDKStorageFormat> =
-  {
-    format: "ai-sdk/v5",
-
-    encode({ message: { id, ...message } }): AISDKStorageFormat {
-      return message;
-    },
-
-    decode(
-      stored: MessageStorageEntry<AISDKStorageFormat>,
-    ): MessageFormatItem<UIMessage> {
-      return {
-        parentId: stored.parent_id,
-        message: {
-          id: stored.id,
-          ...stored.content,
-        },
-      };
-    },
-
-    getId(message: UIMessage): string {
-      return message.id;
-    },
-  };
-
-export class ReadOnlyHistoryAdapterWithAISDKFormat
-  implements ThreadHistoryAdapter
-{
-  private inner: ReadOnlyHistoryAdapter;
-
+export class ReadOnlyHistoryAdapterWithAISDKFormat extends ReadOnlyHistoryAdapter {
   constructor(chatId: string, db: DbReadOperations) {
-    this.inner = new ReadOnlyHistoryAdapter(chatId, db);
+    super(chatId, db, aiSDKFormatAdapter);
   }
-
-  withFormat<TMessage, TStorageFormat>(
-    _formatAdapter: MessageFormatAdapter<TMessage, TStorageFormat>,
-  ): GenericThreadHistoryAdapter<TMessage> {
-    return this.inner.withFormat(
-      aiSDKFormatAdapter as MessageFormatAdapter<TMessage, TStorageFormat>,
-    );
-  }
-
-  async load(): Promise<ExportedMessageRepository> {
-    return this.inner.load();
-  }
-
-  async append(): Promise<void> {}
 }

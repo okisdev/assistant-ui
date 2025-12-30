@@ -120,4 +120,12 @@ export class BlobAttachmentAdapter implements AttachmentAdapter {
             ],
     };
   }
+
+  public clear(): void {
+    this.uploadedUrls.clear();
+  }
+
+  public get pendingCount(): number {
+    return this.uploadedUrls.size;
+  }
 }

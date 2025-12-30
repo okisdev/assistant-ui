@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { eq, desc, and, isNull, isNotNull, inArray, sql } from "drizzle-orm";
+import { openai } from "@ai-sdk/openai";
+import { generateText } from "ai";
 
 import {
   chat,
@@ -532,5 +534,62 @@ export const chatRouter = createTRPCRouter({
         );
 
       return { success: true };
+    }),
+
+  generateTitle: protectedProcedure
+    .input(
+      z.object({
+        messages: z.array(
+          z.object({
+            role: z.string(),
+            content: z.unknown(),
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const userMessage = input.messages.find((m) => m.role === "user");
+      const assistantMessage = input.messages.find(
+        (m) => m.role === "assistant",
+      );
+
+      if (!userMessage) {
+        return { title: "New Chat" };
+      }
+
+      const userContent = userMessage.content;
+      const userText =
+        typeof userContent === "string"
+          ? userContent
+          : Array.isArray(userContent)
+            ? (userContent[0] as { text?: string })?.text || "New Chat"
+            : "New Chat";
+
+      const assistantContent = assistantMessage?.content;
+      const assistantText =
+        typeof assistantContent === "string"
+          ? assistantContent
+          : Array.isArray(assistantContent)
+            ? (assistantContent[0] as { text?: string })?.text || ""
+            : "";
+
+      try {
+        const { text } = await generateText({
+          model: openai("gpt-4o-mini"),
+          system:
+            "Generate a very short title (3-6 words) for this conversation. Return only the title, no quotes or punctuation.",
+          prompt: `User: ${userText}\n${assistantText ? `Assistant: ${assistantText}` : ""}`,
+        });
+
+        return { title: text.trim() };
+      } catch {
+        const fallbackTitle = userText.split(" ").slice(0, 5).join(" ");
+        return {
+          title:
+            fallbackTitle.length > 30
+              ? `${fallbackTitle.slice(0, 30)}...`
+              : fallbackTitle,
+        };
+      }
     }),
 });

@@ -63,8 +63,13 @@ export function buildCurrentContext(): string {
 // MEMORY CAPABILITY
 // ============================================
 
-export const SAVE_MEMORY_INSTRUCTIONS = `<memory_capability>
-<tool>save_memory</tool>
+export const MEMORY_INSTRUCTIONS = `<memory_capability>
+<tools></tools>
+<tool name="save_memory">Save new information about the user</tool>
+<tool name="update_memory">Update existing memory when information changes</tool>
+<tool name="delete_memory">Remove outdated or irrelevant memories</tool>
+</tools>
+
 <purpose>Remember important information about the user across conversations to provide personalized assistance.</purpose>
 
 <categories>
@@ -76,18 +81,33 @@ export const SAVE_MEMORY_INSTRUCTIONS = `<memory_capability>
 </categories>
 
 <when_to_save>
-Save memories when the user:
+Use save_memory when the user:
 - Introduces themselves or shares personal/professional details
 - Expresses preferences about how they want help
 - Mentions ongoing projects or goals
-- Corrects you about something (save the correction)
 - Shares context they'd want you to remember
 </when_to_save>
 
+<when_to_update>
+Use update_memory (with the memory ID) when:
+- User corrects previous information ("Actually, I prefer X now")
+- User's preferences or circumstances change
+- Information becomes outdated but the topic is still relevant
+- User provides more accurate or detailed version of existing memory
+</when_to_update>
+
+<when_to_delete>
+Use delete_memory (with the memory ID) when:
+- User explicitly asks to forget something
+- Information is completely obsolete and no replacement is needed
+- Memory was saved in error
+</when_to_delete>
+
 <behavior>
-- Be proactive: save important information without being asked
+- Be proactive: manage memories without being asked
 - Be selective: don't save trivial or temporary information
 - Be accurate: capture the essence, not verbatim quotes
+- Prefer update over delete+save: when information changes, update the existing memory
 - Be respectful: only save information the user would reasonably expect to be remembered
 </behavior>
 </memory_capability>`;
@@ -272,19 +292,19 @@ ${parts.join("\n")}
 }
 
 function formatMemories(
-  memories: Array<{ content: string; category: string | null }>,
+  memories: Array<{ id: string; content: string; category: string | null }>,
 ): string {
   if (memories.length === 0) return "";
 
   const lines = memories.map((m) => {
     if (m.category) {
-      return `  <memory category="${m.category}">${m.content}</memory>`;
+      return `  <memory id="${m.id}" category="${m.category}">${m.content}</memory>`;
     }
-    return `  <memory>${m.content}</memory>`;
+    return `  <memory id="${m.id}">${m.content}</memory>`;
   });
 
   return `<user_memories>
-<instruction>Use these memories to personalize your responses. Reference relevant memories naturally without explicitly stating "I remember that..."</instruction>
+<instruction>Use these memories to personalize your responses. Reference relevant memories naturally without explicitly stating "I remember that..." When user information changes, use update_memory with the memory ID to update existing memories.</instruction>
 ${lines.join("\n")}
 </user_memories>`;
 }
@@ -442,7 +462,7 @@ export function buildSystemPrompt(
 
   // 8. Memory capability
   if (context.capabilities.memory.personalization) {
-    parts.push(SAVE_MEMORY_INSTRUCTIONS);
+    parts.push(MEMORY_INSTRUCTIONS);
   }
 
   // 9. Artifact capability

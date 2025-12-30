@@ -73,6 +73,41 @@ export const memoryRouter = createTRPCRouter({
       return created;
     }),
 
+  // Update a specific memory
+  update: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        content: z.string().min(1),
+        category: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(memory)
+        .set({
+          content: input.content,
+          category: input.category,
+        })
+        .where(
+          and(eq(memory.id, input.id), eq(memory.userId, ctx.session.user.id)),
+        );
+
+      const [updated] = await ctx.db
+        .select({
+          id: memory.id,
+          content: memory.content,
+          category: memory.category,
+          projectId: memory.projectId,
+          createdAt: memory.createdAt,
+        })
+        .from(memory)
+        .where(eq(memory.id, input.id))
+        .limit(1);
+
+      return updated;
+    }),
+
   // Delete a specific memory
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))

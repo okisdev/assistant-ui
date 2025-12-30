@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useState, type FC } from "react";
-import { X, Sparkles, Copy, Check, Download, ExternalLink } from "lucide-react";
+import {
+  X,
+  Sparkles,
+  Copy,
+  Check,
+  Download,
+  ExternalLink,
+  Loader2,
+} from "lucide-react";
 import {
   useSidePanel,
   type FilePreviewContent,
@@ -99,9 +107,18 @@ export const SidePanel: FC = () => {
         <>
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted/50">
-              <Sparkles className="size-4 text-muted-foreground" />
+              {content.isStreaming ? (
+                <Loader2 className="size-4 animate-spin text-muted-foreground" />
+              ) : (
+                <Sparkles className="size-4 text-muted-foreground" />
+              )}
             </div>
-            <h2 className="truncate font-medium text-sm">{content.title}</h2>
+            <div className="min-w-0 flex-1">
+              <h2 className="truncate font-medium text-sm">{content.title}</h2>
+              {content.isStreaming && (
+                <p className="text-muted-foreground text-xs">Generating...</p>
+              )}
+            </div>
           </div>
           <button
             type="button"
@@ -159,6 +176,7 @@ export const SidePanel: FC = () => {
             title={content.title}
             content={content.content}
             type={content.artifactType}
+            isStreaming={content.isStreaming}
             showHeader={false}
           />
         )}

@@ -1,6 +1,6 @@
 "use client";
 
-import type { FC } from "react";
+import { useState, type FC } from "react";
 import Link from "next/link";
 import {
   ComposerPrimitive,
@@ -42,6 +42,10 @@ import { api } from "@/utils/trpc/client";
 import { getFileIcon } from "@/utils/file";
 import { createExistingAttachmentFile } from "@/lib/adapters/blob-attachment-adapter";
 import { ComposerAttachments } from "@/components/assistant-ui/attachment";
+import {
+  GoogleDrivePicker,
+  type ImportedAttachment,
+} from "@/components/assistant-ui/google-drive-picker";
 
 const MAX_VISIBLE_ITEMS = 3;
 
@@ -307,18 +311,25 @@ const AppsSubmenu: FC = () => {
   );
 };
 
-const ComposerDropdown: FC = () => {
+const GOOGLE_DRIVE_APP_ID = "app_google_drive";
+
+type AttachmentsSubmenuProps = {
+  onOpenDrivePicker: () => void;
+};
+
+const AttachmentsSubmenu: FC<AttachmentsSubmenuProps> = ({
+  onOpenDrivePicker,
+}) => {
   const assistantApi = useAssistantApi();
-  const { model } = useModelSelection();
-  const { capabilities } = useCapabilities();
-  const { setMode } = useComposerState();
+  const { data: connections } = api.application.userConnections.useQuery();
 
-  const isNewThread = useAssistantState(({ thread }) => thread.isEmpty);
+  const googleDriveConnection = connections?.find(
+    (c) => c.applicationId === GOOGLE_DRIVE_APP_ID,
+  );
+  const isGoogleDriveConnected =
+    googleDriveConnection?.isConnected && googleDriveConnection?.enabled;
 
-  const supportsAttachments = model.capabilities.includes("vision");
-  const supportsImageGeneration = capabilities.tools.imageGeneration;
-
-  const handleAddAttachment = () => {
+  const handleAddLocalFile = () => {
     const input = document.createElement("input");
     input.type = "file";
     input.multiple = true;
@@ -352,54 +363,125 @@ const ComposerDropdown: FC = () => {
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-9 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground"
-          aria-label="Add content"
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger className="rounded-lg px-3 py-2.5 text-[13px] transition-colors data-[state=open]:bg-accent/50">
+        <Paperclip className="size-4" />
+        <span>Add attachment</span>
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className="min-w-[200px] rounded-xl p-2 shadow-lg">
+        <DropdownMenuItem
+          className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
+          onClick={handleAddLocalFile}
         >
-          <PlusIcon className="size-5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        side="bottom"
-        className="min-w-[240px] rounded-xl p-2 shadow-lg"
-      >
-        {supportsAttachments && (
-          <>
-            <DropdownMenuItem
-              className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
-              onClick={handleAddAttachment}
-            >
-              <Paperclip className="size-4" />
-              <span>Add attachment</span>
-            </DropdownMenuItem>
-            <RecentAttachmentsSubmenu />
-          </>
-        )}
-        {supportsImageGeneration && (
+          <UploadIcon className="size-4" />
+          <span>Local file</span>
+        </DropdownMenuItem>
+        {isGoogleDriveConnected ? (
           <DropdownMenuItem
             className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
-            onClick={() => setMode("image-generation")}
+            onClick={onOpenDrivePicker}
           >
-            <Sparkles className="size-4" />
-            <span>Generate image</span>
+            <img src="/apps/icons/Google_Drive.svg" alt="" className="size-4" />
+            <span>Google Drive</span>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem
+            asChild
+            className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
+          >
+            <Link href="/apps/google-drive">
+              <img
+                src="/apps/icons/Google_Drive.svg"
+                alt=""
+                className="size-4"
+              />
+              <span>Google Drive</span>
+              <span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                Connect
+              </span>
+            </Link>
           </DropdownMenuItem>
         )}
-        {isNewThread && (
-          <>
-            {(supportsAttachments || supportsImageGeneration) && (
-              <DropdownMenuSeparator className="-mx-2 my-2" />
-            )}
-            <ProjectsSubmenu />
-            <AppsSubmenu />
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+  );
+};
+
+const ComposerDropdown: FC = () => {
+  const assistantApi = useAssistantApi();
+  const { model } = useModelSelection();
+  const { capabilities } = useCapabilities();
+  const { setMode } = useComposerState();
+  const [drivePickerOpen, setDrivePickerOpen] = useState(false);
+
+  const isNewThread = useAssistantState(({ thread }) => thread.isEmpty);
+
+  const supportsAttachments = model.capabilities.includes("vision");
+  const supportsImageGeneration = capabilities.tools.imageGeneration;
+
+  const handleDriveImport = (attachments: ImportedAttachment[]) => {
+    for (const attachment of attachments) {
+      const file = createExistingAttachmentFile({
+        url: attachment.url,
+        name: attachment.name,
+        contentType: attachment.contentType,
+      });
+      assistantApi.composer().addAttachment(file);
+    }
+  };
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-9 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground"
+            aria-label="Add content"
+          >
+            <PlusIcon className="size-5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          side="bottom"
+          className="min-w-[240px] rounded-xl p-2 shadow-lg"
+        >
+          {supportsAttachments && (
+            <>
+              <AttachmentsSubmenu
+                onOpenDrivePicker={() => setDrivePickerOpen(true)}
+              />
+              <RecentAttachmentsSubmenu />
+            </>
+          )}
+          {supportsImageGeneration && (
+            <DropdownMenuItem
+              className="rounded-lg px-3 py-2.5 text-[13px] transition-colors focus:bg-accent/50"
+              onClick={() => setMode("image-generation")}
+            >
+              <Sparkles className="size-4" />
+              <span>Generate image</span>
+            </DropdownMenuItem>
+          )}
+          {isNewThread && (
+            <>
+              {(supportsAttachments || supportsImageGeneration) && (
+                <DropdownMenuSeparator className="-mx-2 my-2" />
+              )}
+              <ProjectsSubmenu />
+              <AppsSubmenu />
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <GoogleDrivePicker
+        open={drivePickerOpen}
+        onOpenChange={setDrivePickerOpen}
+        onImport={handleDriveImport}
+      />
+    </>
   );
 };
 

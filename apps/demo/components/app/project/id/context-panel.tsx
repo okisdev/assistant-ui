@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import {
   FileText,
   Brain,
   ScrollText,
   Trash2,
-  Upload,
   Loader2,
   MoreVertical,
   ExternalLink,
@@ -42,11 +41,9 @@ import {
 } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/utils/trpc/client";
-import {
-  uploadProjectDocument,
-  ACCEPTED_DOCUMENT_TYPES,
-} from "@/lib/adapters/project-document-adapter";
+import { ACCEPTED_DOCUMENT_TYPES } from "@/lib/adapters/project-document-adapter";
 import { cn } from "@/lib/utils";
+import { DocumentPicker, type DocumentPickerResult } from "./document-picker";
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -313,8 +310,7 @@ function MemorySection({ projectId }: { projectId: string }) {
 
 function DocumentsSection({ projectId }: { projectId: string }) {
   const [isOpen, setIsOpen] = useState(true);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const { data: documents, isLoading } = api.project.listDocuments.useQuery({
@@ -340,40 +336,31 @@ function DocumentsSection({ projectId }: { projectId: string }) {
     },
   });
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    setIsUploading(true);
-    const file = files[0];
-
-    try {
-      const result = await uploadProjectDocument(projectId, file);
-
-      await addDocumentMutation.mutateAsync({
-        projectId,
-        name: result.name,
-        url: result.url,
-        pathname: result.pathname,
-        contentType: result.contentType,
-        size: result.size,
-        extractedText: result.extractedText,
-      });
-
-      toast.success("Document uploaded");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to upload document",
-      );
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+  const handleImport = async (docs: DocumentPickerResult[]) => {
+    let successCount = 0;
+    for (const doc of docs) {
+      try {
+        await addDocumentMutation.mutateAsync({
+          projectId,
+          name: doc.name,
+          url: doc.url,
+          pathname: doc.pathname,
+          contentType: doc.contentType,
+          size: doc.size,
+          extractedText: doc.extractedText ?? null,
+        });
+        successCount++;
+      } catch {
+        toast.error(`Failed to add "${doc.name}"`);
       }
+    }
+
+    if (successCount > 0) {
+      toast.success(
+        successCount === 1
+          ? "Document added"
+          : `${successCount} documents added`,
+      );
     }
   };
 
@@ -383,127 +370,123 @@ function DocumentsSection({ projectId }: { projectId: string }) {
   };
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <SectionHeader
-        icon={FileText}
-        title="Documents"
-        count={documents?.length}
-        isOpen={isOpen}
-        onToggle={() => setIsOpen(!isOpen)}
-        action={
-          <>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={ACCEPTED_DOCUMENT_TYPES}
-              onChange={handleFileChange}
-              className="hidden"
-            />
+    <>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <SectionHeader
+          icon={FileText}
+          title="Documents"
+          count={documents?.length}
+          isOpen={isOpen}
+          onToggle={() => setIsOpen(!isOpen)}
+          action={
             <Button
               variant="ghost"
               size="icon"
               className="size-7"
-              onClick={handleUploadClick}
-              disabled={isUploading}
+              onClick={() => setIsPickerOpen(true)}
             >
-              {isUploading ? (
-                <Loader2 className="size-3 animate-spin" />
-              ) : (
-                <Upload className="size-3" />
-              )}
+              <Plus className="size-3" />
             </Button>
-          </>
-        }
-      />
-      <CollapsibleContent>
-        <div className="space-y-2 pb-4">
-          {isLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-14 w-full rounded-lg" />
-              <Skeleton className="h-14 w-full rounded-lg" />
-            </div>
-          ) : documents && documents.length > 0 ? (
-            documents.map((doc) => (
-              <div
-                key={doc.id}
-                className="group flex items-center gap-3 rounded-lg bg-muted/50 p-3"
-              >
-                <div className="flex size-8 shrink-0 items-center justify-center rounded bg-muted/50">
-                  <FileText className="size-4 text-muted-foreground" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm">{doc.name}</p>
-                  <p className="text-muted-foreground text-xs">
-                    {formatFileSize(doc.size)}
-                  </p>
-                </div>
-                <AlertDialog>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                        disabled={deletingId === doc.id}
-                      >
-                        {deletingId === doc.id ? (
-                          <Loader2 className="size-3 animate-spin" />
-                        ) : (
-                          <MoreVertical className="size-3" />
-                        )}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <a
-                          href={doc.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <ExternalLink className="size-4" />
-                          Open
-                        </a>
-                      </DropdownMenuItem>
-                      <AlertDialogTrigger asChild>
-                        <DropdownMenuItem className="text-destructive focus:text-destructive">
-                          <Trash2 className="size-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </AlertDialogTrigger>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete document?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete &quot;{doc.name}&quot; from
-                        the project. The AI will no longer have access to this
-                        document.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => handleDelete(doc.id)}>
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+          }
+        />
+        <CollapsibleContent>
+          <div className="space-y-2 pb-4">
+            {isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-14 w-full rounded-lg" />
+                <Skeleton className="h-14 w-full rounded-lg" />
               </div>
-            ))
-          ) : (
-            <button
-              type="button"
-              onClick={handleUploadClick}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-muted/50 py-6 text-muted-foreground text-sm transition-colors hover:bg-muted"
-            >
-              <Upload className="size-4" />
-              Upload document
-            </button>
-          )}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
+            ) : documents && documents.length > 0 ? (
+              documents.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="group flex items-center gap-3 rounded-lg bg-muted/50 p-3"
+                >
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded bg-muted/50">
+                    <FileText className="size-4 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm">{doc.name}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {formatFileSize(doc.size)}
+                    </p>
+                  </div>
+                  <AlertDialog>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                          disabled={deletingId === doc.id}
+                        >
+                          {deletingId === doc.id ? (
+                            <Loader2 className="size-3 animate-spin" />
+                          ) : (
+                            <MoreVertical className="size-3" />
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <a
+                            href={doc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <ExternalLink className="size-4" />
+                            Open
+                          </a>
+                        </DropdownMenuItem>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem className="text-destructive focus:text-destructive">
+                            <Trash2 className="size-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete document?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete &quot;{doc.name}&quot;
+                          from the project. The AI will no longer have access to
+                          this document.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(doc.id)}>
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              ))
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsPickerOpen(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-muted/50 py-6 text-muted-foreground text-sm transition-colors hover:bg-muted"
+              >
+                <Plus className="size-4" />
+                Add documents
+              </button>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <DocumentPicker
+        open={isPickerOpen}
+        onOpenChange={setIsPickerOpen}
+        projectId={projectId}
+        onImport={handleImport}
+        acceptedTypes={ACCEPTED_DOCUMENT_TYPES}
+      />
+    </>
   );
 }
 

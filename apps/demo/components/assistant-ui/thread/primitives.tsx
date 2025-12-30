@@ -780,9 +780,15 @@ const MessageShareButton: FC = () => {
 };
 
 export const AssistantActionBar: FC = () => {
+  // Only hide action bar when this specific message is running (last message + thread running)
+  const shouldHide = useAssistantState(
+    ({ thread, message }) => message.isLast && thread.isRunning,
+  );
+
+  if (shouldHide) return null;
+
   return (
     <ActionBarPrimitive.Root
-      hideWhenRunning
       autohide="not-last"
       autohideFloat="single-branch"
       className="-ml-1 flex gap-1 text-muted-foreground"

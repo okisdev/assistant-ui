@@ -80,6 +80,7 @@ export const ReasoningToggle: FC<{ className?: string }> = ({ className }) => {
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
+          type="button"
           variant="ghost"
           size="icon-sm"
           onClick={() => setReasoningEnabled(!reasoningEnabled)}

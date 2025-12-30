@@ -2,45 +2,46 @@
 
 import { useAssistantApi } from "@assistant-ui/react";
 import { useEffect, useRef } from "react";
+import { api } from "@/utils/trpc/client";
 
 export function useAutoGenerateTitle() {
-  const api = useAssistantApi();
+  const assistantApi = useAssistantApi();
+  const utils = api.useUtils();
   const generatedThreads = useRef(new Set<string>());
 
   useEffect(() => {
-    const unsubscribe = api.on("thread.run-end", async ({ threadId }) => {
-      try {
-        const threadState = api.thread().getState();
-        const messages = threadState.messages;
+    const unsubscribe = assistantApi.on(
+      "thread.run-end",
+      async ({ threadId }) => {
+        try {
+          const threadState = assistantApi.thread().getState();
+          const messages = threadState.messages;
 
-        // Skip if no threadId or already generated
-        if (!threadId || generatedThreads.current.has(threadId)) return;
-        if (messages.length < 2) return; // Need at least user + assistant message
+          if (!threadId || generatedThreads.current.has(threadId)) return;
+          if (messages.length < 2) return;
 
-        // Check if thread already has a real title
-        const threadItem = api.threads().item({ id: threadId });
-        const currentTitle = threadItem.getState().title;
-        if (currentTitle && currentTitle !== "New Chat") return;
+          const threadItem = assistantApi.threads().item({ id: threadId });
+          const currentTitle = threadItem.getState().title;
+          if (currentTitle && currentTitle !== "New Chat") return;
 
-        generatedThreads.current.add(threadId);
+          generatedThreads.current.add(threadId);
 
-        const response = await fetch("/api/chat/title", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages }),
-        });
+          const { title } = await utils.client.chat.generateTitle.mutate({
+            messages: messages.map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
+          });
 
-        if (!response.ok) return;
-
-        const { title } = await response.json();
-        if (title) {
-          threadItem.rename(title);
+          if (title) {
+            threadItem.rename(title);
+          }
+        } catch (error) {
+          console.error("Failed to generate title:", error);
         }
-      } catch (error) {
-        console.error("Failed to generate title:", error);
-      }
-    });
+      },
+    );
 
     return unsubscribe;
-  }, [api]);
+  }, [assistantApi, utils]);
 }

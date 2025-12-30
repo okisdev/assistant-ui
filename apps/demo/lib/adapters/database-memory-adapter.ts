@@ -16,29 +16,14 @@ export type Memory = {
  * Interface for memory storage adapters.
  */
 export type MemoryStore = {
-  /**
-   * Get all stored memories.
-   */
   getMemories: () => Memory[];
-
-  /**
-   * Add a new memory. Returns the created memory with generated id and createdAt.
-   */
   addMemory: (memory: Omit<Memory, "id" | "createdAt">) => Memory;
-
-  /**
-   * Remove a memory by its ID.
-   */
+  updateMemory: (
+    id: string,
+    updates: Partial<Omit<Memory, "id" | "createdAt">>,
+  ) => void;
   removeMemory: (id: string) => void;
-
-  /**
-   * Clear all memories.
-   */
   clearMemories: () => void;
-
-  /**
-   * Subscribe to memory changes. Returns an unsubscribe function.
-   */
   subscribe: (callback: () => void) => () => void;
 };
 
@@ -83,7 +68,6 @@ export class DatabaseMemoryStore implements MemoryStore {
   };
 
   addMemory = (input: Omit<Memory, "id" | "createdAt">): Memory => {
-    // Optimistically create a local memory
     const tempMemory: Memory = {
       id: `temp-${Date.now()}`,
       content: input.content,
@@ -94,14 +78,12 @@ export class DatabaseMemoryStore implements MemoryStore {
     this.memories = [...this.memories, tempMemory];
     this.notifyListeners();
 
-    // Persist to database
     this.utils.client.memory.create
       .mutate({
         content: input.content,
         category: input.category,
       })
       .then((created) => {
-        // Replace temp memory with real one
         this.memories = this.memories.map((m) =>
           m.id === tempMemory.id ? toMemory(created) : m,
         );
@@ -109,12 +91,52 @@ export class DatabaseMemoryStore implements MemoryStore {
       })
       .catch((error) => {
         console.error("Failed to save memory:", error);
-        // Rollback on error
         this.memories = this.memories.filter((m) => m.id !== tempMemory.id);
         this.notifyListeners();
       });
 
     return tempMemory;
+  };
+
+  updateMemory = (
+    id: string,
+    updates: Partial<Omit<Memory, "id" | "createdAt">>,
+  ): void => {
+    const memoryToUpdate = this.memories.find((m) => m.id === id);
+    if (!memoryToUpdate) return;
+
+    const previousMemory = { ...memoryToUpdate };
+
+    this.memories = this.memories.map((m) =>
+      m.id === id
+        ? {
+            ...m,
+            content: updates.content ?? m.content,
+            category: updates.category ?? m.category,
+          }
+        : m,
+    );
+    this.notifyListeners();
+
+    this.utils.client.memory.update
+      .mutate({
+        id,
+        content: updates.content ?? memoryToUpdate.content,
+        category: updates.category,
+      })
+      .then((updated) => {
+        this.memories = this.memories.map((m) =>
+          m.id === id ? toMemory(updated) : m,
+        );
+        this.notifyListeners();
+      })
+      .catch((error) => {
+        console.error("Failed to update memory:", error);
+        this.memories = this.memories.map((m) =>
+          m.id === id ? previousMemory : m,
+        );
+        this.notifyListeners();
+      });
   };
 
   removeMemory = (id: string): void => {

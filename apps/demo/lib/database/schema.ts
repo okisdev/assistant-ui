@@ -507,3 +507,70 @@ export const userApplication = pgTable(
     ),
   ],
 );
+
+export const generatedImage = pgTable(
+  "generated_image",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    chatId: text("chat_id").references(() => chat.id, { onDelete: "set null" }),
+    url: text("url").notNull(),
+    pathname: text("pathname").notNull(),
+    prompt: text("prompt").notNull(),
+    model: text("model").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("generated_image_userId_idx").on(table.userId),
+    index("generated_image_chatId_idx").on(table.chatId),
+  ],
+);
+
+export type ArtifactType = "html" | "react" | "svg";
+
+export const artifact = pgTable(
+  "artifact",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    chatId: text("chat_id")
+      .notNull()
+      .references(() => chat.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    versionCount: integer("version_count").notNull().default(1),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("artifact_userId_idx").on(table.userId),
+    index("artifact_chatId_idx").on(table.chatId),
+  ],
+);
+
+export const artifactVersion = pgTable(
+  "artifact_version",
+  {
+    id: text("id").primaryKey(),
+    artifactId: text("artifact_id")
+      .notNull()
+      .references(() => artifact.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    content: text("content").notNull(),
+    type: text("type").$type<ArtifactType>().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("artifact_version_artifactId_idx").on(table.artifactId),
+    uniqueIndex("artifact_version_artifactId_version_uidx").on(
+      table.artifactId,
+      table.version,
+    ),
+  ],
+);
