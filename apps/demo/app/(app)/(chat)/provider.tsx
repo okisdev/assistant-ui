@@ -107,7 +107,7 @@ function HistoryProvider({ children }: { children?: ReactNode }) {
   const db: DbReadOperations = useMemo(
     () => ({
       getMessages: async (chatId: string) => {
-        const messages = await utils.chat.getMessages.fetch({ chatId });
+        const messages = await utils.chat.message.list.fetch({ chatId });
         return messages.map((m) => ({
           id: m.id,
           chatId: m.chatId,
@@ -304,14 +304,11 @@ const speechAdapter = new WebSpeechSynthesisAdapter();
 function useCustomChatRuntime() {
   const feedback = useFeedbackAdapter();
   const attachments = useMemo(() => new BlobAttachmentAdapter(), []);
-  const api = useAssistantApi();
+  const assistantApi = useAssistantApi();
   const id = useAssistantState(({ threadListItem }) => threadListItem.id);
   const prevIdRef = useRef<string | undefined>(undefined);
 
-  useEffect(() => {
-    modelTransport.setInitializeThread(() => api.threadListItem().initialize());
-    return () => modelTransport.setInitializeThread(null);
-  }, [api]);
+  modelTransport.setAssistantApi(assistantApi);
 
   useEffect(() => {
     if (prevIdRef.current !== undefined && prevIdRef.current !== id) {
@@ -579,18 +576,27 @@ function ToolsProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    if (!capabilities.tools.artifacts) return;
-    return assistantApi.modelContext().register({
-      getModelContext: () => ({ tools: { create_artifact: artifactTool } }),
-    });
-  }, [assistantApi, artifactTool, capabilities.tools.artifacts]);
+    const tools: Record<string, typeof artifactTool | typeof imageTool> = {};
 
-  useEffect(() => {
-    if (!capabilities.tools.imageGeneration) return;
+    if (capabilities.tools.artifacts) {
+      tools.create_artifact = artifactTool;
+    }
+    if (capabilities.tools.imageGeneration) {
+      tools.generate_image = imageTool;
+    }
+
+    if (Object.keys(tools).length === 0) return;
+
     return assistantApi.modelContext().register({
-      getModelContext: () => ({ tools: { generate_image: imageTool } }),
+      getModelContext: () => ({ tools }),
     });
-  }, [assistantApi, imageTool, capabilities.tools.imageGeneration]);
+  }, [
+    assistantApi,
+    artifactTool,
+    imageTool,
+    capabilities.tools.artifacts,
+    capabilities.tools.imageGeneration,
+  ]);
 
   return (
     <>
@@ -652,6 +658,10 @@ function ComposerContextBinding({ children }: { children: ReactNode }) {
 function ChatProviderInner({ children }: { children: ReactNode }) {
   const { isIncognito } = useIncognito();
   const { selectedProjectId } = useNavigation();
+
+  useEffect(() => {
+    modelTransport.isIncognito = isIncognito;
+  }, [isIncognito]);
 
   const databaseAdapter = useDatabaseThreadListAdapter(selectedProjectId);
   const incognitoAdapter = useIncognitoThreadListAdapter();

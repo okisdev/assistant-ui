@@ -12,7 +12,7 @@ import {
   project,
 } from "@/lib/database/schema";
 import { getBuiltinApp } from "@/lib/integrations/apps";
-import { ensureValidScopeToken } from "@/lib/integrations/token-refresh";
+import { ensureValidScopeToken } from "@/server/routers/apps/utils";
 import {
   listFiles,
   searchFiles,
@@ -103,6 +103,7 @@ async function getGoogleDriveAccessToken(
   }
 
   const validToken = await ensureValidScopeToken(
+    db,
     providerAccount.id,
     appDef.connection.provider,
     providerAccount.accessToken,

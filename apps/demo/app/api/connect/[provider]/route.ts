@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import {
   buildAuthorizationUrl,
   getOAuthConfig,
@@ -11,35 +11,33 @@ const OAUTH_STATE_COOKIE = "app_oauth_state";
 const OAUTH_PROVIDER_COOKIE = "app_oauth_provider";
 
 export async function GET(
-  request: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ provider: string }> },
 ) {
   const { provider } = await params;
 
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  });
+  const session = await getSession();
 
   if (!session?.user?.id) {
-    const signInUrl = new URL("/sign-in", request.url);
-    signInUrl.searchParams.set("callbackUrl", request.nextUrl.pathname);
+    const signInUrl = new URL("/sign-in", req.url);
+    signInUrl.searchParams.set("callbackUrl", req.nextUrl.pathname);
     return NextResponse.redirect(signInUrl);
   }
 
   const config = getOAuthConfig(provider);
   if (!config) {
-    return redirectWithError(request, `Unknown provider: ${provider}`);
+    return redirectWithError(req, `Unknown provider: ${provider}`);
   }
 
   const state = crypto.randomUUID();
   const redirectUri = new URL(
     `/api/connect/${provider}/callback`,
-    request.url,
+    req.url,
   ).toString();
 
   const authUrl = buildAuthorizationUrl(provider, redirectUri, state);
   if (!authUrl) {
-    return redirectWithError(request, `OAuth not configured for ${provider}`);
+    return redirectWithError(req, `OAuth not configured for ${provider}`);
   }
 
   const cookieStore = await cookies();
@@ -59,8 +57,8 @@ export async function GET(
   return NextResponse.redirect(authUrl);
 }
 
-function redirectWithError(request: NextRequest, error: string): NextResponse {
-  const url = new URL("/apps", request.url);
+function redirectWithError(req: NextRequest, error: string): NextResponse {
+  const url = new URL("/apps", req.url);
   url.searchParams.set("error", error);
   return NextResponse.redirect(url);
 }

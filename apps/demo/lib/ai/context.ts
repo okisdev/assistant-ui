@@ -1,8 +1,10 @@
 import type { ResolvedUserCapabilities } from "@/lib/database/types";
+import type { ConnectedApp } from "@/server/routers/apps/application";
 import { api } from "@/utils/trpc/server";
-import { getConnectedApps, type ConnectedApp } from "./apps-context";
 import { DEFAULT_CAPABILITIES } from "./capabilities";
 import { isValidModelId, DEFAULT_MODEL_ID } from "./models";
+
+export type { ConnectedApp };
 
 export type UserProfile = {
   name: string;
@@ -68,7 +70,7 @@ export async function getChatContext(
         : [],
       projectId ? api.project.get({ id: projectId }) : null,
       projectId ? api.project.getDocumentsWithContent({ projectId }) : [],
-      getConnectedApps(profile.id),
+      api.apps.application.getConnectedApps(),
     ]);
 
   const projectContext: ProjectContext | null =

@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { api } from "@/utils/trpc/server";
 
 export const runtime = "nodejs";
@@ -9,27 +9,25 @@ export const runtime = "nodejs";
 const OAUTH_STATE_COOKIE = "mcp_oauth_state";
 const OAUTH_SERVER_ID_COOKIE = "mcp_oauth_server_id";
 
-export async function GET(request: NextRequest) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  });
+export async function GET(req: NextRequest) {
+  const session = await getSession();
 
   if (!session) {
-    return redirectWithError(request, "Unauthorized");
+    return redirectWithError(req, "Unauthorized");
   }
 
-  const searchParams = request.nextUrl.searchParams;
+  const searchParams = req.nextUrl.searchParams;
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
   if (error) {
-    return redirectWithError(request, errorDescription ?? error);
+    return redirectWithError(req, errorDescription ?? error);
   }
 
   if (!code || !state) {
-    return redirectWithError(request, "Missing code or state parameter");
+    return redirectWithError(req, "Missing code or state parameter");
   }
 
   const cookieStore = await cookies();
@@ -40,14 +38,14 @@ export async function GET(request: NextRequest) {
   cookieStore.delete(OAUTH_SERVER_ID_COOKIE);
 
   if (!storedState || storedState !== state) {
-    return redirectWithError(request, "Invalid state parameter");
+    return redirectWithError(req, "Invalid state parameter");
   }
 
   if (!serverId) {
-    return redirectWithError(request, "Missing server ID");
+    return redirectWithError(req, "Missing server ID");
   }
 
-  const callbackUrl = new URL("/api/mcp/oauth/callback", request.url);
+  const callbackUrl = new URL("/api/mcp/oauth/callback", req.url);
   const redirectUri = callbackUrl.toString();
 
   try {
@@ -57,23 +55,23 @@ export async function GET(request: NextRequest) {
       redirectUri,
     });
 
-    return redirectWithSuccess(request);
+    return redirectWithSuccess(req);
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Token exchange failed";
     console.error("OAuth callback error:", message);
-    return redirectWithError(request, message);
+    return redirectWithError(req, message);
   }
 }
 
-function redirectWithError(request: NextRequest, error: string): NextResponse {
-  const url = new URL("/integrations", request.url);
+function redirectWithError(req: NextRequest, error: string): NextResponse {
+  const url = new URL("/integrations", req.url);
   url.searchParams.set("oauth_error", error);
   return NextResponse.redirect(url);
 }
 
-function redirectWithSuccess(request: NextRequest): NextResponse {
-  const url = new URL("/integrations", request.url);
+function redirectWithSuccess(req: NextRequest): NextResponse {
+  const url = new URL("/integrations", req.url);
   url.searchParams.set("oauth_success", "true");
   return NextResponse.redirect(url);
 }

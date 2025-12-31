@@ -1,12 +1,14 @@
-import { put } from "@vercel/blob";
 import { nanoid } from "nanoid";
+import { put } from "@vercel/blob";
+
 import { api } from "@/utils/trpc/server";
-import { getAuthenticatedUser, unauthorizedResponse } from "@/lib/api/auth";
+import { getSession } from "@/lib/auth";
+import { AUIError } from "@/lib/error";
 
 export async function POST(req: Request) {
-  const user = await getAuthenticatedUser();
-  if (!user) {
-    return unauthorizedResponse();
+  const session = await getSession();
+  if (!session?.user) {
+    return AUIError.unauthorized().toResponse();
   }
 
   const formData = await req.formData();
@@ -14,20 +16,20 @@ export async function POST(req: Request) {
   const projectId = formData.get("projectId") as string | null;
 
   if (!file) {
-    return Response.json({ error: "No file provided" }, { status: 400 });
+    return AUIError.badRequest("No file provided").toResponse();
   }
 
   if (!projectId) {
-    return Response.json({ error: "No project ID provided" }, { status: 400 });
+    return AUIError.badRequest("No project ID provided").toResponse();
   }
 
   const projectData = await api.project.get({ id: projectId });
   if (!projectData) {
-    return Response.json({ error: "Project not found" }, { status: 404 });
+    return AUIError.notFound("Project not found").toResponse();
   }
 
   const id = nanoid();
-  const pathname = `project-documents/${user.id}/${projectId}/${id}/${file.name}`;
+  const pathname = `project-documents/${session.user.id}/${projectId}/${id}/${file.name}`;
 
   const blob = await put(pathname, file, {
     access: "public",

@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import { AppLayout } from "@/components/shared/app-layout";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Metadata } from "next";
+
+import { getSession } from "@/lib/auth";
+import { AppLayout } from "@/components/shared/app-layout";
 
 export const metadata: Metadata = {
   title: "Apps",
@@ -14,9 +14,7 @@ export default async function AppsLayout({
 }: {
   children: ReactNode;
 }) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await getSession();
 
   if (!session) {
     return redirect("/auth");

@@ -66,7 +66,7 @@ export function useSyncFeedback() {
       if (unsynced.length === 0) return;
 
       try {
-        const dbMessages = await utils.chat.getMessages.fetch({ chatId });
+        const dbMessages = await utils.chat.message.list.fetch({ chatId });
 
         const feedbackMap = new Map<string, "positive" | "negative">();
         for (const m of dbMessages) {

@@ -3,13 +3,15 @@ import { openai } from "@ai-sdk/openai";
 import { xai } from "@ai-sdk/xai";
 import { put } from "@vercel/blob";
 import { nanoid } from "nanoid";
+
 import {
   DEFAULT_IMAGE_MODEL_ID,
   getImageModelById,
   type ImageModelId,
 } from "@/lib/ai/models";
 import { api } from "@/utils/trpc/server";
-import { getAuthenticatedUser, unauthorizedResponse } from "@/lib/api/auth";
+import { getSession } from "@/lib/auth";
+import { AUIError } from "@/lib/error";
 
 export const maxDuration = 60;
 
@@ -56,9 +58,9 @@ async function resolveImageModel(
 }
 
 export async function POST(req: Request) {
-  const user = await getAuthenticatedUser();
-  if (!user) {
-    return unauthorizedResponse();
+  const session = await getSession();
+  if (!session?.user) {
+    return AUIError.unauthorized().toResponse();
   }
 
   try {
@@ -71,10 +73,7 @@ export async function POST(req: Request) {
     const modelId = await resolveImageModel(requestModel);
 
     if (!prompt || typeof prompt !== "string") {
-      return Response.json(
-        { error: "Invalid prompt provided" },
-        { status: 400 },
-      );
+      return AUIError.badRequest("Invalid prompt provided").toResponse();
     }
 
     const modelDef = getImageModelById(modelId);
@@ -123,11 +122,11 @@ export async function POST(req: Request) {
       model: modelId,
     });
   } catch (error) {
-    console.error("Image generation error:", error);
-
     const errorMessage =
       error instanceof Error ? error.message : "Failed to generate image";
 
-    return Response.json({ error: errorMessage }, { status: 500 });
+    console.error("Image generation error:", errorMessage);
+
+    return AUIError.internal(errorMessage).toResponse();
   }
 }

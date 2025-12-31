@@ -1,4 +1,4 @@
-import { ApiError } from "@/lib/error";
+import { AUIError } from "@/lib/error";
 import { redis } from "@/lib/redis";
 
 type RateLimitOptions = {
@@ -67,7 +67,7 @@ class RateLimiter {
     const result = await this.check(identifier);
     if (!result.success) {
       const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000);
-      throw ApiError.rateLimit(
+      throw AUIError.rateLimit(
         `Rate limit exceeded. Retry after ${retryAfter}s`,
       );
     }

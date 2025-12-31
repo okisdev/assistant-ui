@@ -37,14 +37,14 @@ export class AppError extends Error {
   }
 }
 
-export class ApiError extends Error {
+export class AUIError extends Error {
   constructor(
     public readonly status: HttpStatus,
     message?: string,
     options?: ErrorOptions,
   ) {
     super(message ?? DEFAULT_MESSAGES[status], options);
-    this.name = "ApiError";
+    this.name = "AUIError";
   }
 
   toResponse(): Response {
@@ -52,32 +52,32 @@ export class ApiError extends Error {
   }
 
   static unauthorized(message?: string) {
-    return new ApiError(401, message);
+    return new AUIError(401, message);
   }
 
   static forbidden(message?: string) {
-    return new ApiError(403, message);
+    return new AUIError(403, message);
   }
 
   static badRequest(message?: string) {
-    return new ApiError(400, message);
+    return new AUIError(400, message);
   }
 
   static notFound(message?: string) {
-    return new ApiError(404, message);
+    return new AUIError(404, message);
   }
 
   static rateLimit(message?: string) {
-    return new ApiError(429, message);
+    return new AUIError(429, message);
   }
 
   static internal(message?: string, cause?: unknown) {
-    return new ApiError(500, message, { cause });
+    return new AUIError(500, message, { cause });
   }
 }
 
-export function handleApiError(error: unknown): Response {
-  if (error instanceof ApiError) {
+export function handleAUIError(error: unknown): Response {
+  if (error instanceof AUIError) {
     return error.toResponse();
   }
 
@@ -86,12 +86,12 @@ export function handleApiError(error: unknown): Response {
 
     if (isInternal) {
       console.error(`[${error.source}]`, error.message, error.cause ?? "");
-      return ApiError.internal().toResponse();
+      return AUIError.internal().toResponse();
     }
 
-    return ApiError.badRequest(error.message).toResponse();
+    return AUIError.badRequest(error.message).toResponse();
   }
 
   console.error("[unknown]", error);
-  return ApiError.internal().toResponse();
+  return AUIError.internal().toResponse();
 }

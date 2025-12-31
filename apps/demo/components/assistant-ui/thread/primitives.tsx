@@ -860,7 +860,7 @@ export const UserMessage: FC = () => {
         <div className="rounded-2xl bg-muted px-4 py-2.5 text-foreground">
           <MessagePrimitive.Parts />
         </div>
-        <div className="absolute right-0 -bottom-2 flex translate-y-full items-center opacity-0 transition-opacity group-hover/user:opacity-100 data-floating:opacity-100">
+        <div className="absolute right-0 -bottom-2 flex min-w-max translate-y-full items-center justify-end opacity-0 transition-opacity group-hover/user:opacity-100 data-floating:opacity-100">
           <BranchPicker />
           <UserActionBar />
         </div>

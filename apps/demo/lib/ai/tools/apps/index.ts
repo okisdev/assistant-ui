@@ -1,5 +1,5 @@
 import type { ToolSet } from "ai";
-import type { ConnectedApp } from "@/lib/ai/apps-context";
+import type { ConnectedApp } from "@/lib/ai/context";
 import { createGoogleCalendarTools } from "./google-calendar";
 import { createGoogleDriveTools } from "./google-drive";
 import { createGoogleHotelsTools } from "./google-hotels";

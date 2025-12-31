@@ -1,25 +1,22 @@
 import { AssistantChatTransport } from "@assistant-ui/react-ai-sdk";
-import type { AssistantRuntime } from "@assistant-ui/react";
+import type { AssistantRuntime, AssistantApi } from "@assistant-ui/react";
 import type { HttpChatTransportInitOptions, UIMessage } from "ai";
 import type { MessageTiming } from "@/types/message";
 import type { ComposerMode } from "@/contexts/composer-state-provider";
-
-type InitializeThreadFn = () => Promise<{
-  remoteId: string;
-  externalId: string | undefined;
-}>;
+import { debug } from "@/lib/debug";
 
 export class ModelChatTransport<
   UI_MESSAGE extends UIMessage = UIMessage,
 > extends AssistantChatTransport<UI_MESSAGE> {
   private runtimeRef: AssistantRuntime | undefined;
+  private _assistantApi: AssistantApi | undefined;
   private _reasoningEnabled = true;
   private _composerMode: ComposerMode = "default";
   private _selectedAppIds: string[] = [];
+  private _isIncognito = false;
   private _onComposerModeReset: (() => void) | null = null;
   private _timings: Record<string, MessageTiming> = {};
   private _timingListeners: Set<() => void> = new Set();
-  private _initializeThread: InitializeThreadFn | null = null;
 
   constructor(initOptions?: HttpChatTransportInitOptions<UI_MESSAGE>) {
     super({
@@ -27,15 +24,16 @@ export class ModelChatTransport<
       prepareSendMessagesRequest: async (options) => {
         const context = this.runtimeRef?.thread.getModelContext();
 
-        let id: string;
-        if (this._initializeThread) {
-          const result = await this._initializeThread();
-          id = result.remoteId;
-        } else {
-          id =
-            (await this.runtimeRef?.threads.mainItem.initialize())?.remoteId ??
-            options.id;
-        }
+        const initResult = await this._assistantApi
+          ?.threadListItem()
+          .initialize();
+        const id = initResult?.remoteId ?? options.id;
+
+        debug.transport("prepareSendMessagesRequest", {
+          optionsId: options.id,
+          initResultRemoteId: initResult?.remoteId,
+          finalId: id,
+        });
 
         const optionsEx = {
           ...options,
@@ -44,6 +42,7 @@ export class ModelChatTransport<
             reasoningEnabled: this._reasoningEnabled,
             composerMode: this._composerMode,
             selectedAppIds: this._selectedAppIds,
+            isIncognito: this._isIncognito,
             ...options?.body,
           },
         };
@@ -97,12 +96,20 @@ export class ModelChatTransport<
     this._selectedAppIds = value;
   }
 
+  get isIncognito(): boolean {
+    return this._isIncognito;
+  }
+
+  set isIncognito(value: boolean) {
+    this._isIncognito = value;
+  }
+
   setOnComposerModeReset(callback: (() => void) | null): void {
     this._onComposerModeReset = callback;
   }
 
-  setInitializeThread(fn: InitializeThreadFn | null): void {
-    this._initializeThread = fn;
+  setAssistantApi(api: AssistantApi): void {
+    this._assistantApi = api;
   }
 
   override setRuntime(runtime: AssistantRuntime) {

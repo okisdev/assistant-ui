@@ -1,6 +1,4 @@
-import { headers } from "next/headers";
-
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { ChatUI } from "./provider";
 
 export default async function ChatLayout({
@@ -8,9 +6,7 @@ export default async function ChatLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await getSession();
 
   if (session?.user) {
     return (

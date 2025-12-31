@@ -20,18 +20,19 @@ import { deleteMemoryTool } from "@/lib/ai/tools/delete-memory";
 import { createArtifactTool } from "@/lib/ai/tools/create-artifact";
 import { generateImageTool } from "@/lib/ai/tools/generate-image";
 import { getAppTools } from "@/lib/ai/tools/apps";
-import { recordUsage } from "@/lib/ai/usage";
 import { getMCPTools, closeMCPClients } from "@/lib/ai/mcp";
-import { api } from "@/utils/trpc/server";
-import { getAuthenticatedUser, unauthorizedResponse } from "@/lib/api/auth";
+import { getSession } from "@/lib/auth";
 import type { ComposerMode } from "@/contexts/composer-state-provider";
+import { AUIError } from "@/lib/error";
+import { debug } from "@/lib/debug";
+import { api } from "@/utils/trpc/server";
 
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
-  const user = await getAuthenticatedUser();
-  if (!user) {
-    return unauthorizedResponse();
+  const session = await getSession();
+  if (!session?.user) {
+    return AUIError.unauthorized().toResponse();
   }
 
   const {
@@ -41,6 +42,7 @@ export async function POST(req: Request) {
     reasoningEnabled = true,
     composerMode = "default" as ComposerMode,
     selectedAppIds = [] as string[],
+    isIncognito = false,
   } = await req.json();
 
   const [contextResult, mcpResult] = await Promise.all([
@@ -85,6 +87,53 @@ export async function POST(req: Request) {
     ? buildSystemPrompt(ctx, mcpToolInfos, selectedAppIds)
     : "";
 
+  // Save user message immediately for data safety
+  debug.chat("Save user message check", {
+    isIncognito,
+    id,
+    validChatId: getValidChatId(id),
+    messagesLength: messages.length,
+    lastMessageRole: messages[messages.length - 1]?.role,
+  });
+
+  if (!isIncognito) {
+    const validChatId = getValidChatId(id);
+    if (validChatId && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.role === "user") {
+        // Compute parentId from the messages array
+        const parentId =
+          messages.length > 1
+            ? (messages[messages.length - 2]?.id ?? null)
+            : null;
+        debug.chat("Saving user message", {
+          chatId: validChatId,
+          messageId: lastMessage.id,
+          parentId,
+          parts: lastMessage.parts,
+        });
+        api.chat.message
+          .save({
+            chatId: validChatId,
+            messages: [
+              {
+                id: lastMessage.id,
+                parentId,
+                role: lastMessage.role,
+                parts: lastMessage.parts,
+              },
+            ],
+          })
+          .then((result) => {
+            debug.chat.success("User message saved", result);
+          })
+          .catch((error) => {
+            debug.chat.error("Failed to save user message", error);
+          });
+      }
+    }
+  }
+
   const result = streamText({
     model: getModel(modelId),
     messages: convertToModelMessages(messages),
@@ -100,21 +149,21 @@ export async function POST(req: Request) {
       await closeMCPClients(mcpClients);
 
       if (ctx?.userId && usage) {
-        const validChatId =
-          id && !id.includes("DEFAULT") && !id.includes("THREAD") ? id : null;
+        const validChatId = getValidChatId(id);
 
-        recordUsage({
-          userId: ctx.userId,
-          chatId: validChatId,
-          modelId,
-          inputTokens: usage.inputTokens ?? 0,
-          outputTokens: usage.outputTokens ?? 0,
-          reasoningTokens: usage.reasoningTokens,
-          totalTokens: usage.totalTokens ?? 0,
-          finishReason,
-        }).catch((error) => {
-          console.error("Failed to record usage:", error);
-        });
+        api.usage
+          .record({
+            chatId: validChatId,
+            modelId,
+            inputTokens: usage.inputTokens ?? 0,
+            outputTokens: usage.outputTokens ?? 0,
+            reasoningTokens: usage.reasoningTokens,
+            totalTokens: usage.totalTokens ?? 0,
+            finishReason,
+          })
+          .catch((error) => {
+            console.error("Failed to record usage:", error);
+          });
       }
     },
     onError: ({ error }) => {
@@ -129,24 +178,46 @@ export async function POST(req: Request) {
     originalMessages: messages,
     generateMessageId: () => nanoid(),
     onFinish: async ({ messages: allMessages }) => {
-      if (id && !id.includes("incognito")) {
-        const validChatId =
-          id && !id.includes("DEFAULT") && !id.includes("THREAD") ? id : null;
+      debug.chat("onFinish called", {
+        isIncognito,
+        id,
+        validChatId: getValidChatId(id),
+        allMessagesCount: allMessages.length,
+        allMessages: allMessages.map((m) => ({
+          id: m.id,
+          role: m.role,
+          partsCount: m.parts?.length,
+        })),
+      });
+
+      if (!isIncognito) {
+        const validChatId = getValidChatId(id);
 
         if (validChatId) {
           try {
-            await api.chat.saveMessages({
+            const messagesToSave = allMessages.map((m, idx) => ({
+              id: m.id,
+              parentId: idx > 0 ? (allMessages[idx - 1]?.id ?? null) : null,
+              role: m.role,
+              parts: m.parts,
+            }));
+            debug.chat("Saving messages", {
               chatId: validChatId,
-              messages: allMessages.map((m) => ({
-                id: m.id,
-                role: m.role,
-                parts: m.parts,
-              })),
+              messagesCount: messagesToSave.length,
             });
+            const result = await api.chat.message.save({
+              chatId: validChatId,
+              messages: messagesToSave,
+            });
+            debug.chat.success("messages saved", result);
           } catch (error) {
-            console.error("Failed to save messages:", error);
+            debug.chat.error("Failed to save messages", error);
           }
+        } else {
+          debug.chat.warn("Skipping save - no valid chatId");
         }
+      } else {
+        debug.chat.info("Skipping save - incognito mode");
       }
     },
     headers: {
@@ -195,6 +266,12 @@ function buildProviderOptions(
   }
 
   return undefined;
+}
+
+function getValidChatId(id: string | undefined): string | null {
+  if (!id) return null;
+  if (id.includes("DEFAULT") || id.includes("THREAD")) return null;
+  return id;
 }
 
 function buildTools(

@@ -1,25 +1,27 @@
 import { put } from "@vercel/blob";
 import { nanoid } from "nanoid";
+
 import { api } from "@/utils/trpc/server";
-import { getAuthenticatedUser, unauthorizedResponse } from "@/lib/api/auth";
+import { getSession } from "@/lib/auth";
+import { AUIError } from "@/lib/error";
 
 export async function POST(req: Request) {
-  const user = await getAuthenticatedUser();
-  if (!user) {
-    return unauthorizedResponse();
+  const session = await getSession();
+  if (!session?.user) {
+    return AUIError.unauthorized().toResponse();
   }
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
 
   if (!file) {
-    return Response.json({ error: "No file provided" }, { status: 400 });
+    return AUIError.badRequest("No file provided").toResponse();
   }
 
   const chatId = formData.get("chatId") as string | null;
 
   const id = nanoid();
-  const pathname = `attachments/${user.id}/${id}/${file.name}`;
+  const pathname = `attachments/${session.user.id}/${id}/${file.name}`;
 
   const blob = await put(pathname, file, {
     access: "public",

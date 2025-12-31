@@ -1,15 +1,9 @@
 import { z } from "zod";
-import { eq, desc, and, isNull, isNotNull, inArray, sql } from "drizzle-orm";
+import { eq, desc, and, isNull, isNotNull, inArray, lt, or } from "drizzle-orm";
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 
-import {
-  chat,
-  chatMessage,
-  chatVote,
-  share,
-  project,
-} from "@/lib/database/schema";
+import { chat, share, project } from "@/lib/database/schema";
 import {
   AVAILABLE_MODELS,
   isDeprecatedModel,
@@ -17,6 +11,7 @@ import {
 } from "@/lib/ai/models";
 import { protectedProcedure, createTRPCRouter } from "../../trpc";
 import { voteRouter } from "./vote";
+import { messageRouter } from "./message";
 
 const modelIdSchema = z.enum(
   AVAILABLE_MODELS.map((m) => m.id) as [ModelId, ...ModelId[]],
@@ -47,6 +42,7 @@ async function verifyProjectOwnership(
 
 export const chatRouter = createTRPCRouter({
   vote: voteRouter,
+  message: messageRouter,
 
   list: protectedProcedure
     .input(
@@ -84,7 +80,10 @@ export const chatRouter = createTRPCRouter({
         if (cursorChat[0]) {
           const cursorDate = cursorChat[0].updatedAt;
           conditions.push(
-            sql`(${chat.updatedAt} < ${cursorDate} OR (${chat.updatedAt} = ${cursorDate} AND ${chat.id} < ${cursor}))`,
+            or(
+              lt(chat.updatedAt, cursorDate),
+              and(eq(chat.updatedAt, cursorDate), lt(chat.id, cursor)),
+            )!,
           );
         }
       }
@@ -228,175 +227,6 @@ export const chatRouter = createTRPCRouter({
         .limit(1);
 
       return result[0] ?? null;
-    }),
-
-  getMessages: protectedProcedure
-    .input(z.object({ chatId: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const chatResult = await ctx.db
-        .select({ id: chat.id })
-        .from(chat)
-        .where(
-          and(eq(chat.id, input.chatId), eq(chat.userId, ctx.session.user.id)),
-        )
-        .limit(1);
-
-      if (!chatResult[0]) {
-        return [];
-      }
-
-      const [messages, votes] = await Promise.all([
-        ctx.db
-          .select({
-            id: chatMessage.id,
-            chatId: chatMessage.chatId,
-            parentId: chatMessage.parentId,
-            role: chatMessage.role,
-            format: chatMessage.format,
-            content: chatMessage.content,
-            status: chatMessage.status,
-            metadata: chatMessage.metadata,
-            createdAt: chatMessage.createdAt,
-          })
-          .from(chatMessage)
-          .where(eq(chatMessage.chatId, input.chatId))
-          .orderBy(chatMessage.createdAt),
-        ctx.db
-          .select({
-            messageId: chatVote.messageId,
-            type: chatVote.type,
-          })
-          .from(chatVote)
-          .where(
-            and(
-              eq(chatVote.chatId, input.chatId),
-              eq(chatVote.userId, ctx.session.user.id),
-            ),
-          ),
-      ]);
-
-      const voteMap = Object.fromEntries(
-        votes.map((v) => [v.messageId, v.type]),
-      );
-
-      return messages.map((m) => {
-        const voteType = voteMap[m.id];
-        if (!voteType) return m;
-
-        const metadata = m.metadata as Record<string, unknown> | null;
-        return {
-          ...m,
-          metadata: { ...metadata, submittedFeedback: { type: voteType } },
-        };
-      });
-    }),
-
-  createMessage: protectedProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        chatId: z.string(),
-        parentId: z.string().nullable(),
-        role: z.string().optional(),
-        format: z.string().optional(),
-        content: z.unknown(),
-        status: z.unknown().optional(),
-        metadata: z.unknown().optional(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const chatResult = await ctx.db
-        .select({ id: chat.id })
-        .from(chat)
-        .where(
-          and(eq(chat.id, input.chatId), eq(chat.userId, ctx.session.user.id)),
-        )
-        .limit(1);
-
-      if (!chatResult[0]) {
-        throw new Error("Chat not found");
-      }
-
-      await ctx.db.insert(chatMessage).values({
-        id: input.id,
-        chatId: input.chatId,
-        parentId: input.parentId,
-        role: input.role,
-        format: input.format ?? "aui/v0",
-        content: input.content,
-        status: input.status,
-        metadata: input.metadata,
-      });
-
-      return { id: input.id };
-    }),
-
-  saveMessages: protectedProcedure
-    .input(
-      z.object({
-        chatId: z.string(),
-        messages: z.array(
-          z.object({
-            id: z.string(),
-            role: z.string(),
-            parts: z.unknown(),
-          }),
-        ),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const chatResult = await ctx.db
-        .select({ id: chat.id })
-        .from(chat)
-        .where(
-          and(eq(chat.id, input.chatId), eq(chat.userId, ctx.session.user.id)),
-        )
-        .limit(1);
-
-      if (!chatResult[0]) {
-        return { saved: 0 };
-      }
-
-      const existing = await ctx.db
-        .select({ id: chatMessage.id })
-        .from(chatMessage)
-        .where(eq(chatMessage.chatId, input.chatId));
-
-      const persistedIds = new Set(existing.map((m) => m.id));
-      const newMessages = input.messages.filter((m) => !persistedIds.has(m.id));
-
-      if (newMessages.length === 0) {
-        return { saved: 0 };
-      }
-
-      let lastParentId: string | null = null;
-      for (const msg of input.messages) {
-        if (persistedIds.has(msg.id)) {
-          lastParentId = msg.id;
-        }
-      }
-
-      const messagesToInsert = newMessages.map((msg) => {
-        const parentId = lastParentId;
-        lastParentId = msg.id;
-        return {
-          id: msg.id,
-          chatId: input.chatId,
-          parentId,
-          role: msg.role,
-          format: "ai-sdk/v5",
-          content: {
-            role: msg.role,
-            parts: msg.parts,
-          },
-          status: undefined,
-          metadata: undefined,
-        };
-      });
-
-      await ctx.db.insert(chatMessage).values(messagesToInsert);
-
-      return { saved: newMessages.length };
     }),
 
   listArchived: protectedProcedure.query(async ({ ctx }) => {

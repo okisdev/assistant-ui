@@ -2,7 +2,18 @@ import { z } from "zod";
 import { eq, sql, and, gte, lte, desc } from "drizzle-orm";
 
 import { usage } from "@/lib/database/schema";
+import { calculateCost } from "@/lib/ai/utils";
 import { protectedProcedure, createTRPCRouter } from "../trpc";
+
+const finishReasonSchema = z.enum([
+  "stop",
+  "length",
+  "content-filter",
+  "tool-calls",
+  "error",
+  "other",
+  "unknown",
+]);
 
 const timeRangeSchema = z
   .enum(["today", "week", "month", "all"])
@@ -39,6 +50,41 @@ function getDateRange(timeRange: z.infer<typeof timeRangeSchema>): {
 }
 
 export const usageRouter = createTRPCRouter({
+  record: protectedProcedure
+    .input(
+      z.object({
+        chatId: z.string().nullable(),
+        messageId: z.string().optional(),
+        modelId: z.string(),
+        inputTokens: z.number(),
+        outputTokens: z.number(),
+        reasoningTokens: z.number().optional(),
+        totalTokens: z.number(),
+        finishReason: finishReasonSchema.optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const estimatedCost = calculateCost(
+        input.modelId,
+        input.inputTokens,
+        input.outputTokens,
+      );
+
+      await ctx.db.insert(usage).values({
+        id: crypto.randomUUID(),
+        userId: ctx.session.user.id,
+        chatId: input.chatId,
+        messageId: input.messageId,
+        modelId: input.modelId,
+        inputTokens: input.inputTokens,
+        outputTokens: input.outputTokens,
+        reasoningTokens: input.reasoningTokens ?? null,
+        totalTokens: input.totalTokens,
+        estimatedCost,
+        finishReason: input.finishReason ?? null,
+      });
+    }),
+
   getStats: protectedProcedure
     .input(z.object({ timeRange: timeRangeSchema }).optional())
     .query(async ({ ctx, input }) => {

@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import {
   exchangeCodeForToken,
   extractProviderMetadata,
@@ -13,31 +13,29 @@ const OAUTH_STATE_COOKIE = "app_oauth_state";
 const OAUTH_PROVIDER_COOKIE = "app_oauth_provider";
 
 export async function GET(
-  request: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ provider: string }> },
 ) {
   const { provider } = await params;
 
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  });
+  const session = await getSession();
 
   if (!session?.user?.id) {
-    return redirectWithError(request, "Session expired");
+    return redirectWithError(req, "Session expired");
   }
 
-  const searchParams = request.nextUrl.searchParams;
+  const searchParams = req.nextUrl.searchParams;
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
   if (error) {
-    return redirectWithError(request, errorDescription ?? error);
+    return redirectWithError(req, errorDescription ?? error);
   }
 
   if (!code || !state) {
-    return redirectWithError(request, "Missing code or state parameter");
+    return redirectWithError(req, "Missing code or state parameter");
   }
 
   const cookieStore = await cookies();
@@ -48,30 +46,26 @@ export async function GET(
   cookieStore.delete(OAUTH_PROVIDER_COOKIE);
 
   if (!storedState || storedState !== state) {
-    return redirectWithError(request, "Invalid state parameter");
+    return redirectWithError(req, "Invalid state parameter");
   }
 
   if (!storedProvider || storedProvider !== provider) {
-    return redirectWithError(request, "Provider mismatch");
+    return redirectWithError(req, "Provider mismatch");
   }
 
   const app = getBuiltinAppByProvider(provider);
   if (!app) {
-    return redirectWithError(request, `Unknown provider: ${provider}`);
+    return redirectWithError(req, `Unknown provider: ${provider}`);
   }
 
   const redirectUri = new URL(
     `/api/connect/${provider}/callback`,
-    request.url,
+    req.url,
   ).toString();
 
   const tokenResponse = await exchangeCodeForToken(provider, code, redirectUri);
   if (!tokenResponse?.access_token) {
-    return redirectWithError(
-      request,
-      "Failed to obtain access token",
-      app.slug,
-    );
+    return redirectWithError(req, "Failed to obtain access token", app.slug);
   }
 
   const { externalId, externalName, metadata } = extractProviderMetadata(
@@ -94,27 +88,27 @@ export async function GET(
       oauthMetadata: metadata ?? null,
     });
 
-    return redirectWithSuccess(request, app.slug);
+    return redirectWithSuccess(req, app.slug);
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Failed to save connection";
     console.error(`OAuth callback error for ${provider}:`, message);
-    return redirectWithError(request, message, app.slug);
+    return redirectWithError(req, message, app.slug);
   }
 }
 
 function redirectWithError(
-  request: NextRequest,
+  req: NextRequest,
   error: string,
   slug?: string,
 ): NextResponse {
-  const url = new URL(slug ? `/apps/${slug}` : "/apps", request.url);
+  const url = new URL(slug ? `/apps/${slug}` : "/apps", req.url);
   url.searchParams.set("error", error);
   return NextResponse.redirect(url);
 }
 
-function redirectWithSuccess(request: NextRequest, slug: string): NextResponse {
-  const url = new URL(`/apps/${slug}`, request.url);
+function redirectWithSuccess(req: NextRequest, slug: string): NextResponse {
+  const url = new URL(`/apps/${slug}`, req.url);
   url.searchParams.set("connected", "true");
   return NextResponse.redirect(url);
 }

@@ -1,7 +1,6 @@
-import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { api } from "@/utils/trpc/server";
 
 export default async function ProjectLayout(
@@ -10,9 +9,7 @@ export default async function ProjectLayout(
   const { id } = await props.params;
   const { children } = props;
 
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await getSession();
 
   if (!session) {
     redirect(`/auth?redirect=${encodeURIComponent(`/project/${id}`)}`);

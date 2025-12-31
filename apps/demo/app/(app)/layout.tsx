@@ -1,6 +1,4 @@
-import { headers } from "next/headers";
-
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { api } from "@/utils/trpc/server";
 import { ChatProvider } from "./(chat)/provider";
 
@@ -9,9 +7,7 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await getSession();
 
   if (session?.user) {
     const [profile, capabilities] = await Promise.all([

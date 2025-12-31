@@ -1,7 +1,6 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { DashboardNav, DashboardNavMobile } from "@/components/dashboard/nav";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { DashboardLayoutClient } from "@/components/dashboard/layout-client";
@@ -9,9 +8,7 @@ import { DashboardLayoutClient } from "@/components/dashboard/layout-client";
 export default async function DashboardLayout(props: LayoutProps<"/">) {
   const { children } = props;
 
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await getSession();
 
   if (!session) {
     return redirect("/auth");

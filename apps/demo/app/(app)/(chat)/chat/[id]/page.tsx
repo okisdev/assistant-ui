@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { api } from "@/utils/trpc/server";
 import { ChatPageSetter } from "@/components/app/chat/chat-page-setter";
 
@@ -20,9 +19,7 @@ export async function generateMetadata(
 export default async function ChatPage(props: PageProps<"/chat/[id]">) {
   const { id } = await props.params;
 
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await getSession();
 
   if (!session) {
     redirect(`/auth?redirect=${encodeURIComponent(`/chat/${id}`)}`);

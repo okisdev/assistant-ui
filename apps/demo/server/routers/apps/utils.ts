@@ -1,4 +1,3 @@
-import { database } from "@/lib/database";
 import { account } from "@/lib/database/schema";
 import { eq } from "drizzle-orm";
 import { env } from "@/lib/env";
@@ -63,6 +62,7 @@ async function refreshGoogleToken(
 }
 
 export async function ensureValidScopeToken(
+  db: typeof import("@/lib/database").database,
   accountId: string,
   provider: string,
   currentAccessToken: string,
@@ -86,7 +86,7 @@ export async function ensureValidScopeToken(
     return currentAccessToken;
   }
 
-  await database
+  await db
     .update(account)
     .set({
       accessToken: newTokenInfo.accessToken,
