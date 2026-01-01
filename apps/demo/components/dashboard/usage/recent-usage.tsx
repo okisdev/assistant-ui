@@ -12,11 +12,8 @@ import {
   ArrowUpDown,
   Check,
   Clock,
-  ExternalLink,
   MessageSquare,
 } from "lucide-react";
-import Link from "next/link";
-
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -107,14 +104,6 @@ function UsageItemRow({ item }: { item: UsageItem }) {
           <span className="truncate font-medium text-sm">
             {model?.name ?? item.modelId}
           </span>
-          {item.chatId && (
-            <Link
-              href={`/chat/${item.chatId}`}
-              className="inline-flex items-center text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
-            >
-              <ExternalLink className="size-3" />
-            </Link>
-          )}
         </div>
         <p className="text-muted-foreground text-xs">
           {formatTokens(item.inputTokens)} in ·{" "}

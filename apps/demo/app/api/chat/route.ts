@@ -177,6 +177,18 @@ export async function POST(req: Request) {
     sendReasoning: reasoningEnabled,
     originalMessages: messages,
     generateMessageId: () => nanoid(),
+    messageMetadata: ({ part }) => {
+      if (part.type === "finish") {
+        return {
+          usage: {
+            inputTokens: part.totalUsage.inputTokens,
+            outputTokens: part.totalUsage.outputTokens,
+            totalTokens: part.totalUsage.totalTokens,
+            reasoningTokens: part.totalUsage.reasoningTokens,
+          },
+        };
+      }
+    },
     onFinish: async ({ messages: allMessages }) => {
       debug.chat("onFinish called", {
         isIncognito,

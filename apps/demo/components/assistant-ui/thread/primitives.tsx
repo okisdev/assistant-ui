@@ -49,7 +49,7 @@ import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button
 import { UserMessageAttachments } from "@/components/assistant-ui/attachment";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { formatTime } from "@/lib/ai/utils";
+import { formatTime, formatTokens } from "@/lib/ai/utils";
 import { hasChainOfThought } from "@/lib/ai/parse-chain-of-thought";
 import { api } from "@/utils/trpc/client";
 import { modelTransport } from "@/app/(app)/(chat)/provider";
@@ -540,7 +540,7 @@ export const AssistantMessage: FC = () => {
 
           {hasSources && <SourcesDisplay />}
 
-          <div className="absolute -bottom-2 left-0 flex translate-y-full items-center opacity-0 transition-opacity group-hover/assistant:opacity-100 data-floating:opacity-100">
+          <div className="relative z-10 mt-2 flex h-6 items-center opacity-0 transition-opacity group-hover/assistant:opacity-100 data-floating:opacity-100">
             <BranchPicker />
             <AssistantActionBar />
           </div>
@@ -624,6 +624,11 @@ const MessageTimingDisplay: FC = () => {
   const totalTimeText = formatTime(timing.totalStreamTime);
   if (!totalTimeText) return null;
 
+  const hasUsage = timing.usage !== undefined;
+  const outputTokens = timing.usage?.outputTokens;
+  const inputTokens = timing.usage?.inputTokens;
+  const reasoningTokens = timing.usage?.reasoningTokens;
+
   return (
     <div className="group/timing relative flex items-center">
       <button
@@ -633,7 +638,7 @@ const MessageTimingDisplay: FC = () => {
         {totalTimeText}
       </button>
       <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 scale-95 rounded-lg bg-popover px-3 py-2 opacity-0 shadow-lg transition-all group-hover/timing:pointer-events-auto group-hover/timing:scale-100 group-hover/timing:opacity-100">
-        <div className="grid min-w-[140px] gap-1.5 text-xs">
+        <div className="grid min-w-[160px] gap-1.5 text-xs">
           {timing.timeToFirstChunk !== undefined && (
             <div className="flex items-center justify-between gap-4">
               <span className="text-muted-foreground">First chunk</span>
@@ -652,7 +657,7 @@ const MessageTimingDisplay: FC = () => {
           )}
           {timing.totalStreamTime !== undefined && (
             <div className="flex items-center justify-between gap-4">
-              <span className="text-muted-foreground">Total</span>
+              <span className="text-muted-foreground">Total time</span>
               <span className="font-mono text-foreground tabular-nums">
                 {formatTime(timing.totalStreamTime)}
               </span>
@@ -671,6 +676,43 @@ const MessageTimingDisplay: FC = () => {
               <span className="text-muted-foreground">Chunks</span>
               <span className="font-mono text-foreground tabular-nums">
                 {timing.totalChunks}
+              </span>
+            </div>
+          )}
+
+          {(hasUsage || timing.estimatedTokens !== undefined) && (
+            <div className="my-1.5 h-px bg-muted" />
+          )}
+
+          {inputTokens !== undefined && (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">Input</span>
+              <span className="font-mono text-foreground tabular-nums">
+                {formatTokens(inputTokens)} tokens
+              </span>
+            </div>
+          )}
+          {outputTokens !== undefined && (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">Output</span>
+              <span className="font-mono text-foreground tabular-nums">
+                {formatTokens(outputTokens)} tokens
+              </span>
+            </div>
+          )}
+          {reasoningTokens !== undefined && reasoningTokens > 0 && (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">Reasoning</span>
+              <span className="font-mono text-foreground tabular-nums">
+                {formatTokens(reasoningTokens)} tokens
+              </span>
+            </div>
+          )}
+          {!hasUsage && timing.estimatedTokens !== undefined && (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">Output (est.)</span>
+              <span className="font-mono text-muted-foreground tabular-nums">
+                ~{formatTokens(timing.estimatedTokens)} tokens
               </span>
             </div>
           )}

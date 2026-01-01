@@ -1,11 +1,11 @@
 const IS_DEV = process.env.NODE_ENV === "development";
+const IS_SERVER = typeof window === "undefined";
 
-const COLORS = {
+// ANSI colors for terminal (server-side)
+const ANSI = {
   reset: "\x1b[0m",
   bright: "\x1b[1m",
   dim: "\x1b[2m",
-
-  // Foreground
   black: "\x1b[30m",
   red: "\x1b[31m",
   green: "\x1b[32m",
@@ -14,8 +14,6 @@ const COLORS = {
   magenta: "\x1b[35m",
   cyan: "\x1b[36m",
   white: "\x1b[37m",
-
-  // Background
   bgBlack: "\x1b[40m",
   bgRed: "\x1b[41m",
   bgGreen: "\x1b[42m",
@@ -30,13 +28,38 @@ type LogLevel = "info" | "warn" | "error" | "success" | "debug";
 
 const LEVEL_CONFIG: Record<
   LogLevel,
-  { color: string; bg: string; label: string }
+  { ansi: string; ansiBg: string; css: string; label: string }
 > = {
-  info: { color: COLORS.cyan, bg: COLORS.bgCyan, label: "INFO" },
-  warn: { color: COLORS.yellow, bg: COLORS.bgYellow, label: "WARN" },
-  error: { color: COLORS.red, bg: COLORS.bgRed, label: "ERROR" },
-  success: { color: COLORS.green, bg: COLORS.bgGreen, label: "OK" },
-  debug: { color: COLORS.magenta, bg: COLORS.bgMagenta, label: "DEBUG" },
+  info: {
+    ansi: ANSI.cyan,
+    ansiBg: ANSI.bgCyan,
+    css: "background:#0891b2;color:#fff",
+    label: "INFO",
+  },
+  warn: {
+    ansi: ANSI.yellow,
+    ansiBg: ANSI.bgYellow,
+    css: "background:#ca8a04;color:#fff",
+    label: "WARN",
+  },
+  error: {
+    ansi: ANSI.red,
+    ansiBg: ANSI.bgRed,
+    css: "background:#dc2626;color:#fff",
+    label: "ERROR",
+  },
+  success: {
+    ansi: ANSI.green,
+    ansiBg: ANSI.bgGreen,
+    css: "background:#16a34a;color:#fff",
+    label: "OK",
+  },
+  debug: {
+    ansi: ANSI.magenta,
+    ansiBg: ANSI.bgMagenta,
+    css: "background:#9333ea;color:#fff",
+    label: "DEBUG",
+  },
 };
 
 function formatTimestamp(): string {
@@ -44,20 +67,60 @@ function formatTimestamp(): string {
   return `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}.${now.getMilliseconds().toString().padStart(3, "0")}`;
 }
 
-function formatMessage(
+function logServer(
   level: LogLevel,
   namespace: string,
   message: string,
-): string {
+  data?: unknown,
+): void {
   const config = LEVEL_CONFIG[level];
   const timestamp = formatTimestamp();
 
-  return [
-    `${COLORS.dim}${timestamp}${COLORS.reset}`,
-    `${config.bg}${COLORS.black} ${config.label} ${COLORS.reset}`,
-    `${config.color}[${namespace}]${COLORS.reset}`,
+  const formatted = [
+    `${ANSI.dim}${timestamp}${ANSI.reset}`,
+    `${ANSI.bgBlue}${ANSI.white} SRV ${ANSI.reset}`,
+    `${config.ansiBg}${ANSI.black} ${config.label} ${ANSI.reset}`,
+    `${config.ansi}[${namespace}]${ANSI.reset}`,
     message,
   ].join(" ");
+
+  if (data !== undefined) {
+    console.log(formatted, data);
+  } else {
+    console.log(formatted);
+  }
+}
+
+function logClient(
+  level: LogLevel,
+  namespace: string,
+  message: string,
+  data?: unknown,
+): void {
+  const config = LEVEL_CONFIG[level];
+  const timestamp = formatTimestamp();
+
+  const parts = [
+    `%c ${timestamp} `,
+    `%c CLI `,
+    `%c ${config.label} `,
+    `%c [${namespace}] `,
+    `%c${message}`,
+  ];
+
+  const styles = [
+    "color:#6b7280;font-size:10px",
+    "background:#2563eb;color:#fff;border-radius:2px;font-size:10px",
+    `${config.css};border-radius:2px;font-size:10px`,
+    `color:${config.css.split("background:")[1]?.split(";")[0] || "#9333ea"};font-weight:600`,
+    "color:inherit",
+  ];
+
+  if (data !== undefined) {
+    console.log(parts.join(""), ...styles, data);
+  } else {
+    console.log(parts.join(""), ...styles);
+  }
 }
 
 function log(
@@ -68,12 +131,10 @@ function log(
 ): void {
   if (!IS_DEV) return;
 
-  const formatted = formatMessage(level, namespace, message);
-
-  if (data !== undefined) {
-    console.log(formatted, data);
+  if (IS_SERVER) {
+    logServer(level, namespace, message, data);
   } else {
-    console.log(formatted);
+    logClient(level, namespace, message, data);
   }
 }
 

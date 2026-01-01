@@ -2,9 +2,19 @@
 
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import type { UIMessage } from "@ai-sdk/react";
-import type { MessageTiming } from "@/types/message";
+import type { MessageTiming, MessageUsage } from "@/types/message";
 
 const MAX_RETAINED_TIMINGS = 100;
+
+const CJK_REGEX = /[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]/g;
+
+function estimateTokens(text: string): number {
+  const cjkMatches = text.match(CJK_REGEX);
+  const cjkCount = cjkMatches?.length ?? 0;
+  const nonCjkCount = text.length - cjkCount;
+
+  return Math.ceil(cjkCount / 1.5) + Math.ceil(nonCjkCount / 4);
+}
 
 type MessageTimingTracker = {
   streamStartTime: number;
@@ -73,6 +83,32 @@ function recordFirstToken(tracker: MessageTimingTracker): void {
   }
 }
 
+function calculateEstimatedTokens(message: UIMessage): number {
+  let tokenCount = 0;
+  if (message.parts) {
+    for (const part of message.parts) {
+      if (part.type === "text") {
+        tokenCount += estimateTokens(part.text);
+      } else if (part.type === "reasoning") {
+        const text = (part as { text?: string }).text ?? "";
+        tokenCount += estimateTokens(text);
+      } else if (part.type === "tool-call") {
+        const argsText = (part as { argsText?: string }).argsText ?? "";
+        tokenCount += estimateTokens(argsText);
+      }
+    }
+  }
+  return tokenCount;
+}
+
+function getUsageFromMessage(message: UIMessage): MessageUsage | undefined {
+  const metadata = message.metadata as
+    | { usage?: MessageUsage }
+    | null
+    | undefined;
+  return metadata?.usage;
+}
+
 function calculateTiming(
   tracker: MessageTimingTracker,
   message: UIMessage,
@@ -80,25 +116,13 @@ function calculateTiming(
   const { streamStartTime, firstChunkTime, firstTokenTime, endTime } = tracker;
 
   const totalStreamTime = endTime ? endTime - streamStartTime : null;
+  const estimatedTokenCount = calculateEstimatedTokens(message);
+  const usage = getUsageFromMessage(message);
 
-  let tokenCount = 0;
-  if (message.parts) {
-    for (const part of message.parts) {
-      if (part.type === "text") {
-        tokenCount += Math.ceil(part.text.length / 4);
-      } else if (part.type === "reasoning") {
-        const text = (part as { text?: string }).text ?? "";
-        tokenCount += Math.ceil(text.length / 4);
-      } else if (part.type === "tool-call") {
-        const argsText = (part as { argsText?: string }).argsText ?? "";
-        tokenCount += Math.ceil(argsText.length / 4);
-      }
-    }
-  }
-
+  const outputTokens = usage?.outputTokens ?? estimatedTokenCount;
   const tokensPerSecond =
-    totalStreamTime && tokenCount > 0
-      ? (tokenCount / totalStreamTime) * 1000
+    totalStreamTime && outputTokens > 0
+      ? (outputTokens / totalStreamTime) * 1000
       : null;
 
   const totalChunks = tracker.chunkCount > 0 ? tracker.chunkCount : null;
@@ -111,8 +135,10 @@ function calculateTiming(
     ...(firstTokenTime !== undefined && { timeToFirstToken: firstTokenTime }),
     ...(totalStreamTime !== null && { totalStreamTime }),
     ...(totalChunks !== null && { totalChunks }),
+    ...(estimatedTokenCount > 0 && { estimatedTokens: estimatedTokenCount }),
     ...(tokensPerSecond !== null && { tokensPerSecond }),
     ...(largestChunkGap !== null && { largestChunkGap }),
+    ...(usage && { usage }),
   };
 
   return timing;
@@ -215,6 +241,21 @@ export function useStreamingTiming(
     addTiming,
     messages,
   ]);
+
+  useEffect(() => {
+    if (!lastAssistantMsg || isRunning) return;
+
+    const usage = getUsageFromMessage(lastAssistantMsg);
+    const currentTiming = timings[lastAssistantMsg.id];
+
+    if (usage && currentTiming && !currentTiming.usage) {
+      const tracker = trackersRef.current[lastAssistantMsg.id];
+      if (tracker) {
+        const updatedTiming = calculateTiming(tracker, lastAssistantMsg);
+        addTiming(lastAssistantMsg.id, updatedTiming);
+      }
+    }
+  }, [lastAssistantMsg, isRunning, timings, addTiming]);
 
   return timings;
 }
