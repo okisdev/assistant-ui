@@ -214,6 +214,20 @@ const chat = useChat();
 const runtime = useAISDKRuntime(chat);
 ```
 
+## Resumable Streams
+
+AI SDK integration supports resumable streams, allowing users to reconnect and resume AI responses after page refreshes:
+
+```tsx
+import { useResumableChatRuntime } from "@assistant-ui/react-ai-sdk";
+
+const { runtime, isResuming } = useResumableChatRuntime({
+  api: "/api/chat",
+});
+```
+
+Learn more in the [Resumable Streams guide](/docs/guides/ResumableStreams).
+
 ## Example
 
 For a complete example, check out the [AI SDK v5 example](https://github.com/assistant-ui/assistant-ui/tree/main/examples/with-ai-sdk-v5) in our repository.

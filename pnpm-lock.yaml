@@ -1321,15 +1321,9 @@ importers:
       react-dom:
         specifier: 19.2.3
         version: 19.2.3(react@19.2.3)
-      redis:
-        specifier: ^5.0.0
-        version: 5.10.0
       remark-gfm:
         specifier: ^4.0.1
         version: 4.0.1
-      resumable-stream:
-        specifier: ^2.2.10
-        version: 2.2.10
       tailwind-merge:
         specifier: ^3.4.0
         version: 3.4.0
@@ -1498,9 +1492,18 @@ importers:
       '@standard-schema/spec':
         specifier: ^1.1.0
         version: 1.1.0
+      '@upstash/redis':
+        specifier: ^1.0.0
+        version: 1.35.8
+      ioredis:
+        specifier: ^5.0.0
+        version: 5.8.2
       nanoid:
         specifier: 5.1.6
         version: 5.1.6
+      redis:
+        specifier: ^5.0.0
+        version: 5.10.0
       secure-json-parse:
         specifier: ^4.1.0
         version: 4.1.0
@@ -6948,9 +6951,6 @@ packages:
     resolution: {integrity: sha512-oMA2dcrw6u0YfxJQXm342bFKX/E4sG9rbTzO9ptUcR/e8A33cHuvStiYOwH7fszkZlZ1z/ta9AAoPk2F4qIOHA==}
     engines: {node: '>=18'}
 
-  resumable-stream@2.2.10:
-    resolution: {integrity: sha512-pSJtiDVkPgirq4x+e+gu67IEkUVYGu1cPgW5AnTHCfYGRfIUjS3d4pj7VGveXmYWb9hy6yIMFTM4YzK7rqj14A==}
-
   retry@0.13.1:
     resolution: {integrity: sha512-XQBQ3I8W1Cge0Seh+6gjj03LbmRFWuoszgK9ooCpwYIrhhoO80pfq4cUkU5DkknwfOfFteRwlZ56PYOGYyFWdg==}
     engines: {node: '>= 4'}
@@ -8653,8 +8653,7 @@ snapshots:
     optionalDependencies:
       '@types/node': 25.0.3
 
-  '@ioredis/commands@1.4.0':
-    optional: true
+  '@ioredis/commands@1.4.0': {}
 
   '@isaacs/balanced-match@4.0.1': {}
 
@@ -11110,8 +11109,7 @@ snapshots:
     dependencies:
       robust-predicates: 3.0.2
 
-  denque@2.1.0:
-    optional: true
+  denque@2.1.0: {}
 
   depd@2.0.0: {}
 
@@ -11825,7 +11823,6 @@ snapshots:
       standard-as-callback: 2.1.0
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   ipaddr.js@1.9.1: {}
 
@@ -12087,11 +12084,9 @@ snapshots:
 
   lodash-es@4.17.22: {}
 
-  lodash.defaults@4.2.0:
-    optional: true
+  lodash.defaults@4.2.0: {}
 
-  lodash.isarguments@3.1.0:
-    optional: true
+  lodash.isarguments@3.1.0: {}
 
   lodash.merge@4.6.2: {}
 
@@ -13230,13 +13225,11 @@ snapshots:
       unified: 11.0.5
       vfile: 6.0.3
 
-  redis-errors@1.2.0:
-    optional: true
+  redis-errors@1.2.0: {}
 
   redis-parser@3.0.0:
     dependencies:
       redis-errors: 1.2.0
-    optional: true
 
   redis@5.10.0:
     dependencies:
@@ -13331,8 +13324,6 @@ snapshots:
     dependencies:
       onetime: 7.0.0
       signal-exit: 4.1.0
-
-  resumable-stream@2.2.10: {}
 
   retry@0.13.1: {}
 
@@ -13583,8 +13574,7 @@ snapshots:
 
   stackback@0.0.2: {}
 
-  standard-as-callback@2.1.0:
-    optional: true
+  standard-as-callback@2.1.0: {}
 
   statuses@2.0.2: {}
 

@@ -37,6 +37,11 @@
       "aui-source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./resumable": {
+      "aui-source": "./src/resumable/index.ts",
+      "types": "./dist/resumable/index.d.ts",
+      "default": "./dist/resumable/index.js"
     }
   },
   "main": "./dist/index.js",
@@ -45,6 +50,7 @@
     "dist",
     "src",
     "internal",
+    "resumable",
     "README.md"
   ],
   "sideEffects": false,

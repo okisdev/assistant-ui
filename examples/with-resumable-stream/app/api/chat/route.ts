@@ -9,34 +9,23 @@ import {
 } from "ai";
 import { after } from "next/server";
 import {
-  createResumableStreamContext,
-  type ResumableStreamContext,
-} from "resumable-stream";
+  createResumableContext,
+  type ResumableContext,
+} from "assistant-stream/resumable";
+import { createRedisPubSub } from "assistant-stream/resumable/redis";
 import { z } from "zod";
 
 export const maxDuration = 60;
 
-let globalStreamContext: ResumableStreamContext | null = null;
+let globalStreamContext: ResumableContext | null = null;
 
 export function getStreamContext() {
   if (!globalStreamContext) {
-    try {
-      globalStreamContext = createResumableStreamContext({
-        waitUntil: after,
-      });
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("REDIS_URL")) {
-        console.log(
-          " > Resumable streams are disabled due to missing REDIS_URL",
-        );
-      } else {
-        console.error(error);
-      }
-    }
+    globalStreamContext = createResumableContext({
+      waitUntil: after,
+      pubsub: createRedisPubSub(),
+    });
   }
-
   return globalStreamContext;
 }
 
@@ -69,28 +58,16 @@ export async function POST(req: Request) {
 
   const streamContext = getStreamContext();
 
-  if (streamContext) {
-    try {
-      const resumableStream = await streamContext.resumableStream(
-        streamId,
-        () => stream,
-      );
+  const resumableStream = await streamContext.resumableStream(
+    streamId,
+    () => stream,
+  );
 
-      if (resumableStream) {
-        return new Response(resumableStream, {
-          headers: {
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            Connection: "keep-alive",
-            "X-Stream-Id": streamId,
-          },
-        });
-      }
-    } catch (error) {
-      console.error("Failed to create resumable stream:", error);
-    }
+  if (resumableStream) {
+    return streamContext.createResponse(streamId, resumableStream);
   }
 
+  // Fallback if stream creation fails
   return new Response(stream, {
     headers: {
       "Content-Type": "text/event-stream",

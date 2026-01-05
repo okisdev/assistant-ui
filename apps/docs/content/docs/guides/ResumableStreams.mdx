@@ -1,0 +1,375 @@
+---
+title: Resumable Streams
+description: Resume AI streaming responses across page refreshes and reconnections.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Resumable Streams allow your users to reconnect and resume AI streaming responses after page refreshes or network interruptions. This is particularly useful for long-running AI responses where users might accidentally close or refresh the page.
+
+## Overview
+
+When a user sends a message and the AI is streaming a response, resumable streams:
+
+1. **Save state** - Store the stream ID and messages in localStorage
+2. **Buffer on server** - Cache stream chunks on the server (using Redis or memory)
+3. **Auto-resume** - Automatically detect and resume pending streams on page load
+4. **Restore messages** - Recover both user messages and AI responses
+
+## Quick Start (AI SDK)
+
+<Tabs items={["Client", "Server"]}>
+  <Tab value="Client">
+```tsx
+"use client";
+
+import { Thread } from "@/components/assistant-ui/thread";
+import { AssistantRuntimeProvider } from "@assistant-ui/react";
+import { useResumableChatRuntime } from "@assistant-ui/react-ai-sdk";
+
+export default function Home() {
+  const { runtime, isResuming } = useResumableChatRuntime({
+    api: "/api/chat",
+  });
+
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      {isResuming && (
+        <div className="bg-blue-500 text-white p-2 text-center">
+          Resuming previous session...
+        </div>
+      )}
+      <Thread />
+    </AssistantRuntimeProvider>
+  );
+}
+```
+  </Tab>
+  <Tab value="Server">
+```tsx
+// app/api/chat/route.ts
+import { openai } from "@ai-sdk/openai";
+import { streamText, UIMessage, convertToModelMessages } from "ai";
+import { createResumableContext } from "assistant-stream/resumable";
+import type { ResumableContext } from "assistant-stream/resumable";
+
+let streamContext: ResumableContext | null = null;
+
+function getStreamContext() {
+  if (!streamContext) {
+    streamContext = createResumableContext();
+  }
+  return streamContext;
+}
+
+export async function POST(req: Request) {
+  const { messages }: { messages: UIMessage[] } = await req.json();
+  const streamId = `stream_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+  const result = streamText({
+    model: openai("gpt-4o"),
+    messages: convertToModelMessages(messages),
+  });
+
+  const stream = result
+    .toUIMessageStream()
+    .pipeThrough(new TextEncoderStream());
+
+  const ctx = getStreamContext();
+  const resumableStream = await ctx.resumableStream(streamId, () => stream);
+
+  if (resumableStream) {
+    return ctx.createResponse(streamId, resumableStream);
+  }
+
+  return new Response("Stream already exists", { status: 409 });
+}
+```
+  </Tab>
+</Tabs>
+
+## Server Setup
+
+### Resume Endpoint
+
+Create a resume endpoint to handle reconnections:
+
+```tsx
+// app/api/chat/resume/[streamId]/route.ts
+import { getStreamContext } from "../route"; // Share the context
+
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ streamId: string }> },
+) {
+  const { streamId } = await params;
+  const ctx = getStreamContext();
+
+  const stream = await ctx.resumeStream(streamId);
+
+  if (!stream) {
+    return new Response("Stream not found", { status: 404 });
+  }
+
+  return ctx.createResponse(streamId, stream);
+}
+```
+
+### Storage Backends
+
+The server-side `createResumableContext` supports multiple storage backends:
+
+<Tabs items={["Memory (Default)", "Redis", "IORedis", "Upstash"]}>
+  <Tab value="Memory (Default)">
+```tsx
+import { createResumableContext } from "assistant-stream/resumable";
+
+// In-memory storage (default, suitable for single-server deployments)
+const context = createResumableContext();
+```
+
+<Callout type="warning">
+  Memory store is not suitable for multi-server deployments or serverless
+  environments. Use Redis for production.
+</Callout>
+  </Tab>
+
+  <Tab value="Redis">
+```tsx
+import { createRedisStore, createRedisPubSub } from "assistant-stream/resumable/redis";
+
+// Option 1: Polling mode (simpler, works everywhere)
+const context = createResumableContext({
+  store: createRedisStore({ url: process.env.REDIS_URL }),
+});
+
+// Option 2: Real-time mode (for multi-user scenarios like group chat)
+const context = createResumableContext({
+  pubsub: createRedisPubSub({ url: process.env.REDIS_URL }),
+});
+```
+  </Tab>
+
+  <Tab value="IORedis">
+```tsx
+import { createIORedisStore, createIORedisPubSub } from "assistant-stream/resumable/ioredis";
+
+// Using ioredis client
+const context = createResumableContext({
+  store: createIORedisStore({ url: process.env.REDIS_URL }),
+});
+
+// Or with real-time support
+const context = createResumableContext({
+  pubsub: createIORedisPubSub({ url: process.env.REDIS_URL }),
+});
+```
+  </Tab>
+
+  <Tab value="Upstash">
+```tsx
+import { createUpstashStore } from "assistant-stream/resumable/upstash";
+
+// Upstash Redis (polling mode only)
+const context = createResumableContext({
+  store: createUpstashStore(),
+});
+```
+
+<Callout type="info">
+  Upstash only supports polling mode as its REST API doesn't support true
+  Pub/Sub. This is still suitable for single-user resumption scenarios.
+</Callout>
+  </Tab>
+</Tabs>
+
+### Auto Environment Detection
+
+If `REDIS_URL` is set, `createResumableContext()` will automatically use Redis:
+
+```tsx
+// Automatically uses Redis if REDIS_URL is set, otherwise memory
+const context = createResumableContext();
+```
+
+## Client API
+
+### useResumableChatRuntime
+
+The simplest way to add resumable streams to your AI SDK integration:
+
+```tsx
+import { useResumableChatRuntime } from "@assistant-ui/react-ai-sdk";
+
+const { runtime, isResuming, stateManager } = useResumableChatRuntime({
+  api: "/api/chat",
+  resumeApi: "/api/chat/resume", // Optional, defaults to `${api}/resume/${streamId}`
+  initialMessages: [], // Optional initial messages
+  onResumeStart: () => console.log("Resuming..."),
+  onResumeSuccess: (wasInterrupted) => {
+    if (wasInterrupted) {
+      console.log("Session restored (response was interrupted)");
+    }
+  },
+  onResumeError: (error) => console.error("Resume failed:", error),
+});
+```
+
+### ResumableChatTransport
+
+For more control, use `ResumableChatTransport` directly:
+
+```tsx
+import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
+import { ResumableChatTransport } from "@assistant-ui/react-ai-sdk";
+
+const transport = new ResumableChatTransport({
+  api: "/api/chat",
+});
+
+const runtime = useChatRuntime({ transport });
+
+// Access state manager
+const stateManager = transport.getStateManager();
+```
+
+### Generic Client Utilities
+
+For custom integrations (e.g., LangGraph), use the generic utilities from `@assistant-ui/react/resumable`:
+
+```tsx
+import {
+  ResumableStateManager,
+  useResumableState,
+  parseSSEStreamToText,
+} from "@assistant-ui/react/resumable";
+
+// Generic state manager
+const stateManager = new ResumableStateManager<MyMessage>();
+stateManager.setStreamId("stream_123");
+stateManager.setMessages(messages);
+
+// Or use the hook
+const { isResuming, resumedResponse, storedMessages } = useResumableState({
+  api: "/api/chat",
+});
+```
+
+## Polling vs Real-time Mode
+
+### Polling Mode (ResumableStore)
+
+Best for single-user session resumption:
+
+- Client polls the server to resume stream
+- Simpler implementation
+- Works with any storage backend
+- Lower resource usage
+
+```tsx
+const context = createResumableContext({
+  store: createRedisStore({ url: process.env.REDIS_URL }),
+});
+```
+
+### Real-time Mode (ResumablePubSub)
+
+Best for multi-user scenarios like group chat:
+
+- Uses Redis Pub/Sub for real-time sync
+- Multiple clients receive updates simultaneously
+- Requires Redis with Pub/Sub support
+- Higher resource usage but lower latency
+
+```tsx
+const context = createResumableContext({
+  pubsub: createRedisPubSub({ url: process.env.REDIS_URL }),
+});
+```
+
+## Serverless & Framework Support
+
+In serverless environments, the function may terminate before the stream is fully processed and buffered. The `waitUntil` option keeps the execution context alive:
+
+<Tabs items={["Next.js", "Cloudflare Workers", "Vercel Edge", "Node.js/Express"]}>
+  <Tab value="Next.js">
+```tsx
+// Next.js 15+ with after()
+import { after } from "next/server";
+
+const context = createResumableContext({
+  waitUntil: (promise) => after(() => promise),
+});
+```
+  </Tab>
+
+  <Tab value="Cloudflare Workers">
+```tsx
+// Cloudflare Workers with ctx.waitUntil()
+export default {
+  async fetch(request, env, ctx) {
+    const context = createResumableContext({
+      waitUntil: (promise) => ctx.waitUntil(promise),
+    });
+    // ... handle request
+  },
+};
+```
+  </Tab>
+
+  <Tab value="Vercel Edge">
+```tsx
+// Vercel Edge Functions with waitUntil
+import { waitUntil } from "@vercel/functions";
+
+const context = createResumableContext({
+  waitUntil: waitUntil,
+});
+```
+  </Tab>
+
+  <Tab value="Node.js/Express">
+```tsx
+// Node.js - no waitUntil needed (long-running process)
+const context = createResumableContext();
+
+// Express example
+app.post("/api/chat", async (req, res) => {
+  const stream = await context.resumableStream(streamId, () => makeStream());
+  // Stream will complete even after response is sent
+});
+```
+
+<Callout type="info">
+  Traditional Node.js servers (Express, Fastify, Hono on Node) don't need
+  `waitUntil` since they're long-running processes. The stream will complete
+  in the background automatically.
+</Callout>
+  </Tab>
+</Tabs>
+
+## Best Practices
+
+1. **Use Redis in Production**: Memory store doesn't persist across deployments or work with multiple instances
+
+2. **Clean Up Streams**: Streams are automatically cleaned up after TTL (default 24 hours), but you can adjust based on your use case
+
+3. **Handle Errors Gracefully**: Always provide `onResumeError` callback to handle cases where the stream is no longer available
+
+4. **Show Loading State**: Use `isResuming` to show a loading indicator while resumption is in progress
+
+5. **Configure TTL**: Adjust the TTL based on your expected stream duration:
+
+```tsx
+const context = createResumableContext({
+  store: createRedisStore({ url: process.env.REDIS_URL }),
+  ttlSeconds: 60 * 10, // 10 minutes
+});
+```
+
+6. **Use waitUntil in Serverless**: Always provide `waitUntil` in serverless environments to ensure streams complete
+
+## Example
+
+For a complete example, check out the [Resumable Stream example](https://github.com/assistant-ui/assistant-ui/tree/main/examples/with-resumable-stream) in our repository.

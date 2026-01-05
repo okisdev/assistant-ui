@@ -1,0 +1,4 @@
+{
+  "main": "../dist/resumable/index.js",
+  "types": "../dist/resumable/index.d.ts"
+}

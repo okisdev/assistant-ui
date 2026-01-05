@@ -9,7 +9,8 @@
     "chat",
     "openai",
     "llm",
-    "assistant-ui"
+    "assistant-ui",
+    "resumable"
   ],
   "author": "AgentbaseAI Inc.",
   "license": "MIT",
@@ -24,6 +25,26 @@
       "aui-source": "./src/utils.ts",
       "types": "./dist/utils.d.ts",
       "default": "./dist/utils.js"
+    },
+    "./resumable": {
+      "aui-source": "./src/resumable/index.ts",
+      "types": "./dist/resumable/index.d.ts",
+      "default": "./dist/resumable/index.js"
+    },
+    "./resumable/redis": {
+      "aui-source": "./src/resumable/redis.ts",
+      "types": "./dist/resumable/redis.d.ts",
+      "default": "./dist/resumable/redis.js"
+    },
+    "./resumable/ioredis": {
+      "aui-source": "./src/resumable/ioredis.ts",
+      "types": "./dist/resumable/ioredis.d.ts",
+      "default": "./dist/resumable/ioredis.js"
+    },
+    "./resumable/upstash": {
+      "aui-source": "./src/resumable/upstash.ts",
+      "types": "./dist/resumable/upstash.d.ts",
+      "default": "./dist/resumable/upstash.js"
     }
   },
   "main": "./dist/index.js",
@@ -32,6 +53,7 @@
     "dist",
     "src",
     "utils",
+    "resumable",
     "README.md"
   ],
   "sideEffects": false,
@@ -44,6 +66,22 @@
     "@standard-schema/spec": "^1.1.0",
     "nanoid": "5.1.6",
     "secure-json-parse": "^4.1.0"
+  },
+  "peerDependencies": {
+    "redis": "^5.0.0",
+    "ioredis": "^5.0.0",
+    "@upstash/redis": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "redis": {
+      "optional": true
+    },
+    "ioredis": {
+      "optional": true
+    },
+    "@upstash/redis": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@assistant-ui/x-buildutils": "workspace:*",
