@@ -36,7 +36,7 @@ export const auth = betterAuth({
   },
   account: {
     accountLinking: {
-      trustedProviders: ["google", "github"],
+      trustedProviders: ["google"],
     },
   },
   emailAndPassword: {
@@ -50,10 +50,6 @@ export const auth = betterAuth({
     },
   },
   socialProviders: {
-    github: {
-      clientId: env.APPLICATION_GITHUB_CLIENT_ID,
-      clientSecret: env.APPLICATION_GITHUB_CLIENT_SECRET,
-    },
     google: {
       accessType: "offline",
       prompt: "select_account consent",

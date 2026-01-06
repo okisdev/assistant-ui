@@ -21,7 +21,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { GitHub } from "@/components/icons/github";
 import { Google } from "@/components/icons/google";
 
 const emailSchema = z.object({
@@ -99,7 +98,7 @@ export function AuthForm({ onSuccess, redirectTo }: AuthFormContentProps) {
     credentialsForm.reset();
   };
 
-  const handleSocialLogin = async (provider: "github" | "google") => {
+  const handleSocialLogin = async (provider: "google") => {
     setError(null);
     setIsLoading(provider);
 
@@ -150,9 +149,7 @@ export function AuthForm({ onSuccess, redirectTo }: AuthFormContentProps) {
       error.code === "CREDENTIAL_ACCOUNT_NOT_FOUND" ||
       error.message?.toLowerCase().includes("credential")
     ) {
-      setError(
-        "No password set for this account. Try signing in with GitHub or Google.",
-      );
+      setError("No password set for this account. Try signing in with Google.");
       return;
     }
     setError(error.message ?? "Authentication failed");
@@ -222,46 +219,6 @@ export function AuthForm({ onSuccess, redirectTo }: AuthFormContentProps) {
 
       {step === "initial" ? (
         <>
-          <div className="grid gap-3">
-            <Button
-              variant="outline"
-              className="w-full"
-              disabled={!!isLoading}
-              onClick={() => handleSocialLogin("github")}
-            >
-              {isLoading === "github" ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <GitHub className="size-4" />
-              )}
-              Continue with GitHub
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full"
-              disabled={!!isLoading}
-              onClick={() => handleSocialLogin("google")}
-            >
-              {isLoading === "google" ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <Google className="size-4" />
-              )}
-              Continue with Google
-            </Button>
-          </div>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <Separator />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-background px-3 text-muted-foreground text-xs">
-                or
-              </span>
-            </div>
-          </div>
-
           <Form {...emailForm}>
             <form
               onSubmit={emailForm.handleSubmit(handleEmailContinue)}
@@ -291,17 +248,37 @@ export function AuthForm({ onSuccess, redirectTo }: AuthFormContentProps) {
                 <p className="text-center text-destructive text-sm">{error}</p>
               )}
 
-              <Button
-                type="submit"
-                variant="secondary"
-                className="w-full"
-                disabled={!!isLoading}
-              >
+              <Button type="submit" className="w-full" disabled={!!isLoading}>
                 {isLoading === "email" && <Loader2 className="animate-spin" />}
                 Continue with email
               </Button>
             </form>
           </Form>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <Separator />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-background px-3 text-muted-foreground text-xs">
+                or
+              </span>
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            className="w-full"
+            disabled={!!isLoading}
+            onClick={() => handleSocialLogin("google")}
+          >
+            {isLoading === "google" ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <Google className="size-4" />
+            )}
+            Continue with Google
+          </Button>
         </>
       ) : (
         <>

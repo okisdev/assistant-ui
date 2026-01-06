@@ -18,15 +18,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { GitHub } from "@/components/icons/github";
 import { Google } from "@/components/icons/google";
 import { SettingHeader } from "@/components/dashboard/setting-header";
 
 const PROVIDERS = {
-  github: {
-    name: "GitHub",
-    icon: GitHub,
-  },
   google: {
     name: "Google",
     icon: Google,

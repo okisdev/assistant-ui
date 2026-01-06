@@ -246,7 +246,7 @@ const SidebarThreadListItem: FC = () => {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="mr-1 size-6 shrink-0 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-hover/item:opacity-100 data-[state=open]:bg-sidebar-accent data-[state=open]:opacity-100"
+                  className="mr-1 size-6 shrink-0 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-hover/item:opacity-100 data-[state=open]:bg-sidebar-accent data-[state=open]:opacity-100 group-data-active/item:opacity-100"
                   aria-label="Thread options"
                 >
                   <MoreVertical className="size-4" />
