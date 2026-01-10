@@ -22,6 +22,9 @@
     },
     "./styles/dot.css": {
       "default": "./styles/dot.css"
+    },
+    "./styles/smooth.css": {
+      "default": "./styles/smooth.css"
     }
   },
   "main": "./dist/index.js",

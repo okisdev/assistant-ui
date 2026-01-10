@@ -1,0 +1,18 @@
+@keyframes aui-reveal {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+:where(.aui-md[data-status="running"]) > *:last-child,
+:where(.aui-md[data-status="running"]) > pre:last-child code,
+:where(.aui-md[data-status="running"])
+  > :where(:is(ol, ul):last-child)
+  > :where(li:last-child) {
+  animation: var(--aui-smooth-animation, aui-reveal 0.4s ease-out both);
+}

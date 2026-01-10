@@ -15,13 +15,21 @@ import { MessagePartState } from "../../legacy-runtime/runtime/MessagePartRuntim
 class TextStreamAnimator {
   private animationFrameId: number | null = null;
   private lastUpdateTime: number = Date.now();
+  private lastRenderTime: number = Date.now();
+  public pendingText: string = "";
+
+  // Batch update settings
+  private minRenderInterval: number = 150; // ms between renders
+  private minBatchSize: number = 15; // minimum chars to accumulate
 
   public targetText: string = "";
 
   constructor(
     public currentText: string,
     private setText: (newText: string) => void,
-  ) {}
+  ) {
+    this.pendingText = currentText;
+  }
 
   start() {
     if (this.animationFrameId !== null) return;
@@ -34,6 +42,11 @@ class TextStreamAnimator {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
+    // Flush any pending text on stop
+    if (this.pendingText !== this.currentText) {
+      this.currentText = this.pendingText;
+      this.setText(this.currentText);
+    }
   }
 
   private animate = () => {
@@ -41,7 +54,7 @@ class TextStreamAnimator {
     const deltaTime = currentTime - this.lastUpdateTime;
     let timeToConsume = deltaTime;
 
-    const remainingChars = this.targetText.length - this.currentText.length;
+    const remainingChars = this.targetText.length - this.pendingText.length;
     const baseTimePerChar = Math.min(5, 250 / remainingChars);
 
     let charsToAdd = 0;
@@ -57,12 +70,26 @@ class TextStreamAnimator {
     }
     if (charsToAdd === 0) return;
 
-    this.currentText = this.targetText.slice(
+    this.pendingText = this.targetText.slice(
       0,
-      this.currentText.length + charsToAdd,
+      this.pendingText.length + charsToAdd,
     );
     this.lastUpdateTime = currentTime - timeToConsume;
-    this.setText(this.currentText);
+
+    // Batch update: only render if enough time passed or enough chars accumulated
+    const timeSinceLastRender = currentTime - this.lastRenderTime;
+    const pendingChars = this.pendingText.length - this.currentText.length;
+    const isComplete = this.pendingText === this.targetText;
+
+    if (
+      isComplete ||
+      timeSinceLastRender >= this.minRenderInterval ||
+      pendingChars >= this.minBatchSize
+    ) {
+      this.currentText = this.pendingText;
+      this.lastRenderTime = currentTime;
+      this.setText(this.currentText);
+    }
   };
 }
 
@@ -119,6 +146,7 @@ export const useSmooth = (
 
       animatorRef.currentText = text;
       animatorRef.targetText = text;
+      animatorRef.pendingText = text;
       animatorRef.stop();
 
       return;

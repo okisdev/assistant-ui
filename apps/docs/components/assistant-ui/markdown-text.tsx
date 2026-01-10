@@ -1,6 +1,7 @@
 "use client";
 
 import "@assistant-ui/react-markdown/styles/dot.css";
+import "@assistant-ui/react-markdown/styles/smooth.css";
 
 import {
   type CodeHeaderProps,
