@@ -10,3 +10,4 @@ export {
   MessagePrimitiveUnstable_PartsGrouped as Unstable_PartsGrouped,
   MessagePrimitiveUnstable_PartsGroupedByParentId as Unstable_PartsGroupedByParentId,
 } from "./MessagePartsGrouped";
+export { MessagePrimitiveSourceList as SourceList } from "./MessageSourceList";

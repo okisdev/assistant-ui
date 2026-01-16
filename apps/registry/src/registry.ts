@@ -262,4 +262,32 @@ export const registry: RegistryItem[] = [
       "https://r.assistant-ui.com/thread-list.json",
     ],
   },
+  {
+    name: "hover-card",
+    type: "registry:component",
+    files: [
+      {
+        type: "registry:component",
+        path: "components/ui/hover-card.tsx",
+      },
+    ],
+    dependencies: ["@radix-ui/react-hover-card"],
+  },
+  {
+    name: "citation",
+    type: "registry:component",
+    description: "Citation components for inline references and source lists",
+    files: [
+      {
+        type: "registry:component",
+        path: "components/assistant-ui/citation.tsx",
+      },
+    ],
+    dependencies: [
+      "@assistant-ui/react",
+      "@assistant-ui/react-markdown",
+      "lucide-react",
+    ],
+    registryDependencies: ["hover-card"],
+  },
 ];

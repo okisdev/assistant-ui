@@ -20,6 +20,10 @@ export type SourceMessagePart = {
   readonly url: string;
   readonly title?: string;
   readonly parentId?: string;
+  /** Citation index for inline references (e.g., [1], [2]) */
+  readonly citationIndex?: number;
+  /** Snippet text for hover preview */
+  readonly snippet?: string;
 };
 
 export type ImageMessagePart = {

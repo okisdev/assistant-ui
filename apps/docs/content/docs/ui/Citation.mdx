@@ -1,0 +1,245 @@
+---
+title: Citation
+description: Display inline citations with hover previews and source lists.
+---
+
+import { InstallCommand } from "@/components/docs/fumadocs/install/install-command";
+import { CitationSample } from "@/components/docs/samples/citation-sample";
+
+<CitationSample />
+
+## Overview
+
+The Citation component enables AI responses to include inline citations (e.g., `[1]`, `[2]`) that link to source URLs. When users hover over a citation, they see a preview card with the source title, URL, and optional snippet.
+
+This is similar to how Perplexity, ChatGPT with Browse, and other AI products display sources.
+
+## Getting Started
+
+<Steps>
+  <Step>
+
+### Add `citation`
+
+<InstallCommand shadcn={["citation"]} />
+
+This adds a `/components/assistant-ui/citation.tsx` file to your project, which you can customize as needed.
+
+  </Step>
+  <Step>
+
+### Update your message component
+
+Integrate the citation components with your `MarkdownText`:
+
+```tsx title="/components/assistant-ui/thread.tsx" {1-5,15-24}
+import { useMessageSources } from "@assistant-ui/react";
+import {
+  CitationSourcesProvider,
+  CitationLink,
+  SourceList,
+  makeCitationPreprocessor,
+} from "@/components/assistant-ui/citation";
+import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
+
+const MarkdownTextWithCitations = () => {
+  const sources = useMessageSources();
+
+  return (
+    <>
+      <CitationSourcesProvider sources={sources}>
+        <MarkdownTextPrimitive
+          preprocess={makeCitationPreprocessor(sources)}
+          components={{
+            cite: CitationLink,
+          }}
+        />
+      </CitationSourcesProvider>
+      <SourceList />
+    </>
+  );
+};
+```
+
+  </Step>
+  <Step>
+
+### Provide source data
+
+Sources must be included in your message content. When using `ExternalStoreRuntime`, include `SourceMessagePart` in your message content:
+
+```tsx title="Example: convertMessage with citations"
+const convertMessage = (msg: BackendMessage): ThreadMessageLike => ({
+  role: "assistant",
+  content: [
+    {
+      type: "text",
+      text: "According to recent research[1], AI is rapidly evolving[2]."
+    },
+    {
+      type: "source",
+      sourceType: "url",
+      id: "src-1",
+      url: "https://example.com/research",
+      title: "AI Research Paper",
+      citationIndex: 1,
+      snippet: "A comprehensive study on AI development...",
+    },
+    {
+      type: "source",
+      sourceType: "url",
+      id: "src-2",
+      url: "https://example.com/news",
+      title: "AI News Article",
+      citationIndex: 2,
+    },
+  ],
+});
+```
+
+  </Step>
+</Steps>
+
+## Components
+
+### CitationLink
+
+Renders an inline citation marker (e.g., `[1]`) with a hover card preview.
+
+```tsx
+<CitationLink
+  data-source-id="src-1"
+  data-source-index="1"
+>
+  1
+</CitationLink>
+```
+
+### CitationSourcesProvider
+
+Context provider that makes sources available to nested `CitationLink` components.
+
+```tsx
+<CitationSourcesProvider sources={sources}>
+  {children}
+</CitationSourcesProvider>
+```
+
+### SourceList
+
+Renders a list of all sources at the end of a message.
+
+```tsx
+<SourceList />
+
+// With custom item renderer
+<SourceList
+  SourceListItem={({ url, title, index, snippet }) => (
+    <a href={url}>[{index}] {title}</a>
+  )}
+/>
+```
+
+### makeCitationPreprocessor
+
+Utility function that creates a preprocess function for `MarkdownTextPrimitive`.
+
+```tsx
+const sources = useMessageSources();
+
+<MarkdownTextPrimitive
+  preprocess={makeCitationPreprocessor(sources)}
+  components={{ cite: CitationLink }}
+/>
+```
+
+## Source Data Model
+
+The `SourceMessagePart` type defines the structure for source citations:
+
+```ts
+type SourceMessagePart = {
+  type: "source";
+  sourceType: "url";
+  id: string;           // Unique identifier
+  url: string;          // Source URL
+  title?: string;       // Display title (optional)
+  citationIndex?: number; // Citation number for [1], [2], etc.
+  snippet?: string;     // Preview text for hover card
+  parentId?: string;    // For grouping with parent parts
+};
+```
+
+## How It Works
+
+1. **Preprocessing**: `makeCitationPreprocessor` converts `[1]`, `[2]` markers in text to `<cite>` HTML elements with data attributes
+2. **Rendering**: The `CitationLink` component (mapped to `cite`) renders the hover card UI
+3. **Source lookup**: `CitationSourcesProvider` makes sources available via React context
+4. **Source list**: `SourceList` displays all sources at message end
+
+## Customization
+
+Since the component is copied to your project, you can customize it directly:
+
+### Custom Hover Card
+
+Modify the `CitationLink` component in `citation.tsx`:
+
+```tsx title="/components/assistant-ui/citation.tsx"
+const CitationLinkImpl: FC<CitationLinkProps> = ({ ... }) => {
+  // ... existing code ...
+
+  return (
+    <HoverCard openDelay={100} closeDelay={50}>
+      <HoverCardTrigger asChild>
+        <sup className="cursor-pointer text-blue-600 hover:text-blue-800">
+          [{children}]
+        </sup>
+      </HoverCardTrigger>
+      <HoverCardContent className="w-96">
+        {/* Custom content */}
+      </HoverCardContent>
+    </HoverCard>
+  );
+};
+```
+
+### Custom Source List Item
+
+Provide a custom `SourceListItem` component:
+
+```tsx
+<SourceList
+  SourceListItem={({ url, title, index, snippet }) => (
+    <div className="flex items-center gap-2 p-2 border rounded">
+      <span className="font-bold">[{index}]</span>
+      <a href={url} target="_blank" className="text-blue-600 hover:underline">
+        {title ?? url}
+      </a>
+    </div>
+  )}
+/>
+```
+
+## AI SDK Integration
+
+When using AI SDK, sources from `source-url` tool results are automatically converted to `SourceMessagePart`:
+
+```ts
+// AI SDK automatically handles source-url parts
+const result = await streamText({
+  model: openai("gpt-4"),
+  messages,
+  tools: {
+    search: {
+      // Tool that returns source-url parts
+    },
+  },
+});
+```
+
+## Related
+
+- [Markdown](/docs/ui/Markdown) - Base markdown rendering
+- [ToolGroup](/docs/ui/ToolGroup) - Similar grouping for tool calls
+- [MessagePrimitive.Parts](/docs/api-reference/primitives/Message#parts) - Message parts rendering
