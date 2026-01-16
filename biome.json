@@ -153,7 +153,8 @@
       "!**/next-env.d.ts",
       "!**/.tanstack",
       "!**/.output",
-      "!**/routeTree.gen.ts"
+      "!**/routeTree.gen.ts",
+      "!**/packages/chatgpt-app-studio/templates"
     ]
   }
 }

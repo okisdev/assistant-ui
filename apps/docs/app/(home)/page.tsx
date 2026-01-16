@@ -12,7 +12,7 @@ import { ExampleShowcase } from "@/components/home/example-showcase";
 
 export default function HomePage() {
   return (
-    <main className="container relative z-2 mx-auto flex-col space-y-10 px-4 py-12 md:space-y-20 md:px-20">
+    <main className="relative z-2 mx-auto w-full max-w-7xl flex-col space-y-10 px-4 pt-14 pb-8 md:space-y-20">
       <Hero />
 
       <ExampleShowcase />
@@ -32,7 +32,7 @@ export default function HomePage() {
         </p>
         <div className="flex items-center gap-6">
           <Button asChild>
-            <Link href="/docs/getting-started">
+            <Link href="/docs">
               Get Started <ArrowRight />
             </Link>
           </Button>
