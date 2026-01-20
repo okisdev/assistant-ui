@@ -16,6 +16,7 @@ interface UseDragOptions {
 
 interface UseDragResult {
   position: IndicatorPosition;
+  setPosition: (position: IndicatorPosition) => void;
   dragState: DragState;
   offset: { x: number; y: number };
   handlers: {
@@ -165,6 +166,7 @@ export function useDrag({
 
   return {
     position,
+    setPosition,
     dragState,
     offset,
     handlers: { onPointerDown: handlePointerDown },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { DevToolsFrame } from "./DevToolsFrame";
 import {
   getStyles,
@@ -33,6 +34,7 @@ function subscribeToThemeChanges(callback: () => void): () => void {
 }
 
 function DevToolsModalImpl(): React.ReactNode {
+  const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [buttonHover, setButtonHover] = useState(false);
   const [closeHover, setCloseHover] = useState(false);
@@ -45,14 +47,22 @@ function DevToolsModalImpl(): React.ReactNode {
 
   const styles = useMemo(() => getStyles(darkMode), [darkMode]);
 
-  const { position, dragState, offset, handlers } = useDrag({
-    initialPosition: loadPosition(),
+  const { position, setPosition, dragState, offset, handlers } = useDrag({
+    initialPosition: "bottom-right",
     onPositionChange: savePosition,
     onClick: () => setIsOpen(true),
   });
 
   const isAnimating = dragState === "animating";
   const isDragging = dragState === "drag" || isAnimating;
+
+  useEffect(() => {
+    setMounted(true);
+    const stored = loadPosition();
+    if (stored !== "bottom-right") {
+      setPosition(stored);
+    }
+  }, [setPosition]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -95,7 +105,9 @@ function DevToolsModalImpl(): React.ReactNode {
     [styles.floatingContainer, position, offset, isAnimating],
   );
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       <div style={containerStyle}>
         <button
@@ -185,7 +197,8 @@ function DevToolsModalImpl(): React.ReactNode {
           </div>
         </>
       )}
-    </>
+    </>,
+    document.body,
   );
 }
 
