@@ -144,13 +144,6 @@ const POSITION_STYLES: Record<IndicatorPosition, CSSProperties> = {
   "bottom-right": { bottom: MARGIN, right: MARGIN },
 };
 
-export function getPositionStyles(
-  position: IndicatorPosition,
-  offset: { x: number; y: number },
-): CSSProperties {
-  const base = POSITION_STYLES[position];
-
-  if (offset.x === 0 && offset.y === 0) return base;
-
-  return { ...base, transform: `translate(${offset.x}px, ${offset.y}px)` };
+export function getPositionStyles(position: IndicatorPosition): CSSProperties {
+  return POSITION_STYLES[position];
 }

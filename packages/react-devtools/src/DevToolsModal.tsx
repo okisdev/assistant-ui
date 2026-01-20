@@ -8,7 +8,7 @@ import {
   ANIMATION_STYLES,
   getPositionStyles,
 } from "./styles/DevToolsModal.styles";
-import { useDrag, SPRING_DURATION } from "./hooks/useDrag";
+import { useDrag } from "./hooks/useDrag";
 import { loadPosition, savePosition } from "./utils/storage";
 
 function isDarkMode(): boolean {
@@ -47,14 +47,11 @@ function DevToolsModalImpl(): React.ReactNode {
 
   const styles = useMemo(() => getStyles(darkMode), [darkMode]);
 
-  const { position, setPosition, dragState, offset, handlers } = useDrag({
+  const { position, setPosition, handlers, ref } = useDrag({
     initialPosition: "bottom-right",
     onPositionChange: savePosition,
     onClick: () => setIsOpen(true),
   });
-
-  const isAnimating = dragState === "animating";
-  const isDragging = dragState === "drag" || isAnimating;
 
   useEffect(() => {
     setMounted(true);
@@ -67,7 +64,12 @@ function DevToolsModalImpl(): React.ReactNode {
 
     const style = document.createElement("style");
     style.id = styleId;
-    style.textContent = ANIMATION_STYLES;
+    style.textContent =
+      ANIMATION_STYLES +
+      `
+      .aui-devtools-grabbing { cursor: grabbing !important; }
+      .aui-devtools-grabbing * { cursor: grabbing !important; }
+    `;
     document.head.appendChild(style);
   }, []);
 
@@ -85,27 +87,23 @@ function DevToolsModalImpl(): React.ReactNode {
   const containerStyle: React.CSSProperties = useMemo(
     () => ({
       ...styles.floatingContainer,
-      ...getPositionStyles(position, offset),
-      transition: isAnimating
-        ? `transform ${SPRING_DURATION}ms cubic-bezier(0.34, 1.56, 0.64, 1)`
-        : undefined,
+      ...getPositionStyles(position),
     }),
-    [styles.floatingContainer, position, offset, isAnimating],
+    [styles.floatingContainer, position],
   );
 
   if (!mounted) return null;
 
   return createPortal(
     <>
-      <div style={containerStyle}>
+      <div ref={ref} style={containerStyle} {...handlers}>
         <button
-          {...handlers}
-          onMouseEnter={() => !isDragging && setButtonHover(true)}
+          onMouseEnter={() => setButtonHover(true)}
           onMouseLeave={() => setButtonHover(false)}
           style={{
             ...styles.floatingButton,
-            ...(buttonHover && !isDragging ? styles.floatingButtonHover : {}),
-            cursor: isDragging ? "grabbing" : "grab",
+            ...(buttonHover ? styles.floatingButtonHover : {}),
+            cursor: "grab",
             touchAction: "none",
             userSelect: "none",
           }}

@@ -1,12 +1,20 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import type { IndicatorPosition } from "../types";
 
 const DRAG_THRESHOLD = 5;
-const SPRING_DURATION = 300;
-const MARGIN = 20;
-const INERTIA_FACTOR = 50;
+const MARGIN = 24;
 
-type DragState = "idle" | "press" | "drag" | "animating";
+type DragState = "idle" | "press" | "drag" | "drag-end";
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+interface VelocitySample {
+  position: Point;
+  timestamp: number;
+}
 
 interface UseDragOptions {
   initialPosition: IndicatorPosition;
@@ -17,45 +25,43 @@ interface UseDragOptions {
 interface UseDragResult {
   position: IndicatorPosition;
   setPosition: (position: IndicatorPosition) => void;
-  dragState: DragState;
-  offset: { x: number; y: number };
   handlers: {
     onPointerDown: (e: React.PointerEvent) => void;
   };
+  ref: React.RefObject<HTMLDivElement | null>;
 }
 
-function getCornerCoords(position: IndicatorPosition): {
-  x: number;
-  y: number;
-} {
+function getCornerCoords(position: IndicatorPosition): Point {
   if (typeof window === "undefined") return { x: 0, y: 0 };
 
   const { innerWidth: vw, innerHeight: vh } = window;
+  const scrollbarWidth = vw - document.documentElement.clientWidth;
   const isRight = position.includes("right");
   const isBottom = position.includes("bottom");
 
   return {
-    x: isRight ? vw - MARGIN : MARGIN,
+    x: isRight ? vw - scrollbarWidth - MARGIN : MARGIN,
     y: isBottom ? vh - MARGIN : MARGIN,
   };
 }
 
-function findNearestCorner(
-  x: number,
-  y: number,
-  velocity: { vx: number; vy: number },
-): IndicatorPosition {
-  if (typeof window === "undefined") return "bottom-right";
+function calculateVelocity(history: VelocitySample[]): Point {
+  if (history.length < 2) return { x: 0, y: 0 };
 
-  const { innerWidth: vw, innerHeight: vh } = window;
-  const targetX = x + velocity.vx * INERTIA_FACTOR;
-  const targetY = y + velocity.vy * INERTIA_FACTOR;
+  const oldest = history[0]!;
+  const latest = history[history.length - 1]!;
+  const timeDelta = latest.timestamp - oldest.timestamp;
 
-  const isLeft = targetX < vw / 2;
-  const isTop = targetY < vh / 2;
+  if (timeDelta === 0) return { x: 0, y: 0 };
 
-  if (isTop) return isLeft ? "top-left" : "top-right";
-  return isLeft ? "bottom-left" : "bottom-right";
+  return {
+    x: ((latest.position.x - oldest.position.x) / timeDelta) * 1000,
+    y: ((latest.position.y - oldest.position.y) / timeDelta) * 1000,
+  };
+}
+
+function project(velocity: number, decelerationRate = 0.999): number {
+  return ((velocity / 1000) * decelerationRate) / (1 - decelerationRate);
 }
 
 export function useDrag({
@@ -63,121 +69,212 @@ export function useDrag({
   onPositionChange,
   onClick,
 }: UseDragOptions): UseDragResult {
-  const [position, setPosition] = useState<IndicatorPosition>(initialPosition);
-  const [dragState, setDragState] = useState<DragState>("idle");
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const ref = useRef<HTMLDivElement>(null);
+  const positionRef = useRef<IndicatorPosition>(initialPosition);
 
-  const dragRef = useRef({
-    startPoint: null as { x: number; y: number } | null,
-    startCorner: null as { x: number; y: number } | null,
-    velocity: { vx: 0, vy: 0 },
-    lastMove: null as { x: number; y: number; time: number } | null,
-  });
+  const stateRef = useRef<DragState>("idle");
+  const originRef = useRef<Point>({ x: 0, y: 0 });
+  const translationRef = useRef<Point>({ x: 0, y: 0 });
+  const velocitiesRef = useRef<VelocitySample[]>([]);
+  const lastTimestampRef = useRef(0);
+  const cleanupRef = useRef<(() => void) | null>(null);
 
-  const handlePointerMove = useCallback((e: PointerEvent) => {
-    const { startPoint, startCorner, lastMove } = dragRef.current;
-    if (!startPoint || !startCorner) return;
-
-    const dx = e.clientX - startPoint.x;
-    const dy = e.clientY - startPoint.y;
-
-    const now = Date.now();
-    if (lastMove) {
-      const dt = (now - lastMove.time) / 1000;
-      if (dt > 0) {
-        dragRef.current.velocity = {
-          vx: (e.clientX - lastMove.x) / dt / 1000,
-          vy: (e.clientY - lastMove.y) / dt / 1000,
-        };
-      }
-    }
-    dragRef.current.lastMove = { x: e.clientX, y: e.clientY, time: now };
-
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    if (distance >= DRAG_THRESHOLD) {
-      setDragState("drag");
-      setOffset({ x: dx, y: dy });
+  const setTranslate = useCallback((point: Point) => {
+    if (ref.current) {
+      translationRef.current = point;
+      ref.current.style.translate = `${point.x}px ${point.y}px`;
     }
   }, []);
 
-  const handlePointerUp = useCallback(() => {
-    document.removeEventListener("pointermove", handlePointerMove);
-    document.removeEventListener("pointerup", handlePointerUp);
+  const getNearestCorner = useCallback(
+    (point: Point): { corner: IndicatorPosition; translation: Point } => {
+      const currentCorner = positionRef.current;
+      const basePosition = getCornerCoords(currentCorner);
 
-    const { startCorner, velocity } = dragRef.current;
+      const corners: IndicatorPosition[] = [
+        "top-left",
+        "top-right",
+        "bottom-left",
+        "bottom-right",
+      ];
 
-    setDragState((currentState) => {
-      if (currentState === "press") {
-        onClick();
-        return "idle";
-      }
+      let nearest = currentCorner;
+      let minDistance = Infinity;
+      let nearestTranslation: Point = { x: 0, y: 0 };
 
-      if (currentState !== "drag" || !startCorner) {
-        return "idle";
-      }
-
-      setOffset((currentOffset) => {
-        const currentX = startCorner.x + currentOffset.x;
-        const currentY = startCorner.y + currentOffset.y;
-        const newPosition = findNearestCorner(currentX, currentY, velocity);
-        const newCorner = getCornerCoords(newPosition);
-
-        setPosition(newPosition);
-        onPositionChange(newPosition);
-
-        setTimeout(() => {
-          setOffset({ x: 0, y: 0 });
-          setDragState("idle");
-        }, SPRING_DURATION);
-
-        // Return offset that maintains visual continuity during animation
-        return {
-          x: currentX - newCorner.x,
-          y: currentY - newCorner.y,
+      for (const corner of corners) {
+        const cornerPos = getCornerCoords(corner);
+        const relativePos = {
+          x: cornerPos.x - basePosition.x,
+          y: cornerPos.y - basePosition.y,
         };
-      });
+        const distance = Math.sqrt(
+          (point.x - relativePos.x) ** 2 + (point.y - relativePos.y) ** 2,
+        );
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearest = corner;
+          nearestTranslation = relativePos;
+        }
+      }
 
-      return "animating";
-    });
+      return { corner: nearest, translation: nearestTranslation };
+    },
+    [],
+  );
 
-    dragRef.current = {
-      startPoint: null,
-      startCorner: null,
-      velocity: { vx: 0, vy: 0 },
-      lastMove: null,
+  const animate = useCallback(
+    (target: { corner: IndicatorPosition; translation: Point }) => {
+      const el = ref.current;
+      if (!el) return;
+
+      const onTransitionEnd = (e: TransitionEvent) => {
+        if (e.propertyName === "translate") {
+          el.style.transition = "";
+          el.style.removeProperty("translate");
+          el.removeEventListener("transitionend", onTransitionEnd);
+          translationRef.current = { x: 0, y: 0 };
+          positionRef.current = target.corner;
+          onPositionChange(target.corner);
+          stateRef.current = "idle";
+        }
+      };
+
+      // Spring animation timing
+      el.style.transition = "translate 400ms cubic-bezier(0.34, 1.56, 0.64, 1)";
+      el.addEventListener("transitionend", onTransitionEnd);
+      setTranslate(target.translation);
+    },
+    [onPositionChange, setTranslate],
+  );
+
+  const cleanup = useCallback(() => {
+    stateRef.current =
+      stateRef.current === "drag" ? "drag-end" : stateRef.current;
+    cleanupRef.current?.();
+    cleanupRef.current = null;
+    velocitiesRef.current = [];
+    ref.current?.classList.remove("aui-devtools-grabbing");
+  }, []);
+
+  const handleClick = useCallback((e: MouseEvent) => {
+    if (stateRef.current === "drag-end") {
+      e.preventDefault();
+      e.stopPropagation();
+      stateRef.current = "idle";
+      ref.current?.removeEventListener("click", handleClick);
+    }
+  }, []);
+
+  const handlePointerMove = useCallback(
+    (e: PointerEvent) => {
+      if (stateRef.current === "press") {
+        const dx = e.clientX - originRef.current.x;
+        const dy = e.clientY - originRef.current.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance >= DRAG_THRESHOLD) {
+          stateRef.current = "drag";
+          ref.current?.setPointerCapture(e.pointerId);
+          ref.current?.classList.add("aui-devtools-grabbing");
+        }
+      }
+
+      if (stateRef.current !== "drag") return;
+
+      const currentPosition = { x: e.clientX, y: e.clientY };
+      const dx = currentPosition.x - originRef.current.x;
+      const dy = currentPosition.y - originRef.current.y;
+      originRef.current = currentPosition;
+
+      const newTranslation = {
+        x: translationRef.current.x + dx,
+        y: translationRef.current.y + dy,
+      };
+      setTranslate(newTranslation);
+
+      // Sample velocity at most every 10ms
+      const now = Date.now();
+      if (now - lastTimestampRef.current >= 10) {
+        velocitiesRef.current = [
+          ...velocitiesRef.current.slice(-5),
+          { position: currentPosition, timestamp: now },
+        ];
+        lastTimestampRef.current = now;
+      }
+    },
+    [setTranslate],
+  );
+
+  const handlePointerUp = useCallback(() => {
+    const translation = translationRef.current;
+    const velocity = calculateVelocity(velocitiesRef.current);
+
+    cleanup();
+
+    const distance = Math.sqrt(
+      translation.x * translation.x + translation.y * translation.y,
+    );
+    if (distance === 0) {
+      ref.current?.style.removeProperty("translate");
+      return;
+    }
+
+    // Project position based on velocity
+    const projectedPosition = {
+      x: translation.x + project(velocity.x),
+      y: translation.y + project(velocity.y),
     };
-  }, [handlePointerMove, onClick, onPositionChange]);
+
+    const nearestCorner = getNearestCorner(projectedPosition);
+    animate(nearestCorner);
+  }, [animate, cleanup, getNearestCorner]);
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if (dragState === "animating") return;
+      if (e.button !== 0) return;
+      if (stateRef.current !== "idle") return;
 
-      e.preventDefault();
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      originRef.current = { x: e.clientX, y: e.clientY };
+      stateRef.current = "press";
 
-      dragRef.current = {
-        startPoint: { x: e.clientX, y: e.clientY },
-        startCorner: getCornerCoords(position),
-        velocity: { vx: 0, vy: 0 },
-        lastMove: null,
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+
+      cleanupRef.current = () => {
+        window.removeEventListener("pointermove", handlePointerMove);
+        window.removeEventListener("pointerup", handlePointerUp);
       };
 
-      setDragState("press");
-      setOffset({ x: 0, y: 0 });
-
-      document.addEventListener("pointermove", handlePointerMove);
-      document.addEventListener("pointerup", handlePointerUp);
+      ref.current?.addEventListener("click", handleClick);
     },
-    [position, dragState, handlePointerMove, handlePointerUp],
+    [handlePointerMove, handlePointerUp, handleClick],
   );
 
+  // Handle click (when not dragging)
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const onClickHandler = () => {
+      if (stateRef.current === "idle") {
+        onClick();
+      }
+    };
+
+    el.addEventListener("click", onClickHandler);
+    return () => el.removeEventListener("click", onClickHandler);
+  }, [onClick]);
+
+  const setPosition = useCallback((pos: IndicatorPosition) => {
+    positionRef.current = pos;
+    // Force re-render by updating a dummy state or trigger position change
+  }, []);
+
   return {
-    position,
+    position: positionRef.current,
     setPosition,
-    dragState,
-    offset,
     handlers: { onPointerDown: handlePointerDown },
+    ref,
   };
 }
-
-export { SPRING_DURATION };
