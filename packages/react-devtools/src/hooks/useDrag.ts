@@ -112,25 +112,32 @@ export function useDrag({
         return "idle";
       }
 
-      if (currentState === "drag" && startCorner) {
-        setOffset((currentOffset) => {
-          const finalX = startCorner.x + currentOffset.x;
-          const finalY = startCorner.y + currentOffset.y;
-          const newPosition = findNearestCorner(finalX, finalY, velocity);
-
-          setTimeout(() => {
-            setOffset({ x: 0, y: 0 });
-            setDragState("idle");
-            setPosition(newPosition);
-            onPositionChange(newPosition);
-          }, SPRING_DURATION);
-
-          return currentOffset;
-        });
-        return "animating";
+      if (currentState !== "drag" || !startCorner) {
+        return "idle";
       }
 
-      return "idle";
+      setOffset((currentOffset) => {
+        const currentX = startCorner.x + currentOffset.x;
+        const currentY = startCorner.y + currentOffset.y;
+        const newPosition = findNearestCorner(currentX, currentY, velocity);
+        const newCorner = getCornerCoords(newPosition);
+
+        setPosition(newPosition);
+        onPositionChange(newPosition);
+
+        setTimeout(() => {
+          setOffset({ x: 0, y: 0 });
+          setDragState("idle");
+        }, SPRING_DURATION);
+
+        // Return offset that maintains visual continuity during animation
+        return {
+          x: currentX - newCorner.x,
+          y: currentY - newCorner.y,
+        };
+      });
+
+      return "animating";
     });
 
     dragRef.current = {

@@ -58,29 +58,17 @@ function DevToolsModalImpl(): React.ReactNode {
 
   useEffect(() => {
     setMounted(true);
-    const stored = loadPosition();
-    if (stored !== "bottom-right") {
-      setPosition(stored);
-    }
+    setPosition(loadPosition());
   }, [setPosition]);
 
   useEffect(() => {
-    if (typeof document === "undefined") return;
-
     const styleId = "devtools-modal-animations";
-    if (!document.getElementById(styleId)) {
-      const style = document.createElement("style");
-      style.id = styleId;
-      style.textContent = ANIMATION_STYLES;
-      document.head.appendChild(style);
-    }
+    if (document.getElementById(styleId)) return;
 
-    return () => {
-      const style = document.getElementById(styleId);
-      if (style && !document.querySelector("[data-devtools-modal]")) {
-        style.remove();
-      }
-    };
+    const style = document.createElement("style");
+    style.id = styleId;
+    style.textContent = ANIMATION_STYLES;
+    document.head.appendChild(style);
   }, []);
 
   useEffect(() => {
@@ -94,10 +82,10 @@ function DevToolsModalImpl(): React.ReactNode {
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen]);
 
-  const containerStyle = useMemo(
+  const containerStyle: React.CSSProperties = useMemo(
     () => ({
       ...styles.floatingContainer,
-      ...getPositionStyles(position, offset, isAnimating),
+      ...getPositionStyles(position, offset),
       transition: isAnimating
         ? `transform ${SPRING_DURATION}ms cubic-bezier(0.34, 1.56, 0.64, 1)`
         : undefined,

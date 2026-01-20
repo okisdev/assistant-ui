@@ -147,16 +147,10 @@ const POSITION_STYLES: Record<IndicatorPosition, CSSProperties> = {
 export function getPositionStyles(
   position: IndicatorPosition,
   offset: { x: number; y: number },
-  isAnimating: boolean,
 ): CSSProperties {
   const base = POSITION_STYLES[position];
-  const hasOffset = offset.x !== 0 || offset.y !== 0;
 
-  if (!hasOffset && !isAnimating) return base;
+  if (offset.x === 0 && offset.y === 0) return base;
 
-  const transform = isAnimating
-    ? "translate(0, 0)"
-    : `translate(${offset.x}px, ${offset.y}px)`;
-
-  return { ...base, transform };
+  return { ...base, transform: `translate(${offset.x}px, ${offset.y}px)` };
 }
