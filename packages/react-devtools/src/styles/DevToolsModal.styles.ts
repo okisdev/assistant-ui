@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import type { IndicatorPosition } from "../types";
 
 export interface DevToolsModalStyles {
   floatingContainer: CSSProperties;
@@ -42,8 +43,6 @@ export const getStyles = (darkMode: boolean): DevToolsModalStyles => {
   return {
     floatingContainer: {
       position: "fixed",
-      bottom: "24px",
-      right: "24px",
       zIndex: 2147483647,
     },
     floatingButton: {
@@ -135,3 +134,29 @@ export const ANIMATION_STYLES = `
     }
   }
 `;
+
+const MARGIN = 24;
+
+const POSITION_STYLES: Record<IndicatorPosition, CSSProperties> = {
+  "top-left": { top: MARGIN, left: MARGIN },
+  "top-right": { top: MARGIN, right: MARGIN },
+  "bottom-left": { bottom: MARGIN, left: MARGIN },
+  "bottom-right": { bottom: MARGIN, right: MARGIN },
+};
+
+export function getPositionStyles(
+  position: IndicatorPosition,
+  offset: { x: number; y: number },
+  isAnimating: boolean,
+): CSSProperties {
+  const base = POSITION_STYLES[position];
+  const hasOffset = offset.x !== 0 || offset.y !== 0;
+
+  if (!hasOffset && !isAnimating) return base;
+
+  const transform = isAnimating
+    ? "translate(0, 0)"
+    : `translate(${offset.x}px, ${offset.y}px)`;
+
+  return { ...base, transform };
+}

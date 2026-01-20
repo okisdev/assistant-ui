@@ -2,39 +2,37 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { DevToolsFrame } from "./DevToolsFrame";
-import { getStyles, ANIMATION_STYLES } from "./styles/DevToolsModal.styles";
+import {
+  getStyles,
+  ANIMATION_STYLES,
+  getPositionStyles,
+} from "./styles/DevToolsModal.styles";
+import { useDrag, SPRING_DURATION } from "./hooks/useDrag";
+import { loadPosition, savePosition } from "./utils/storage";
 
-const isDarkMode = (): boolean => {
+function isDarkMode(): boolean {
   if (typeof document === "undefined") return false;
   return (
     document.documentElement.classList.contains("dark") ||
     document.body.classList.contains("dark")
   );
-};
+}
 
-const subscribeToThemeChanges = (callback: () => void) => {
-  if (typeof MutationObserver === "undefined") {
-    return () => {};
-  }
+function subscribeToThemeChanges(callback: () => void): () => void {
+  if (typeof MutationObserver === "undefined") return () => {};
 
   const observer = new MutationObserver(callback);
+  const observerOptions = { attributes: true, attributeFilter: ["class"] };
 
-  observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ["class"],
-  });
-
+  observer.observe(document.documentElement, observerOptions);
   if (document.body !== document.documentElement) {
-    observer.observe(document.body, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
+    observer.observe(document.body, observerOptions);
   }
 
   return () => observer.disconnect();
-};
+}
 
-const DevToolsModalImpl = () => {
+function DevToolsModalImpl(): React.ReactNode {
   const [isOpen, setIsOpen] = useState(false);
   const [buttonHover, setButtonHover] = useState(false);
   const [closeHover, setCloseHover] = useState(false);
@@ -42,10 +40,19 @@ const DevToolsModalImpl = () => {
   const darkMode = useSyncExternalStore(
     subscribeToThemeChanges,
     isDarkMode,
-    () => false, // Server-side always returns false
+    () => false,
   );
 
   const styles = useMemo(() => getStyles(darkMode), [darkMode]);
+
+  const { position, dragState, offset, handlers } = useDrag({
+    initialPosition: loadPosition(),
+    onPositionChange: savePosition,
+    onClick: () => setIsOpen(true),
+  });
+
+  const isAnimating = dragState === "animating";
+  const isDragging = dragState === "drag" || isAnimating;
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -70,25 +77,37 @@ const DevToolsModalImpl = () => {
     if (!isOpen) return;
 
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsOpen(false);
-      }
+      if (event.key === "Escape") setIsOpen(false);
     };
 
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen]);
 
+  const containerStyle = useMemo(
+    () => ({
+      ...styles.floatingContainer,
+      ...getPositionStyles(position, offset, isAnimating),
+      transition: isAnimating
+        ? `transform ${SPRING_DURATION}ms cubic-bezier(0.34, 1.56, 0.64, 1)`
+        : undefined,
+    }),
+    [styles.floatingContainer, position, offset, isAnimating],
+  );
+
   return (
     <>
-      <div style={styles.floatingContainer}>
+      <div style={containerStyle}>
         <button
-          onClick={() => setIsOpen(true)}
-          onMouseEnter={() => setButtonHover(true)}
+          {...handlers}
+          onMouseEnter={() => !isDragging && setButtonHover(true)}
           onMouseLeave={() => setButtonHover(false)}
           style={{
             ...styles.floatingButton,
-            ...(buttonHover ? styles.floatingButtonHover : {}),
+            ...(buttonHover && !isDragging ? styles.floatingButtonHover : {}),
+            cursor: isDragging ? "grabbing" : "grab",
+            touchAction: "none",
+            userSelect: "none",
           }}
           aria-label="Open assistant-ui DevTools"
           title="Open assistant-ui DevTools"
@@ -99,7 +118,7 @@ const DevToolsModalImpl = () => {
             viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
-            style={{ width: "20px", height: "20px" }}
+            style={{ width: "20px", height: "20px", pointerEvents: "none" }}
           >
             <path
               d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
@@ -168,12 +187,9 @@ const DevToolsModalImpl = () => {
       )}
     </>
   );
-};
+}
 
-// Export a component that only renders in development
-export const DevToolsModal = () => {
-  // Check if we're in production - most bundlers will replace process.env.NODE_ENV
-  // This allows the entire component to be eliminated via dead code elimination
+export function DevToolsModal(): React.ReactNode {
   if (
     typeof process !== "undefined" &&
     process.env?.["NODE_ENV"] === "production"
@@ -182,4 +198,4 @@ export const DevToolsModal = () => {
   }
 
   return <DevToolsModalImpl />;
-};
+}
