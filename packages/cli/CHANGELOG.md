@@ -1,5 +1,17 @@
 # assistant-ui
 
+## 0.0.72
+
+### Patch Changes
+
+- 3719567: chore: update deps
+
+## 0.0.71
+
+### Patch Changes
+
+- 501f8c6: feat(playground): build own chat interface
+
 ## 0.0.70
 
 ### Patch Changes

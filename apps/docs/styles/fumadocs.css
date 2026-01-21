@@ -1,3 +1,23 @@
+:root {
+  --docs-header-height: 48px;
+}
+
+#nd-docs-layout {
+  --fd-banner-height: var(--docs-header-height);
+}
+
+html:has(#nd-docs-layout) {
+  scroll-padding-top: calc(var(--docs-header-height) + 6rem);
+
+  @media (min-width: 768px) {
+    scroll-padding-top: calc(var(--docs-header-height) + 2.5rem);
+  }
+
+  @media (min-width: 1280px) {
+    scroll-padding-top: var(--docs-header-height);
+  }
+}
+
 @media (min-width: 1280px) {
   #nd-page[data-full="true"] {
     max-width: 70%;
@@ -17,8 +37,12 @@
 
 @media (min-width: 768px) {
   #nd-page {
-    padding-top: 4rem !important;
+    padding-top: 2.5rem !important;
   }
+}
+
+#nd-toc > .sticky {
+  top: calc(var(--docs-header-height) + 2rem) !important;
 }
 
 #nd-sidebar {
@@ -60,6 +84,10 @@
     letter-spacing: 0 !important;
     text-transform: none !important;
     color: var(--fd-muted-foreground) !important;
+
+    &:first-child {
+      margin-top: 0 !important;
+    }
   }
 
   & svg {
@@ -84,8 +112,11 @@
 }
 
 #nd-subnav {
-  border-bottom: none !important;
-  padding-inline: 1rem !important;
+  display: none !important;
+}
+
+#nd-sidebar-mobile {
+  display: none !important;
 }
 
 [data-toc-popover] {
@@ -206,10 +237,15 @@
     text-decoration-color: var(--fd-muted-foreground) !important;
   }
 
+  & :where(.prose-no-margin):has(table) {
+    margin-top: 0rem !important;
+    margin-bottom: 0rem !important;
+  }
+
   & :where(table):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
     font-size: 0.8125rem !important;
-    margin-top: 1.25rem !important;
-    margin-bottom: 1.25rem !important;
+    margin-top: 0rem !important;
+    margin-bottom: 0rem !important;
     width: 100% !important;
     border-collapse: separate !important;
     border-spacing: 0 !important;
@@ -268,6 +304,10 @@
 
   & :where(h2 + p, h3 + p, h4 + p):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
     margin-top: 0 !important;
+  }
+
+  & :where(h2 + ul, h3 + ul, h4 + ul, h2 + ol, h3 + ol, h4 + ol):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    margin-top: 0.5rem !important;
   }
 
   & :where(img):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
@@ -387,16 +427,13 @@ figure.shiki {
   }
 }
 
-/* Code blocks inside tabs */
-[role="tabpanel"] > figure.shiki {
-  &:first-child {
+/* Content inside tabs */
+[role="tabpanel"] {
+  & > :first-child {
     margin-top: 0 !important;
   }
-  &:last-child {
+  & > :last-child {
     margin-bottom: 0 !important;
-  }
-  &:only-child {
-    margin: 0 !important;
   }
 }
 

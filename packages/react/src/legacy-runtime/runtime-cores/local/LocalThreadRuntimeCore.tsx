@@ -73,6 +73,20 @@ export class LocalThreadRuntimeCore
 
   private _lastRunConfig: RunConfig = {};
 
+  private _getThreadId?: () => string | undefined;
+
+  public __internal_setGetThreadId(getThreadId: () => string | undefined) {
+    this._getThreadId = getThreadId;
+  }
+
+  private _getInitializePromise?: () => Promise<unknown> | undefined;
+
+  public __internal_setGetInitializePromise(
+    getPromise: () => Promise<unknown> | undefined,
+  ) {
+    this._getInitializePromise = getPromise;
+  }
+
   public get extras() {
     return undefined;
   }
@@ -124,6 +138,9 @@ export class LocalThreadRuntimeCore
       .then((repo) => {
         if (!repo) return;
         this.repository.import(repo);
+        if (repo.messages.length > 0) {
+          this.ensureInitialized();
+        }
         this._notifySubscribers();
 
         const resume = this.adapters.history?.resume?.bind(
@@ -150,6 +167,11 @@ export class LocalThreadRuntimeCore
 
   public async append(message: AppendMessage): Promise<void> {
     this.ensureInitialized();
+
+    const initPromise = this._getInitializePromise?.();
+    if (initPromise) {
+      await initPromise;
+    }
 
     const newMessage = fromThreadMessageLike(message, generateId(), {
       type: "complete",
@@ -348,6 +370,7 @@ export class LocalThreadRuntimeCore
         this.adapters.chatModel.run.bind(this.adapters.chatModel);
 
       const abortSignal = this.abortController.signal;
+      const threadId = this._getThreadId?.();
       const promiseOrGenerator = runCallback({
         messages,
         runConfig: this._lastRunConfig,
@@ -355,6 +378,8 @@ export class LocalThreadRuntimeCore
         context,
         config: context,
         unstable_assistantMessageId: message.id,
+        unstable_threadId: threadId,
+        unstable_parentId: parentId,
         unstable_getMessage() {
           return message;
         },
