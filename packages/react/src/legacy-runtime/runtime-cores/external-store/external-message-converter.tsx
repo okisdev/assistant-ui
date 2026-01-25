@@ -278,6 +278,18 @@ export const convertExternalMessages = <T extends WeakKey>(
 
   const chunks = chunkExternalMessages(callbackResults);
 
+  // Inject empty assistant message to carry error if last message is not assistant
+  if (metadata.error && chunks.length > 0) {
+    const lastChunk = chunks[chunks.length - 1]!;
+    const lastJoined = joinExternalMessages(lastChunk.outputs);
+    if (lastJoined.role !== "assistant") {
+      chunks.push({
+        inputs: [],
+        outputs: [{ role: "assistant", content: [] }],
+      });
+    }
+  }
+
   return chunks.map((message, idx) => {
     const isLast = idx === chunks.length - 1;
     const joined = joinExternalMessages(message.outputs);
@@ -360,6 +372,18 @@ export const useExternalMessageConverter = <T extends WeakKey>({
         return m;
       },
     );
+
+    // Inject empty assistant message to carry error if last message is not assistant
+    if (state.metadata.error && chunks.length > 0) {
+      const lastChunk = chunks[chunks.length - 1]!;
+      const lastJoined = joinExternalMessages(lastChunk.outputs);
+      if (lastJoined.role !== "assistant") {
+        chunks.push({
+          inputs: [],
+          outputs: [{ role: "assistant", content: [] }],
+        });
+      }
+    }
 
     const threadMessages = state.converterCache.convertMessages(
       chunks,

@@ -25,6 +25,7 @@ import type {
   FileMessagePartComponent,
   ReasoningMessagePartComponent,
   ReasoningGroupComponent,
+  ErrorMessagePartComponent,
 } from "../../types/MessagePartComponentTypes";
 import { MessagePartPrimitiveInProgress } from "../messagePart/MessagePartInProgress";
 import { MessagePartStatus } from "../../types/AssistantTypes";
@@ -240,6 +241,25 @@ export namespace MessagePrimitiveParts {
            * @param children - Rendered reasoning part components
            */
           ReasoningGroup?: ReasoningGroupComponent;
+
+          /**
+           * Component for rendering error messages when the message has an error status.
+           *
+           * When provided, this component will be rendered after all message parts
+           * if the message has an error status (status.type === "incomplete" && status.reason === "error").
+           *
+           * @example
+           * ```tsx
+           * Error: ({ error }) => (
+           *   <div className="text-red-500 p-2 border border-red-300 rounded">
+           *     {String(error)}
+           *   </div>
+           * )
+           * ```
+           *
+           * @param error - The error value from the message status
+           */
+          Error?: ErrorMessagePartComponent | undefined;
         }
       | undefined;
   };
@@ -429,6 +449,26 @@ const EmptyParts = memo(
     prev.components?.Text === next.components?.Text,
 );
 
+const ErrorPartImpl: FC<{
+  component: ErrorMessagePartComponent | undefined;
+}> = ({ component: Component }) => {
+  const error = useAuiState(({ message }) => {
+    return message.status?.type === "incomplete" &&
+      message.status.reason === "error"
+      ? message.status.error
+      : undefined;
+  });
+
+  if (error === undefined || !Component) return null;
+
+  return <Component error={error} />;
+};
+
+const ErrorPart = memo(
+  ErrorPartImpl,
+  (prev, next) => prev.component === next.component,
+);
+
 /**
  * Renders the parts of a message with support for multiple content types.
  *
@@ -520,7 +560,12 @@ export const MessagePrimitiveParts: FC<MessagePrimitiveParts.Props> = ({
     });
   }, [messageRanges, components, contentLength]);
 
-  return <>{partsElements}</>;
+  return (
+    <>
+      {partsElements}
+      <ErrorPart component={components?.Error} />
+    </>
+  );
 };
 
 MessagePrimitiveParts.displayName = "MessagePrimitive.Parts";

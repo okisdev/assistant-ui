@@ -46,6 +46,8 @@ export type {
   ToolCallMessagePartProps,
   ReasoningGroupProps,
   ReasoningGroupComponent,
+  ErrorMessagePartComponent,
+  ErrorMessagePartProps,
 } from "./MessagePartComponentTypes";
 
 // Thread list item types

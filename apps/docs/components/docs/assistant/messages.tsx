@@ -2,8 +2,8 @@
 
 import { MarkdownText } from "./markdown";
 import {
-  ErrorPrimitive,
   MessagePrimitive,
+  type ErrorMessagePartProps,
   type ToolCallMessagePartProps,
 } from "@assistant-ui/react";
 import {
@@ -41,9 +41,9 @@ export function AssistantMessage(): ReactNode {
             tools: {
               Fallback: ToolCall,
             },
+            Error: MessageError,
           }}
         />
-        <MessageError />
       </div>
     </MessagePrimitive.Root>
   );
@@ -158,12 +158,10 @@ function ToolCall({
   );
 }
 
-function MessageError(): ReactNode {
+function MessageError({ error }: ErrorMessagePartProps): ReactNode {
   return (
-    <MessagePrimitive.Error>
-      <ErrorPrimitive.Root className="mt-2 rounded-md border border-destructive bg-destructive/10 p-2 text-destructive text-xs dark:bg-destructive/5 dark:text-red-200">
-        <ErrorPrimitive.Message className="line-clamp-2" />
-      </ErrorPrimitive.Root>
-    </MessagePrimitive.Error>
+    <div className="mt-2 rounded-md border border-destructive bg-destructive/10 p-2 text-destructive text-xs dark:bg-destructive/5 dark:text-red-200">
+      <span className="line-clamp-2">{String(error)}</span>
+    </div>
   );
 }

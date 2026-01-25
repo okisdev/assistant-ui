@@ -57,3 +57,8 @@ export type ToolCallMessagePartComponent<
   TArgs = any,
   TResult = any,
 > = ComponentType<ToolCallMessagePartProps<TArgs, TResult>>;
+
+export type ErrorMessagePartProps = {
+  error: unknown;
+};
+export type ErrorMessagePartComponent = ComponentType<ErrorMessagePartProps>;
