@@ -136,7 +136,6 @@ export const ComposerPrimitiveInput = forwardRef<
 
       if (e.key === "Enter" && e.shiftKey === false) {
         e.preventDefault();
-        // Submit the form - if running, the message will be queued automatically
         textareaRef.current?.closest("form")?.requestSubmit();
       }
     };

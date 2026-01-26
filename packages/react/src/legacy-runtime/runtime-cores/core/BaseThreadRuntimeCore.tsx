@@ -55,10 +55,8 @@ export abstract class BaseThreadRuntimeCore implements ThreadRuntimeCore {
   public abstract cancelRun(): void;
   public abstract unstable_loadExternalState(state: any): void;
 
-  /** Check if the thread is currently running */
   public abstract _isRunning(): boolean;
 
-  /** Message queue for messages sent while running */
   private _queueIdCounter = 0;
   private _messageQueue: QueuedMessage[] = [];
   private _queuedMessagesSnapshot: readonly QueuedMessage[] = [];
@@ -121,12 +119,33 @@ export abstract class BaseThreadRuntimeCore implements ThreadRuntimeCore {
     this._notifySubscribers();
   }
 
+  private _queueProcessingRequested = false;
+
   private _processQueue = (): void => {
-    if (this._messageQueue.length === 0) return;
+    this._queueProcessingRequested = true;
+    this._tryProcessQueue();
+  };
+
+  private _tryProcessQueue = (): void => {
+    if (!this._queueProcessingRequested) return;
+    if (this._isRunning()) return;
+    if (this._messageQueue.length === 0) {
+      this._queueProcessingRequested = false;
+      return;
+    }
+
+    const lastMessage = this.messages.at(-1);
+    if (lastMessage?.role === "assistant" && lastMessage.content.length === 0) {
+      setTimeout(() => this._tryProcessQueue(), 100);
+      return;
+    }
+
+    this._queueProcessingRequested = false;
     const next = this._messageQueue.shift()!;
     this._updateQueueSnapshot();
     this._notifySubscribers();
-    this.append(next);
+    const currentParentId = lastMessage?.id ?? null;
+    this.append({ ...next, parentId: currentParentId });
   };
 
   public get messages() {
@@ -148,7 +167,6 @@ export abstract class BaseThreadRuntimeCore implements ThreadRuntimeCore {
   public readonly composer = new DefaultThreadComposerRuntimeCore(this);
 
   constructor(private readonly _contextProvider: ModelContextProvider) {
-    // Subscribe to runEnd to process queued messages
     this.unstable_on("runEnd", this._processQueue);
   }
 
