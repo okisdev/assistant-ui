@@ -17,19 +17,24 @@ import {
   ErrorPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
+  useThreadRuntime,
 } from "@assistant-ui/react";
+import { useAuiState } from "@assistant-ui/store";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
   CheckIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronUpIcon,
   CopyIcon,
   DownloadIcon,
   MoreHorizontalIcon,
   PencilIcon,
   RefreshCwIcon,
   SquareIcon,
+  XIcon,
 } from "lucide-react";
 import type { FC } from "react";
 
@@ -59,6 +64,7 @@ export const Thread: FC = () => {
 
         <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer sticky bottom-0 mx-auto mt-auto flex w-full max-w-(--thread-max-width) flex-col gap-4 overflow-visible rounded-t-3xl bg-background pb-4 md:pb-6">
           <ThreadScrollToBottom />
+          <QueuedMessages />
           <Composer />
         </ThreadPrimitive.ViewportFooter>
       </ThreadPrimitive.Viewport>
@@ -134,6 +140,78 @@ const ThreadSuggestions: FC = () => {
               </span>
             </Button>
           </ThreadPrimitive.Suggestion>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const QueuedMessages: FC = () => {
+  const threadRuntime = useThreadRuntime();
+  const queuedMessages = useAuiState(
+    ({ thread }) => thread.queuedMessages ?? [],
+  );
+
+  if (!queuedMessages.length) return null;
+
+  const getMessageText = (
+    content: readonly { type: string; text?: string }[],
+  ) => {
+    return content
+      .filter(
+        (part): part is { type: "text"; text: string } =>
+          part.type === "text" && typeof part.text === "string",
+      )
+      .map((part) => part.text)
+      .join(" ");
+  };
+
+  return (
+    <div className="aui-queued-messages mx-auto w-full max-w-(--thread-max-width) space-y-2">
+      <div className="flex items-center gap-2 px-2 text-muted-foreground text-xs">
+        <span>Queued messages ({queuedMessages.length})</span>
+      </div>
+      {queuedMessages.map((msg, index) => (
+        <div
+          key={msg.queueId}
+          className="aui-queued-message group flex items-center gap-2 rounded-xl border border-muted-foreground/30 border-dashed bg-muted/30 px-3 py-2"
+        >
+          <span className="flex-1 truncate text-sm">
+            {getMessageText(msg.content)}
+          </span>
+          <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            <TooltipIconButton
+              tooltip="Move up"
+              variant="ghost"
+              size="icon"
+              className="size-6"
+              disabled={index === 0}
+              onClick={() => threadRuntime.moveQueuedMessage(msg.queueId, "up")}
+            >
+              <ChevronUpIcon className="size-3" />
+            </TooltipIconButton>
+            <TooltipIconButton
+              tooltip="Move down"
+              variant="ghost"
+              size="icon"
+              className="size-6"
+              disabled={index === queuedMessages.length - 1}
+              onClick={() =>
+                threadRuntime.moveQueuedMessage(msg.queueId, "down")
+              }
+            >
+              <ChevronDownIcon className="size-3" />
+            </TooltipIconButton>
+            <TooltipIconButton
+              tooltip="Remove"
+              variant="ghost"
+              size="icon"
+              className="size-6 text-destructive hover:text-destructive"
+              onClick={() => threadRuntime.removeQueuedMessage(msg.queueId)}
+            >
+              <XIcon className="size-3" />
+            </TooltipIconButton>
+          </div>
         </div>
       ))}
     </div>

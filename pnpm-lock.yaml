@@ -2361,6 +2361,9 @@ importers:
       '@assistant-ui/react-syntax-highlighter':
         specifier: workspace:*
         version: link:../react-syntax-highlighter
+      '@assistant-ui/store':
+        specifier: workspace:*
+        version: link:../store
       '@radix-ui/react-accordion':
         specifier: ^1.2.12
         version: 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)

@@ -108,6 +108,7 @@ export const ThreadClient = resource(
         suggestions: runtimeState.suggestions,
         extras: runtimeState.extras,
         speech: runtimeState.speech,
+        queuedMessages: runtimeState.queuedMessages,
 
         composer: composer.state,
         messages: messages.state,

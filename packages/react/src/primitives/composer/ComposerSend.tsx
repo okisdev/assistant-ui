@@ -11,8 +11,10 @@ import { useAuiState, useAui } from "@assistant-ui/store";
 export const useComposerSend = () => {
   const aui = useAui();
 
+  // Note: isRunning is not checked here because the composer core
+  // automatically queues messages when the thread is running
   const disabled = useAuiState(
-    (s) => s.thread.isRunning || !s.composer.isEditing || s.composer.isEmpty,
+    (s) => !s.composer.isEditing || s.composer.isEmpty,
   );
 
   const callback = useCallback(() => {

@@ -17,6 +17,7 @@ import type { CreateResumeRunConfig } from "../../legacy-runtime/runtime/ThreadR
 import type { ModelContext } from "../../model-context";
 import type { MessageMethods, MessageState } from "./message";
 import type { ComposerMethods, ComposerState } from "./composer";
+import type { QueuedMessage } from "../../types/AssistantTypes";
 
 export type ThreadState = {
   /**
@@ -59,6 +60,10 @@ export type ThreadState = {
   /** @deprecated This API is still under active development and might change without notice. */
   readonly speech: SpeechState | undefined;
   readonly composer: ComposerState;
+  /**
+   * The messages currently queued to be sent.
+   */
+  readonly queuedMessages: readonly QueuedMessage[];
 };
 
 export type ThreadMethods = {
