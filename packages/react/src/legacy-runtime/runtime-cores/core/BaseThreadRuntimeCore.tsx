@@ -61,14 +61,20 @@ export abstract class BaseThreadRuntimeCore implements ThreadRuntimeCore {
   /** Message queue for messages sent while running */
   private _queueIdCounter = 0;
   private _messageQueue: QueuedMessage[] = [];
+  private _queuedMessagesSnapshot: readonly QueuedMessage[] = [];
 
   public get queuedMessages(): readonly QueuedMessage[] {
-    return this._messageQueue;
+    return this._queuedMessagesSnapshot;
+  }
+
+  private _updateQueueSnapshot(): void {
+    this._queuedMessagesSnapshot = Object.freeze([...this._messageQueue]);
   }
 
   public enqueue(message: AppendMessage): string {
     const queueId = `q-${++this._queueIdCounter}`;
     this._messageQueue.push({ ...message, queueId });
+    this._updateQueueSnapshot();
     this._notifySubscribers();
     return queueId;
   }
@@ -85,6 +91,7 @@ export abstract class BaseThreadRuntimeCore implements ThreadRuntimeCore {
       ...update,
       queueId: existing.queueId,
     };
+    this._updateQueueSnapshot();
     this._notifySubscribers();
   }
 
@@ -92,6 +99,7 @@ export abstract class BaseThreadRuntimeCore implements ThreadRuntimeCore {
     const idx = this._messageQueue.findIndex((m) => m.queueId === queueId);
     if (idx === -1) return;
     this._messageQueue.splice(idx, 1);
+    this._updateQueueSnapshot();
     this._notifySubscribers();
   }
 
@@ -103,17 +111,20 @@ export abstract class BaseThreadRuntimeCore implements ThreadRuntimeCore {
     const temp = this._messageQueue[idx]!;
     this._messageQueue[idx] = this._messageQueue[newIdx]!;
     this._messageQueue[newIdx] = temp;
+    this._updateQueueSnapshot();
     this._notifySubscribers();
   }
 
   public clearQueue(): void {
     this._messageQueue = [];
+    this._updateQueueSnapshot();
     this._notifySubscribers();
   }
 
   private _processQueue = (): void => {
     if (this._messageQueue.length === 0) return;
     const next = this._messageQueue.shift()!;
+    this._updateQueueSnapshot();
     this._notifySubscribers();
     this.append(next);
   };

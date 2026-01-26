@@ -135,13 +135,9 @@ export const ComposerPrimitiveInput = forwardRef<
       if (e.nativeEvent.isComposing) return;
 
       if (e.key === "Enter" && e.shiftKey === false) {
-        const isRunning = aui.thread().getState().isRunning;
-
-        if (!isRunning) {
-          e.preventDefault();
-
-          textareaRef.current?.closest("form")?.requestSubmit();
-        }
+        e.preventDefault();
+        // Submit the form - if running, the message will be queued automatically
+        textareaRef.current?.closest("form")?.requestSubmit();
       }
     };
 
