@@ -1,6 +1,6 @@
 import type { ReadonlyJSONValue } from "assistant-stream/utils";
 import { ModelContext } from "../../../model-context";
-import { AppendMessage, ThreadMessage } from "../../../types";
+import { AppendMessage, QueuedMessage, ThreadMessage } from "../../../types";
 import { RunConfig } from "../../../types/AssistantTypes";
 import type { Unsubscribe } from "../../../types/Unsubscribe";
 import { SpeechSynthesisAdapter } from "../adapters/speech/SpeechAdapterTypes";
@@ -131,4 +131,15 @@ export type ThreadRuntimeCore = Readonly<{
 
   unstable_on(event: ThreadRuntimeEventType, callback: () => void): Unsubscribe;
   unstable_loadExternalState: (state: any) => void;
+
+  // Queue management
+  queuedMessages?: readonly QueuedMessage[];
+  enqueue?: (message: AppendMessage) => string;
+  updateQueuedMessage?: (
+    queueId: string,
+    update: Partial<AppendMessage>,
+  ) => void;
+  removeQueuedMessage?: (queueId: string) => void;
+  moveQueuedMessage?: (queueId: string, direction: "up" | "down") => void;
+  clearQueue?: () => void;
 }>;

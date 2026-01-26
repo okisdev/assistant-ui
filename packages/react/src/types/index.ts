@@ -7,6 +7,7 @@ export type {
 
 export type {
   AppendMessage,
+  QueuedMessage,
   TextMessagePart,
   ReasoningMessagePart,
   SourceMessagePart,

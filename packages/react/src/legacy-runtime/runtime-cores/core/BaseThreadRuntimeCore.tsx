@@ -1,4 +1,9 @@
-import type { AppendMessage, ThreadMessage, Unsubscribe } from "../../../types";
+import type {
+  AppendMessage,
+  QueuedMessage,
+  ThreadMessage,
+  Unsubscribe,
+} from "../../../types";
 import {
   ExportedMessageRepository,
   MessageRepository,
@@ -54,14 +59,50 @@ export abstract class BaseThreadRuntimeCore implements ThreadRuntimeCore {
   public abstract _isRunning(): boolean;
 
   /** Message queue for messages sent while running */
-  private _messageQueue: AppendMessage[] = [];
+  private _queueIdCounter = 0;
+  private _messageQueue: QueuedMessage[] = [];
 
-  public get queuedMessages(): readonly AppendMessage[] {
+  public get queuedMessages(): readonly QueuedMessage[] {
     return this._messageQueue;
   }
 
-  public enqueue(message: AppendMessage): void {
-    this._messageQueue.push(message);
+  public enqueue(message: AppendMessage): string {
+    const queueId = `q-${++this._queueIdCounter}`;
+    this._messageQueue.push({ ...message, queueId });
+    this._notifySubscribers();
+    return queueId;
+  }
+
+  public updateQueuedMessage(
+    queueId: string,
+    update: Partial<AppendMessage>,
+  ): void {
+    const idx = this._messageQueue.findIndex((m) => m.queueId === queueId);
+    if (idx === -1) return;
+    const existing = this._messageQueue[idx]!;
+    this._messageQueue[idx] = {
+      ...existing,
+      ...update,
+      queueId: existing.queueId,
+    };
+    this._notifySubscribers();
+  }
+
+  public removeQueuedMessage(queueId: string): void {
+    const idx = this._messageQueue.findIndex((m) => m.queueId === queueId);
+    if (idx === -1) return;
+    this._messageQueue.splice(idx, 1);
+    this._notifySubscribers();
+  }
+
+  public moveQueuedMessage(queueId: string, direction: "up" | "down"): void {
+    const idx = this._messageQueue.findIndex((m) => m.queueId === queueId);
+    if (idx === -1) return;
+    const newIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (newIdx < 0 || newIdx >= this._messageQueue.length) return;
+    const temp = this._messageQueue[idx]!;
+    this._messageQueue[idx] = this._messageQueue[newIdx]!;
+    this._messageQueue[newIdx] = temp;
     this._notifySubscribers();
   }
 

@@ -8,7 +8,12 @@ import {
   ResumeRunConfig,
 } from "../runtime-cores/core/ThreadRuntimeCore";
 import { ExportedMessageRepository } from "../runtime-cores/utils/MessageRepository";
-import { AppendMessage, ThreadMessage, Unsubscribe } from "../../types";
+import {
+  AppendMessage,
+  QueuedMessage,
+  ThreadMessage,
+  Unsubscribe,
+} from "../../types";
 import { ThreadMessageLike } from "../runtime-cores/external-store";
 import {
   MessageRuntime,
@@ -186,13 +191,19 @@ export type ThreadState = {
    * The number of messages currently queued to be sent.
    */
   readonly queuedMessageCount: number;
+
+  /**
+   * The messages currently queued to be sent.
+   */
+  readonly queuedMessages: readonly QueuedMessage[];
 };
 
 export const getThreadState = (
-  runtime: ThreadRuntimeCore & { queuedMessages?: readonly unknown[] },
+  runtime: ThreadRuntimeCore,
   threadListItemState: ThreadListItemState,
 ): ThreadState => {
   const lastMessage = runtime.messages.at(-1);
+  const queuedMessages = runtime.queuedMessages ?? [];
   return Object.freeze({
     threadId: threadListItemState.id,
     metadata: threadListItemState,
@@ -208,7 +219,8 @@ export const getThreadState = (
     suggestions: runtime.suggestions,
     extras: runtime.extras,
     speech: runtime.speech,
-    queuedMessageCount: runtime.queuedMessages?.length ?? 0,
+    queuedMessageCount: queuedMessages.length,
+    queuedMessages,
   });
 };
 
@@ -296,6 +308,41 @@ export type ThreadRuntime = {
   stopSpeaking(): void;
 
   unstable_on(event: ThreadRuntimeEventType, callback: () => void): Unsubscribe;
+
+  /**
+   * Enqueue a message to be sent when the current run ends.
+   * @param message The message to enqueue
+   * @returns The queue ID of the enqueued message
+   */
+  enqueue(message: CreateAppendMessage): string;
+
+  /**
+   * Update a queued message.
+   * @param queueId The queue ID of the message to update
+   * @param update The partial message to update with
+   */
+  updateQueuedMessage(
+    queueId: string,
+    update: Partial<Exclude<CreateAppendMessage, string>>,
+  ): void;
+
+  /**
+   * Remove a queued message.
+   * @param queueId The queue ID of the message to remove
+   */
+  removeQueuedMessage(queueId: string): void;
+
+  /**
+   * Move a queued message up or down in the queue.
+   * @param queueId The queue ID of the message to move
+   * @param direction The direction to move ("up" or "down")
+   */
+  moveQueuedMessage(queueId: string, direction: "up" | "down"): void;
+
+  /**
+   * Clear all queued messages.
+   */
+  clearQueue(): void;
 };
 
 export class ThreadRuntimeImpl implements ThreadRuntime {
@@ -373,6 +420,11 @@ export class ThreadRuntimeImpl implements ThreadRuntime {
     this.getModelContext = this.getModelContext.bind(this);
     this.getModelConfig = this.getModelConfig.bind(this);
     this.getState = this.getState.bind(this);
+    this.enqueue = this.enqueue.bind(this);
+    this.updateQueuedMessage = this.updateQueuedMessage.bind(this);
+    this.removeQueuedMessage = this.removeQueuedMessage.bind(this);
+    this.moveQueuedMessage = this.moveQueuedMessage.bind(this);
+    this.clearQueue = this.clearQueue.bind(this);
   }
 
   public readonly composer;
@@ -435,6 +487,51 @@ export class ThreadRuntimeImpl implements ThreadRuntime {
 
   public reset(initialMessages?: readonly ThreadMessageLike[]) {
     this._threadBinding.getState().reset(initialMessages);
+  }
+
+  public enqueue(message: CreateAppendMessage): string {
+    const core = this._threadBinding.getState();
+    if (!core.enqueue) {
+      throw new Error("Queue operations are not supported by this runtime");
+    }
+    return core.enqueue(
+      toAppendMessage(this._threadBinding.getState().messages, message),
+    );
+  }
+
+  public updateQueuedMessage(
+    queueId: string,
+    update: Partial<Exclude<CreateAppendMessage, string>>,
+  ): void {
+    const core = this._threadBinding.getState();
+    if (!core.updateQueuedMessage) {
+      throw new Error("Queue operations are not supported by this runtime");
+    }
+    core.updateQueuedMessage(queueId, update as Partial<AppendMessage>);
+  }
+
+  public removeQueuedMessage(queueId: string): void {
+    const core = this._threadBinding.getState();
+    if (!core.removeQueuedMessage) {
+      throw new Error("Queue operations are not supported by this runtime");
+    }
+    core.removeQueuedMessage(queueId);
+  }
+
+  public moveQueuedMessage(queueId: string, direction: "up" | "down"): void {
+    const core = this._threadBinding.getState();
+    if (!core.moveQueuedMessage) {
+      throw new Error("Queue operations are not supported by this runtime");
+    }
+    core.moveQueuedMessage(queueId, direction);
+  }
+
+  public clearQueue(): void {
+    const core = this._threadBinding.getState();
+    if (!core.clearQueue) {
+      throw new Error("Queue operations are not supported by this runtime");
+    }
+    core.clearQueue();
   }
 
   public getMessageByIndex(idx: number) {

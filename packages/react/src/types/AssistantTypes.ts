@@ -149,6 +149,14 @@ export type AppendMessage = Omit<ThreadMessage, "id"> & {
   startRun?: boolean | undefined;
 };
 
+/**
+ * A queued message is an AppendMessage with a unique queue ID.
+ * Used for managing messages in the queue before they are sent.
+ */
+export type QueuedMessage = {
+  readonly queueId: string;
+} & AppendMessage;
+
 type BaseThreadMessage = {
   readonly status?: ThreadAssistantMessage["status"];
   readonly metadata: {
