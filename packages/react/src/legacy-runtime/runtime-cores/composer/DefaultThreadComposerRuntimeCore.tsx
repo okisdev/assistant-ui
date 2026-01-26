@@ -34,6 +34,8 @@ export class DefaultThreadComposerRuntimeCore
             dictation?: DictationAdapter | undefined;
           }
         | undefined;
+      _isRunning?(): boolean;
+      enqueue?(message: AppendMessage): void;
     },
   ) {
     super();
@@ -52,11 +54,19 @@ export class DefaultThreadComposerRuntimeCore
   public async handleSend(
     message: Omit<AppendMessage, "parentId" | "sourceId">,
   ) {
-    this.runtime.append({
+    const parentId = this.runtime.messages.at(-1)?.id ?? null;
+    const fullMessage: AppendMessage = {
       ...(message as AppendMessage),
-      parentId: this.runtime.messages.at(-1)?.id ?? null,
+      parentId,
       sourceId: null,
-    });
+    };
+
+    // If running and enqueue is available, queue the message
+    if (this.runtime._isRunning?.() && this.runtime.enqueue) {
+      this.runtime.enqueue(fullMessage);
+    } else {
+      this.runtime.append(fullMessage);
+    }
   }
 
   public async handleCancel() {

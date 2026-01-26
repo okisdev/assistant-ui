@@ -44,6 +44,10 @@ export class LocalThreadRuntimeCore
 
   private abortController: AbortController | null = null;
 
+  public _isRunning(): boolean {
+    return this.abortController !== null;
+  }
+
   public readonly isDisabled = false;
 
   private _isLoading = false;

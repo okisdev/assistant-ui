@@ -50,6 +50,33 @@ export abstract class BaseThreadRuntimeCore implements ThreadRuntimeCore {
   public abstract cancelRun(): void;
   public abstract unstable_loadExternalState(state: any): void;
 
+  /** Check if the thread is currently running */
+  public abstract _isRunning(): boolean;
+
+  /** Message queue for messages sent while running */
+  private _messageQueue: AppendMessage[] = [];
+
+  public get queuedMessages(): readonly AppendMessage[] {
+    return this._messageQueue;
+  }
+
+  public enqueue(message: AppendMessage): void {
+    this._messageQueue.push(message);
+    this._notifySubscribers();
+  }
+
+  public clearQueue(): void {
+    this._messageQueue = [];
+    this._notifySubscribers();
+  }
+
+  private _processQueue = (): void => {
+    if (this._messageQueue.length === 0) return;
+    const next = this._messageQueue.shift()!;
+    this._notifySubscribers();
+    this.append(next);
+  };
+
   public get messages() {
     return this.repository.getMessages();
   }
@@ -68,7 +95,10 @@ export abstract class BaseThreadRuntimeCore implements ThreadRuntimeCore {
 
   public readonly composer = new DefaultThreadComposerRuntimeCore(this);
 
-  constructor(private readonly _contextProvider: ModelContextProvider) {}
+  constructor(private readonly _contextProvider: ModelContextProvider) {
+    // Subscribe to runEnd to process queued messages
+    this.unstable_on("runEnd", this._processQueue);
+  }
 
   public getModelContext() {
     return this._contextProvider.getModelContext();

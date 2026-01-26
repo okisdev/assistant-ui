@@ -181,10 +181,15 @@ export type ThreadState = {
    * @deprecated This API is still under active development and might change without notice.
    */
   readonly speech: SpeechState | undefined;
+
+  /**
+   * The number of messages currently queued to be sent.
+   */
+  readonly queuedMessageCount: number;
 };
 
 export const getThreadState = (
-  runtime: ThreadRuntimeCore,
+  runtime: ThreadRuntimeCore & { queuedMessages?: readonly unknown[] },
   threadListItemState: ThreadListItemState,
 ): ThreadState => {
   const lastMessage = runtime.messages.at(-1);
@@ -203,6 +208,7 @@ export const getThreadState = (
     suggestions: runtime.suggestions,
     extras: runtime.extras,
     speech: runtime.speech,
+    queuedMessageCount: runtime.queuedMessages?.length ?? 0,
   });
 };
 

@@ -62,6 +62,10 @@ export class ExternalStoreThreadRuntimeCore
     return this._capabilities;
   }
 
+  public _isRunning(): boolean {
+    return this._store.isRunning ?? false;
+  }
+
   private _messages!: readonly ThreadMessage[];
   public isDisabled!: boolean;
   public get isLoading() {
