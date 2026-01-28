@@ -41,10 +41,16 @@ interface DocumentState {
   content: string;
   cursorPosition: number;
   isThreadOpen: boolean;
+  compiledHtml: string | null;
+  compileError: string | null;
+  isCompiling: boolean;
   setFileName: (name: string) => void;
   setContent: (content: string) => void;
   setCursorPosition: (position: number) => void;
   setThreadOpen: (open: boolean) => void;
+  setCompiledHtml: (html: string | null) => void;
+  setCompileError: (error: string | null) => void;
+  setIsCompiling: (isCompiling: boolean) => void;
   insertAtCursor: (text: string) => void;
   replaceSelection: (start: number, end: number, text: string) => void;
 }
@@ -56,10 +62,21 @@ export const useDocumentStore = create<DocumentState>()(
       content: DEFAULT_CONTENT,
       cursorPosition: 0,
       isThreadOpen: false,
+      compiledHtml: null,
+      compileError: null,
+      isCompiling: false,
 
       setFileName: (name) => set({ fileName: name }),
 
       setThreadOpen: (open) => set({ isThreadOpen: open }),
+
+      setCompiledHtml: (html) =>
+        set({ compiledHtml: html, compileError: null }),
+
+      setCompileError: (error) =>
+        set({ compileError: error, compiledHtml: null }),
+
+      setIsCompiling: (isCompiling) => set({ isCompiling }),
 
       setContent: (content) => set({ content }),
 

@@ -11,6 +11,8 @@ import {
   highlightActiveLineGutter,
 } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { syntaxHighlighting } from "@codemirror/language";
+import { oneDark, oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
 import { latex } from "codemirror-lang-latex";
 import { useDocumentStore } from "@/stores/document-store";
 import { EditorToolbar } from "./editor-toolbar";
@@ -50,6 +52,8 @@ export function LatexEditor() {
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
         latex(),
+        oneDark,
+        syntaxHighlighting(oneDarkHighlightStyle),
         updateListener,
         EditorView.lineWrapping,
         EditorView.theme({
