@@ -1,13 +1,29 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { mkdir, rm, writeFile, readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { bodyLimit } from "hono/body-limit";
+import { mkdir, rm, writeFile, readFile, access } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 
 const app = new Hono();
 
+const MAX_CONCURRENT = 3;
+const COMPILE_TIMEOUT_MS = 30000;
+
+let activeCompilations = 0;
+
+function sanitizePath(workDir: string, filePath: string): string | null {
+  if (filePath.includes("..")) return null;
+  const normalized = resolve(workDir, filePath);
+  if (!normalized.startsWith(`${workDir}/`) && normalized !== workDir) {
+    return null;
+  }
+  return normalized;
+}
+
 app.use("/*", cors());
+app.use("/*", bodyLimit({ maxSize: 10 * 1024 * 1024 }));
 
 interface Resource {
   path?: string;
@@ -31,6 +47,13 @@ app.get("/", (c) => {
 });
 
 app.post("/builds/sync", async (c) => {
+  if (activeCompilations >= MAX_CONCURRENT) {
+    return c.json(
+      { error: "Server busy, try again later" } satisfies CompileError,
+      503,
+    );
+  }
+
   const body = await c.req.json<CompileRequest>();
   const { compiler = "pdflatex", resources } = body;
 
@@ -48,11 +71,18 @@ app.post("/builds/sync", async (c) => {
   const workDir = join(tmpdir(), `latex-${randomUUID()}`);
   await mkdir(workDir, { recursive: true });
 
+  activeCompilations++;
   try {
+    const hasBib = resources.some((r) => r.path?.endsWith(".bib"));
+
     for (const resource of resources) {
       const filePath =
         resource.path || (resource.main ? "main.tex" : `file-${randomUUID()}`);
-      const fullPath = join(workDir, filePath);
+      const fullPath = sanitizePath(workDir, filePath);
+
+      if (!fullPath) {
+        return c.json({ error: "Invalid path" } satisfies CompileError, 400);
+      }
 
       const parentDir = fullPath.substring(0, fullPath.lastIndexOf("/"));
       if (parentDir && parentDir !== workDir) {
@@ -74,16 +104,71 @@ app.post("/builds/sync", async (c) => {
           ? "lualatex"
           : "pdflatex";
 
-    const proc = Bun.spawn(
-      [compilerCmd, "-interaction=nonstopmode", "-halt-on-error", mainPath],
-      {
+    const runWithTimeout = async (
+      cmd: string[],
+    ): Promise<{ exitCode: number; timedOut: boolean }> => {
+      const proc = Bun.spawn(cmd, {
         cwd: workDir,
         stdout: "pipe",
         stderr: "pipe",
-      },
-    );
+      });
+      let timedOut = false;
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        proc.kill();
+      }, COMPILE_TIMEOUT_MS);
+      const exitCode = await proc.exited;
+      clearTimeout(timeout);
+      return { exitCode, timedOut };
+    };
 
-    await proc.exited;
+    const latexCmd = [compilerCmd, "-interaction=nonstopmode", mainPath];
+
+    if (hasBib) {
+      // pdflatex -> bibtex -> pdflatex -> pdflatex
+      let result = await runWithTimeout(latexCmd);
+      if (result.timedOut) {
+        return c.json(
+          { error: "Compilation timed out" } satisfies CompileError,
+          500,
+        );
+      }
+
+      const auxPath = join(workDir, `${mainFileName}.aux`);
+      const auxExists = await access(auxPath)
+        .then(() => true)
+        .catch(() => false);
+      if (auxExists) {
+        result = await runWithTimeout(["bibtex", mainFileName]);
+        if (result.timedOut) {
+          return c.json(
+            { error: "BibTeX timed out" } satisfies CompileError,
+            500,
+          );
+        }
+      }
+
+      for (let i = 0; i < 2; i++) {
+        result = await runWithTimeout(latexCmd);
+        if (result.timedOut) {
+          return c.json(
+            { error: "Compilation timed out" } satisfies CompileError,
+            500,
+          );
+        }
+      }
+    } else {
+      // Run twice for TOC/references
+      for (let i = 0; i < 2; i++) {
+        const result = await runWithTimeout(latexCmd);
+        if (result.timedOut) {
+          return c.json(
+            { error: "Compilation timed out" } satisfies CompileError,
+            500,
+          );
+        }
+      }
+    }
 
     const pdfPath = join(workDir, `${mainFileName}.pdf`);
     const logPath = join(workDir, `${mainFileName}.log`);
@@ -113,6 +198,7 @@ app.post("/builds/sync", async (c) => {
       );
     }
   } finally {
+    activeCompilations--;
     await rm(workDir, { recursive: true, force: true }).catch(() => {});
   }
 });
