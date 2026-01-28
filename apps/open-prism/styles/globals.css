@@ -126,3 +126,14 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* PDF text layer - clickable text */
+.react-pdf__Page__textContent span {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.react-pdf__Page__textContent span:hover {
+  background-color: oklch(0.9 0.1 250 / 30%);
+  border-radius: 2px;
+}

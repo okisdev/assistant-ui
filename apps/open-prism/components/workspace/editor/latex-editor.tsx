@@ -150,6 +150,17 @@ export function LatexEditor() {
           ".cm-scroller": {
             overflow: "auto",
           },
+          ".cm-gutters": {
+            paddingRight: "4px",
+          },
+          ".cm-lineNumbers .cm-gutterElement": {
+            paddingLeft: "8px",
+            paddingRight: "4px",
+          },
+          ".cm-content": {
+            paddingLeft: "8px",
+            paddingRight: "12px",
+          },
         }),
       ],
     });
@@ -196,7 +207,7 @@ export function LatexEditor() {
 
     view.dispatch({
       selection: { anchor: jumpToPosition },
-      scrollIntoView: true,
+      effects: EditorView.scrollIntoView(jumpToPosition, { y: "center" }),
     });
     view.focus();
     clearJumpRequest();

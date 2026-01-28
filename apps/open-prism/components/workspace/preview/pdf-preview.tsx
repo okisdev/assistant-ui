@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   FileTextIcon,
   AlertCircleIcon,
@@ -71,12 +71,46 @@ export function PdfPreview() {
   const setPdfData = useDocumentStore((s) => s.setPdfData);
   const setCompileError = useDocumentStore((s) => s.setCompileError);
   const setIsCompiling = useDocumentStore((s) => s.setIsCompiling);
+  const content = useDocumentStore((s) => s.content);
+  const requestJumpToPosition = useDocumentStore(
+    (s) => s.requestJumpToPosition,
+  );
 
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [numPages, setNumPages] = useState<number>(0);
   const [scale, setScale] = useState<number>(1.0);
   const hasInitialCompile = useRef(false);
   const initialized = useDocumentStore((s) => s.initialized);
+
+  const handleTextClick = useCallback(
+    (text: string) => {
+      // Search for the text in the LaTeX source
+      // Try exact match first
+      let index = content.indexOf(text);
+
+      // If not found, try without special characters
+      if (index === -1) {
+        const cleanText = text.replace(/[{}\\$]/g, "");
+        if (cleanText.length > 2) {
+          index = content.indexOf(cleanText);
+        }
+      }
+
+      // If still not found, try searching for words
+      if (index === -1 && text.length > 5) {
+        const words = text.split(/\s+/).filter((w) => w.length > 3);
+        for (const word of words) {
+          index = content.indexOf(word);
+          if (index !== -1) break;
+        }
+      }
+
+      if (index !== -1) {
+        requestJumpToPosition(index);
+      }
+    },
+    [content, requestJumpToPosition],
+  );
 
   useEffect(() => {
     if (hasInitialCompile.current) return;
@@ -203,6 +237,7 @@ export function PdfPreview() {
         onError={setPdfError}
         onLoadSuccess={handleLoadSuccess}
         onScaleChange={handleScaleChange}
+        onTextClick={handleTextClick}
       />
     );
   };

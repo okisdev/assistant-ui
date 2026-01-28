@@ -11,10 +11,10 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 interface PdfViewerProps {
   data: Uint8Array;
   scale: number;
-  pageNumber: number;
   onError?: (error: string) => void;
   onLoadSuccess?: (numPages: number) => void;
   onScaleChange?: (scale: number) => void;
+  onTextClick?: (text: string) => void;
 }
 
 export function PdfViewer({
@@ -23,6 +23,7 @@ export function PdfViewer({
   onError,
   onLoadSuccess,
   onScaleChange,
+  onTextClick,
 }: PdfViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const hasSetInitialScale = useRef(false);
@@ -63,6 +64,25 @@ export function PdfViewer({
     [onError],
   );
 
+  const handleTextLayerClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (!onTextClick) return;
+
+      const target = e.target as HTMLElement;
+      // Check if clicked on text layer span
+      if (
+        target.tagName === "SPAN" &&
+        target.closest(".react-pdf__Page__textContent")
+      ) {
+        const text = target.textContent?.trim();
+        if (text && text.length > 2) {
+          onTextClick(text);
+        }
+      }
+    },
+    [onTextClick],
+  );
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !onScaleChange) return;
@@ -81,7 +101,10 @@ export function PdfViewer({
 
   return (
     <div ref={containerRef} className="flex-1 overflow-auto">
-      <div className="flex flex-col items-center gap-4 p-4">
+      <div
+        className="flex flex-col items-center gap-4 p-4"
+        onClick={handleTextLayerClick}
+      >
         <Document
           file={file}
           onLoadSuccess={handleLoadSuccess}
