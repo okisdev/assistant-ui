@@ -17,10 +17,12 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   CheckIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CopyIcon,
   LoaderIcon,
+  MessageCircleIcon,
   PlusIcon,
   RefreshCwIcon,
   SquareIcon,
@@ -42,63 +44,94 @@ const DEFAULT_HEIGHT = 180;
 export function AIDrawer() {
   useDocumentContext();
 
+  const [isOpen, setIsOpen] = useState(false);
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const hasDraggedRef = useRef(false);
+  const heightRef = useRef(height);
+  heightRef.current = height;
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      setIsDragging(true);
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    hasDraggedRef.current = false;
 
-      const startY = e.clientY;
-      const startHeight = height;
+    const startY = e.clientY;
+    const startHeight = heightRef.current;
 
-      const handleMouseMove = (e: MouseEvent) => {
-        const parent = containerRef.current?.parentElement;
-        const maxHeight = parent ? parent.clientHeight * 0.5 : 400;
-        const delta = startY - e.clientY;
-        const newHeight = Math.min(
-          Math.max(startHeight + delta, MIN_HEIGHT),
-          maxHeight,
-        );
-        setHeight(newHeight);
-      };
+    const handleMouseMove = (e: MouseEvent) => {
+      hasDraggedRef.current = true;
+      const parent = containerRef.current?.parentElement;
+      const maxHeight = parent ? parent.clientHeight * 0.5 : 400;
+      const delta = startY - e.clientY;
+      const newHeight = Math.min(
+        Math.max(startHeight + delta, MIN_HEIGHT),
+        maxHeight,
+      );
+      heightRef.current = newHeight;
+      if (panelRef.current) {
+        panelRef.current.style.height = `${newHeight}px`;
+      }
+    };
 
-      const handleMouseUp = () => {
-        setIsDragging(false);
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
-      };
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      setHeight(heightRef.current);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
 
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
-    },
-    [height],
-  );
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  }, []);
 
   return (
     <div
       ref={containerRef}
       className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-4 pb-6"
     >
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className={cn(
+          "pointer-events-auto absolute right-4 bottom-6 flex size-12 items-center justify-center rounded-full border border-border bg-background shadow-lg transition-all duration-300 ease-out hover:scale-105 hover:shadow-xl",
+          isOpen
+            ? "pointer-events-none scale-50 opacity-0"
+            : "scale-100 opacity-100",
+        )}
+        aria-label="Open AI Assistant"
+      >
+        <MessageCircleIcon className="size-5 text-foreground" />
+      </button>
+
       <ThreadPrimitive.Root
-        className="aui-root pointer-events-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-2xl"
-        style={{ height }}
+        ref={panelRef}
+        className={cn(
+          "aui-root pointer-events-auto flex w-full max-w-2xl origin-bottom flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-2xl transition-all duration-300 ease-out",
+          isOpen
+            ? "scale-100 opacity-100"
+            : "pointer-events-none scale-95 opacity-0",
+          isDragging && "!transition-none",
+        )}
+        style={{ height: isOpen ? height : 0 }}
         data-dragging={isDragging}
       >
-        {/* Drag handle */}
         <div
-          className="flex cursor-row-resize items-center justify-center p-2 hover:bg-muted/50"
+          className="group flex cursor-row-resize items-center justify-center gap-2 py-2 transition-colors hover:bg-muted/50"
           onMouseDown={handleMouseDown}
+          onClick={() => {
+            if (!hasDraggedRef.current) {
+              setIsOpen(false);
+            }
+          }}
         >
-          <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
+          <div className="h-1 w-10 rounded-full bg-muted-foreground/30 transition-all group-hover:w-8" />
+          <ChevronDownIcon className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
         </div>
 
-        {/* Thread messages */}
         <ThreadMessages />
-
-        {/* Composer */}
         <Composer />
       </ThreadPrimitive.Root>
     </div>
@@ -153,7 +186,7 @@ const ThreadScrollToBottom: FC = () => {
 
 const Composer: FC = () => {
   return (
-    <ComposerPrimitive.Root className="shrink-0 border-border border-t p-3">
+    <ComposerPrimitive.Root className="shrink-0 p-3">
       <div className="flex w-full flex-col rounded-2xl border border-input bg-muted/30 transition-colors focus-within:border-ring focus-within:bg-background">
         <ComposerPrimitive.Input
           placeholder="Ask about LaTeX..."
