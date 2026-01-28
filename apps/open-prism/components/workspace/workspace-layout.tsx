@@ -8,22 +8,19 @@ import { PdfPreview } from "./preview/pdf-preview";
 export function WorkspaceLayout() {
   return (
     <PanelGroup direction="horizontal" className="h-full">
-      {/* Sidebar Panel */}
       <Panel defaultSize={15} minSize={10} maxSize={25}>
         <Sidebar />
       </Panel>
 
       <PanelResizeHandle className="w-px bg-border transition-colors hover:bg-ring" />
 
-      {/* Editor Panel */}
-      <Panel defaultSize={55} minSize={30}>
+      <Panel defaultSize={42.5} minSize={25}>
         <LatexEditor />
       </Panel>
 
       <PanelResizeHandle className="w-px bg-border transition-colors hover:bg-ring" />
 
-      {/* PDF Preview Panel */}
-      <Panel defaultSize={30} minSize={20} maxSize={50}>
+      <Panel defaultSize={42.5} minSize={25}>
         <PdfPreview />
       </Panel>
     </PanelGroup>

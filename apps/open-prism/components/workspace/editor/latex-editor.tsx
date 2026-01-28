@@ -26,7 +26,6 @@ export function LatexEditor() {
   const setContent = useDocumentStore((s) => s.setContent);
   const setCursorPosition = useDocumentStore((s) => s.setCursorPosition);
 
-  // Capture initial content for editor initialization
   if (initialContentRef.current === null) {
     initialContentRef.current = content;
   }
@@ -81,7 +80,6 @@ export function LatexEditor() {
     };
   }, [setContent, setCursorPosition]);
 
-  // Sync external content changes (e.g., from AI tools)
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;

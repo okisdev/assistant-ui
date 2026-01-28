@@ -1,4 +1,4 @@
-export async function compileLatex(latex: string): Promise<string> {
+export async function compileLatex(latex: string): Promise<Uint8Array> {
   const response = await fetch("/api/compile", {
     method: "POST",
     headers: {
@@ -12,9 +12,6 @@ export async function compileLatex(latex: string): Promise<string> {
     throw new Error(data.error || "Compilation failed");
   }
 
-  // Get the PDF blob and create an object URL
-  const pdfBlob = await response.blob();
-  const pdfUrl = URL.createObjectURL(pdfBlob);
-
-  return pdfUrl;
+  const arrayBuffer = await response.arrayBuffer();
+  return new Uint8Array(arrayBuffer);
 }

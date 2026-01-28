@@ -26,7 +26,7 @@ export function EditorToolbar({ editorView }: EditorToolbarProps) {
   const fileName = useDocumentStore((s) => s.fileName);
   const content = useDocumentStore((s) => s.content);
   const isCompiling = useDocumentStore((s) => s.isCompiling);
-  const setPdfUrl = useDocumentStore((s) => s.setPdfUrl);
+  const setPdfData = useDocumentStore((s) => s.setPdfData);
   const setCompileError = useDocumentStore((s) => s.setCompileError);
   const setIsCompiling = useDocumentStore((s) => s.setIsCompiling);
 
@@ -60,8 +60,8 @@ export function EditorToolbar({ editorView }: EditorToolbarProps) {
 
     setIsCompiling(true);
     try {
-      const url = await compileLatex(content);
-      setPdfUrl(url);
+      const data = await compileLatex(content);
+      setPdfData(data);
     } catch (error) {
       setCompileError(
         error instanceof Error ? error.message : "Compilation failed",

@@ -13,7 +13,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Use latex.ytotech.com API for compilation
     const response = await fetch("https://latex.ytotech.com/builds/sync", {
       method: "POST",
       headers: {
@@ -38,10 +37,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get the PDF as a blob
     const pdfBuffer = await response.arrayBuffer();
 
-    // Return the PDF
     return new NextResponse(pdfBuffer, {
       headers: {
         "Content-Type": "application/pdf",

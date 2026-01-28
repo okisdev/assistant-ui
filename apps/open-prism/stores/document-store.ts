@@ -38,14 +38,14 @@ interface DocumentState {
   content: string;
   cursorPosition: number;
   isThreadOpen: boolean;
-  pdfUrl: string | null;
+  pdfData: Uint8Array | null;
   compileError: string | null;
   isCompiling: boolean;
   setFileName: (name: string) => void;
   setContent: (content: string) => void;
   setCursorPosition: (position: number) => void;
   setThreadOpen: (open: boolean) => void;
-  setPdfUrl: (url: string | null) => void;
+  setPdfData: (data: Uint8Array | null) => void;
   setCompileError: (error: string | null) => void;
   setIsCompiling: (isCompiling: boolean) => void;
   insertAtCursor: (text: string) => void;
@@ -59,7 +59,7 @@ export const useDocumentStore = create<DocumentState>()(
       content: DEFAULT_CONTENT,
       cursorPosition: 0,
       isThreadOpen: false,
-      pdfUrl: null,
+      pdfData: null,
       compileError: null,
       isCompiling: false,
 
@@ -67,9 +67,9 @@ export const useDocumentStore = create<DocumentState>()(
 
       setThreadOpen: (open) => set({ isThreadOpen: open }),
 
-      setPdfUrl: (url) => set({ pdfUrl: url, compileError: null }),
+      setPdfData: (data) => set({ pdfData: data, compileError: null }),
 
-      setCompileError: (error) => set({ compileError: error, pdfUrl: null }),
+      setCompileError: (error) => set({ compileError: error, pdfData: null }),
 
       setIsCompiling: (isCompiling) => set({ isCompiling }),
 
@@ -100,6 +100,11 @@ export const useDocumentStore = create<DocumentState>()(
     }),
     {
       name: "open-prism-document",
+      partialize: (state) => ({
+        fileName: state.fileName,
+        content: state.content,
+        cursorPosition: state.cursorPosition,
+      }),
     },
   ),
 );

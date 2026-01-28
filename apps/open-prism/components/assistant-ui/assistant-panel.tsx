@@ -4,7 +4,6 @@ import { Thread } from "./thread";
 import { useDocumentContext } from "@/hooks/use-document-context";
 
 export function AssistantPanel() {
-  // Register document context with AI
   useDocumentContext();
 
   return (
