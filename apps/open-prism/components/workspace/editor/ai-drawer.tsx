@@ -9,7 +9,10 @@ import {
   MessagePrimitive,
   ThreadPrimitive,
 } from "@assistant-ui/react";
-import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
+import {
+  MarkdownTextPrimitive,
+  type SyntaxHighlighterProps,
+} from "@assistant-ui/react-markdown";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -17,19 +20,27 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   CopyIcon,
+  PlusIcon,
   RefreshCwIcon,
   SquareIcon,
 } from "lucide-react";
 import type { FC } from "react";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { cn } from "@/lib/utils";
+import { useDocumentStore } from "@/stores/document-store";
+import { useDocumentContext } from "@/hooks/use-document-context";
 
 const MIN_HEIGHT = 140;
 const DEFAULT_HEIGHT = 180;
 
 export function AIDrawer() {
+  useDocumentContext();
+
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -95,19 +106,21 @@ export function AIDrawer() {
 
 const ThreadMessages: FC = () => {
   return (
-    <ThreadPrimitive.Viewport
-      turnAnchor="end"
-      className="aui-thread-viewport relative min-h-0 flex-1 overflow-y-auto scroll-smooth px-4"
-    >
-      <ThreadPrimitive.Messages
-        components={{
-          UserMessage,
-          AssistantMessage,
-        }}
-      />
+    <div className="relative min-h-0 flex-1">
+      <ThreadPrimitive.Viewport
+        turnAnchor="bottom"
+        className="aui-thread-viewport absolute inset-0 overflow-y-auto scroll-smooth px-4"
+      >
+        <ThreadPrimitive.Messages
+          components={{
+            UserMessage,
+            AssistantMessage,
+          }}
+        />
+      </ThreadPrimitive.Viewport>
 
       <ThreadScrollToBottom />
-    </ThreadPrimitive.Viewport>
+    </div>
   );
 };
 
@@ -202,10 +215,41 @@ const AssistantMessage: FC = () => {
   );
 };
 
+const CodeBlock: FC<SyntaxHighlighterProps> = ({ language, code }) => {
+  const insertAtCursor = useDocumentStore((s) => s.insertAtCursor);
+  const isLatex = language === "latex" || language === "tex";
+
+  const handleInsert = useCallback(() => {
+    insertAtCursor(code);
+  }, [insertAtCursor, code]);
+
+  return (
+    <div className="group relative my-2">
+      <pre className="overflow-x-auto rounded-lg bg-muted p-3 text-sm">
+        <code>{code}</code>
+      </pre>
+      {isLatex && (
+        <button
+          type="button"
+          onClick={handleInsert}
+          className="absolute top-2 right-2 flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-primary-foreground text-xs opacity-0 transition-opacity group-hover:opacity-100"
+        >
+          <PlusIcon className="size-3" />
+          Insert
+        </button>
+      )}
+    </div>
+  );
+};
+
 const MarkdownText: FC = () => {
   return (
     <MarkdownTextPrimitive
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={[remarkGfm, remarkMath]}
+      rehypePlugins={[rehypeKatex]}
+      components={{
+        SyntaxHighlighter: CodeBlock,
+      }}
       className="aui-md prose prose-sm dark:prose-invert max-w-none"
     />
   );

@@ -1,6 +1,11 @@
 import { openai } from "@ai-sdk/openai";
-import { streamText, convertToModelMessages, stepCountIs } from "ai";
-import type { UIMessage } from "ai";
+import { frontendTools } from "@assistant-ui/react-ai-sdk";
+import {
+  streamText,
+  convertToModelMessages,
+  stepCountIs,
+  type ToolSet,
+} from "ai";
 
 export const maxDuration = 30;
 
@@ -19,6 +24,13 @@ When the user asks you to help with their document:
 - Suggest improvements and fixes
 - Provide complete code snippets they can use
 
+You have tools available to directly modify the document:
+- Use insert_latex to insert code at the user's cursor position
+- Use replace_selection to replace selected text (only when user has selected text)
+
+When the user asks you to add, insert, or write LaTeX code to their document, use the insert_latex tool.
+When the user asks you to replace or modify selected text, use the replace_selection tool.
+
 Common tasks you help with:
 - Writing mathematical equations
 - Document structure (sections, chapters)
@@ -29,8 +41,7 @@ Common tasks you help with:
 - Debugging LaTeX errors`;
 
 export async function POST(req: Request) {
-  const { messages, system }: { messages: UIMessage[]; system?: string } =
-    await req.json();
+  const { messages, system, tools } = await req.json();
 
   const fullSystemPrompt = system
     ? `${SYSTEM_PROMPT}\n\n${system}`
@@ -41,6 +52,7 @@ export async function POST(req: Request) {
     system: fullSystemPrompt,
     messages: await convertToModelMessages(messages),
     stopWhen: stepCountIs(10),
+    tools: frontendTools(tools) as unknown as ToolSet,
   });
 
   return result.toUIMessageStreamResponse();

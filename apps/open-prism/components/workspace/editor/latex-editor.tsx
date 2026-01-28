@@ -23,6 +23,7 @@ import { compileLatex, type CompileResource } from "@/lib/latex-compiler";
 import { EditorToolbar } from "./editor-toolbar";
 import { AIDrawer } from "./ai-drawer";
 import { ImagePreview } from "./image-preview";
+import { LatexTools } from "./latex-tools";
 
 function gatherResources(files: ProjectFile[]): CompileResource[] {
   return files.map((f) => {
@@ -57,6 +58,7 @@ export function LatexEditor() {
   const activeFileId = useDocumentStore((s) => s.activeFileId);
   const setContent = useDocumentStore((s) => s.setContent);
   const setCursorPosition = useDocumentStore((s) => s.setCursorPosition);
+  const setSelectionRange = useDocumentStore((s) => s.setSelectionRange);
   const isCompiling = useDocumentStore((s) => s.isCompiling);
   const setIsCompiling = useDocumentStore((s) => s.setIsCompiling);
   const setPdfData = useDocumentStore((s) => s.setPdfData);
@@ -98,7 +100,13 @@ export function LatexEditor() {
         setContent(update.state.doc.toString());
       }
       if (update.selectionSet) {
-        setCursorPosition(update.state.selection.main.head);
+        const { from, to, head } = update.state.selection.main;
+        setCursorPosition(head);
+        if (from !== to) {
+          setSelectionRange({ start: from, end: to });
+        } else {
+          setSelectionRange(null);
+        }
       }
     });
 
@@ -155,7 +163,13 @@ export function LatexEditor() {
       view.destroy();
       viewRef.current = null;
     };
-  }, [activeFileId, isTexFile, setContent, setCursorPosition]);
+  }, [
+    activeFileId,
+    isTexFile,
+    setContent,
+    setCursorPosition,
+    setSelectionRange,
+  ]);
 
   useEffect(() => {
     const view = viewRef.current;
@@ -198,6 +212,7 @@ export function LatexEditor() {
         <div ref={containerRef} className="absolute inset-0" />
         <AIDrawer />
       </div>
+      <LatexTools />
     </div>
   );
 }

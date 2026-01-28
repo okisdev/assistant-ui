@@ -104,6 +104,7 @@ interface DocumentState {
   files: ProjectFile[];
   activeFileId: string;
   cursorPosition: number;
+  selectionRange: { start: number; end: number } | null;
   isThreadOpen: boolean;
   pdfData: Uint8Array | null;
   compileError: string | null;
@@ -116,6 +117,7 @@ interface DocumentState {
   renameFile: (id: string, name: string) => void;
   updateFileContent: (id: string, content: string) => void;
   setCursorPosition: (position: number) => void;
+  setSelectionRange: (range: { start: number; end: number } | null) => void;
   setThreadOpen: (open: boolean) => void;
   setPdfData: (data: Uint8Array | null) => void;
   setCompileError: (error: string | null) => void;
@@ -152,13 +154,17 @@ export const useDocumentStore = create<DocumentState>()(
       ],
       activeFileId: "default-tex",
       cursorPosition: 0,
+      selectionRange: null,
       isThreadOpen: false,
       pdfData: null,
       compileError: null,
       isCompiling: false,
       initialized: false,
 
-      setActiveFile: (id) => set({ activeFileId: id, cursorPosition: 0 }),
+      setActiveFile: (id) =>
+        set({ activeFileId: id, cursorPosition: 0, selectionRange: null }),
+
+      setSelectionRange: (range) => set({ selectionRange: range }),
 
       addFile: (file) => {
         const id = generateId();
