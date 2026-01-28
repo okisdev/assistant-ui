@@ -6,15 +6,33 @@ import {
   FileTextIcon,
   AlertCircleIcon,
   LoaderIcon,
-  ZoomInIcon,
-  ZoomOutIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   RefreshCwIcon,
+  MinusIcon,
+  PlusIcon,
 } from "lucide-react";
 import { useDocumentStore } from "@/stores/document-store";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { compileLatex } from "@/lib/latex-compiler";
+
+const ZOOM_OPTIONS = [
+  { value: "0.5", label: "50%" },
+  { value: "0.75", label: "75%" },
+  { value: "1", label: "100%" },
+  { value: "1.25", label: "125%" },
+  { value: "1.5", label: "150%" },
+  { value: "2", label: "200%" },
+  { value: "3", label: "300%" },
+  { value: "4", label: "400%" },
+];
 
 const PdfViewer = dynamic(
   () => import("./pdf-viewer").then((mod) => mod.PdfViewer),
@@ -75,13 +93,16 @@ export function PdfPreview() {
 
   const goToPrevPage = () => setPageNumber((p) => Math.max(1, p - 1));
   const goToNextPage = () => setPageNumber((p) => Math.min(numPages, p + 1));
-  const zoomIn = () => setScale((s) => Math.min(3, s + 0.25));
-  const zoomOut = () => setScale((s) => Math.max(0.5, s - 0.25));
-  const resetZoom = () => setScale(1.0);
+  const zoomIn = () => setScale((s) => Math.min(4, s + 0.1));
+  const zoomOut = () => setScale((s) => Math.max(0.25, s - 0.1));
 
   const handleLoadSuccess = (pages: number) => {
     setNumPages(pages);
     setPageNumber(1);
+  };
+
+  const handleScaleChange = (newScale: number) => {
+    setScale(newScale);
   };
 
   const handleCompile = async () => {
@@ -150,6 +171,7 @@ export function PdfPreview() {
         pageNumber={pageNumber}
         onError={setPdfError}
         onLoadSuccess={handleLoadSuccess}
+        onScaleChange={handleScaleChange}
       />
     );
   };
@@ -223,26 +245,33 @@ export function PdfPreview() {
               size="icon"
               className="size-7"
               onClick={zoomOut}
-              disabled={scale <= 0.5}
+              disabled={scale <= 0.25}
             >
-              <ZoomOutIcon className="size-4" />
+              <MinusIcon className="size-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 min-w-14 px-2 text-xs"
-              onClick={resetZoom}
+            <Select
+              value={scale.toString()}
+              onValueChange={(v) => setScale(Number(v))}
             >
-              {Math.round(scale * 100)}%
-            </Button>
+              <SelectTrigger size="sm" className="h-7 w-20 text-xs">
+                <SelectValue>{Math.round(scale * 100)}%</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {ZOOM_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button
               variant="ghost"
               size="icon"
               className="size-7"
               onClick={zoomIn}
-              disabled={scale >= 3}
+              disabled={scale >= 4}
             >
-              <ZoomInIcon className="size-4" />
+              <PlusIcon className="size-4" />
             </Button>
           </div>
         )}

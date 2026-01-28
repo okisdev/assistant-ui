@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef, useEffect } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -13,7 +13,8 @@ interface PdfViewerProps {
   scale: number;
   pageNumber: number;
   onError?: (error: string) => void;
-  onLoadSuccess?: (numPages: number) => void;
+  onLoadSuccess?: (numPages: number, pageWidth: number) => void;
+  onScaleChange?: (scale: number) => void;
 }
 
 export function PdfViewer({
@@ -22,18 +23,36 @@ export function PdfViewer({
   pageNumber,
   onError,
   onLoadSuccess,
+  onScaleChange,
 }: PdfViewerProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const hasSetInitialScale = useRef(false);
+
   const file = useMemo(() => {
     const pdfData =
       data instanceof Uint8Array ? data : new Uint8Array(Object.values(data));
+    hasSetInitialScale.current = false;
     return { data: pdfData.slice() };
   }, [data]);
 
   const handleLoadSuccess = useCallback(
     ({ numPages }: { numPages: number }) => {
-      onLoadSuccess?.(numPages);
+      onLoadSuccess?.(numPages, 612);
     },
     [onLoadSuccess],
+  );
+
+  const handlePageLoadSuccess = useCallback(
+    ({ width }: { width: number }) => {
+      if (hasSetInitialScale.current) return;
+      if (containerRef.current && onScaleChange) {
+        hasSetInitialScale.current = true;
+        const containerWidth = containerRef.current.clientWidth - 32;
+        const fitScale = containerWidth / width;
+        onScaleChange(Math.min(fitScale, 2));
+      }
+    },
+    [onScaleChange],
   );
 
   const handleLoadError = useCallback(
@@ -43,8 +62,24 @@ export function PdfViewer({
     [onError],
   );
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !onScaleChange) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.metaKey || e.ctrlKey) {
+        e.preventDefault();
+        const delta = -e.deltaY * 0.001;
+        onScaleChange(Math.max(0.25, Math.min(4, scale + delta)));
+      }
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => container.removeEventListener("wheel", handleWheel);
+  }, [scale, onScaleChange]);
+
   return (
-    <div className="flex-1 overflow-auto">
+    <div ref={containerRef} className="flex-1 overflow-auto">
       <div className="flex min-h-full justify-center p-4">
         <Document
           file={file}
@@ -63,6 +98,7 @@ export function PdfViewer({
             renderTextLayer={true}
             renderAnnotationLayer={true}
             className="shadow-lg"
+            onLoadSuccess={handlePageLoadSuccess}
           />
         </Document>
       </div>
