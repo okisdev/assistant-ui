@@ -300,25 +300,39 @@ const useLangGraphRuntimeImpl = ({
   });
 
   {
-    const aui = useAui();
-
     const loadRef = useRef(load);
     useEffect(() => {
       loadRef.current = load;
     });
 
+    const externalId = useAuiState(
+      ({ threadListItem }) => threadListItem.externalId,
+    );
+
     useEffect(() => {
       const load = loadRef.current;
-      if (!load) return;
+      if (!load || externalId == null) return;
 
-      const externalId = aui.threadListItem().getState().externalId;
-      if (externalId == null) return;
+      let cancelled = false;
 
-      load(externalId).then(({ messages, interrupts }) => {
-        setMessages(messages);
-        setInterrupt(interrupts?.[0]);
-      });
-    }, [aui, setMessages, setInterrupt]);
+      setMessages([]);
+      setInterrupt(undefined);
+
+      load(externalId)
+        .then(({ messages, interrupts }) => {
+          if (cancelled) return;
+          setMessages(messages);
+          setInterrupt(interrupts?.[0]);
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          console.error("[LangGraph] Failed to load thread:", error);
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    }, [externalId, setMessages, setInterrupt]);
   }
 
   return runtime;
