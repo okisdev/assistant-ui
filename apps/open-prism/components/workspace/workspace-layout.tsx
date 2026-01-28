@@ -5,9 +5,19 @@ import { Sidebar } from "./sidebar";
 import { LatexEditor } from "./editor/latex-editor";
 import { PdfPreview } from "./preview/pdf-preview";
 import { useProjectInit } from "@/hooks/use-project-init";
+import { useStorageReady } from "@/hooks/use-storage-ready";
 
 export function WorkspaceLayout() {
+  const storageReady = useStorageReady();
   useProjectInit();
+
+  if (!storageReady) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <PanelGroup direction="horizontal" className="h-full">

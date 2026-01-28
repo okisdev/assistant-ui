@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { indexedDBStorage } from "@/lib/storage/indexeddb-storage";
 
 const DEFAULT_TEX_CONTENT = `\\documentclass[11pt]{article}
 \\usepackage[margin=1in]{geometry}
@@ -270,7 +271,6 @@ export const useDocumentStore = create<DocumentState>()(
 
       setInitialized: () => set({ initialized: true }),
 
-      // Legacy compatibility getters
       get fileName() {
         const activeFile = getActiveFile(get());
         return activeFile?.name ?? "document.tex";
@@ -301,17 +301,15 @@ export const useDocumentStore = create<DocumentState>()(
     }),
     {
       name: "open-prism-document",
+      storage: createJSONStorage(() => indexedDBStorage),
       partialize: (state) => ({
-        // Don't persist image dataUrl to avoid localStorage size limits
-        files: state.files.map((f) =>
-          f.type === "image" ? { ...f, dataUrl: undefined } : f,
-        ),
+        files: state.files,
         activeFileId: state.activeFileId,
+        pdfData: state.pdfData,
       }),
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as object) };
         const files = merged.files as ProjectFile[];
-        // Always default to document.tex on page load if it exists
         const docTex = files.find((f) => f.name === "document.tex");
         if (docTex) {
           merged.activeFileId = docTex.id;

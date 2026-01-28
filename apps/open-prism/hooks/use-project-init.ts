@@ -32,41 +32,34 @@ export function useProjectInit() {
       (f) => f.type === "image" && f.name === DEFAULT_IMAGE_FILE.name,
     );
 
+    if (existingImage?.dataUrl) {
+      setInitialized();
+      return;
+    }
+
     const currentActiveId = useDocumentStore.getState().activeFileId;
 
-    if (!existingImage) {
-      // Add new image file
-      loadImageAsDataUrl(DEFAULT_IMAGE_FILE.path)
-        .then((dataUrl) => {
+    loadImageAsDataUrl(DEFAULT_IMAGE_FILE.path)
+      .then((dataUrl) => {
+        if (existingImage) {
+          useDocumentStore.setState((state) => ({
+            files: state.files.map((f) =>
+              f.id === existingImage.id ? { ...f, dataUrl } : f,
+            ),
+          }));
+        } else {
           addFile({
             name: DEFAULT_IMAGE_FILE.name,
             type: "image",
             dataUrl,
           });
           useDocumentStore.getState().setActiveFile(currentActiveId);
-          setInitialized();
-        })
-        .catch((err) => {
-          console.error("Failed to load default image:", err);
-          setInitialized();
-        });
-    } else if (!existingImage.dataUrl) {
-      // Reload image data if missing (not persisted)
-      loadImageAsDataUrl(DEFAULT_IMAGE_FILE.path)
-        .then((dataUrl) => {
-          useDocumentStore.setState((state) => ({
-            files: state.files.map((f) =>
-              f.id === existingImage.id ? { ...f, dataUrl } : f,
-            ),
-          }));
-          setInitialized();
-        })
-        .catch((err) => {
-          console.error("Failed to reload image:", err);
-          setInitialized();
-        });
-    } else {
-      setInitialized();
-    }
+        }
+        setInitialized();
+      })
+      .catch((err) => {
+        console.error("Failed to load default image:", err);
+        setInitialized();
+      });
   }, [files, addFile, initialized, setInitialized]);
 }

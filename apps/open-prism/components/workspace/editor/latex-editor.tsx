@@ -420,11 +420,11 @@ export function LatexEditor() {
                 </span>
                 {section.html ? (
                   <span
-                    className="py-px pl-[16px]"
+                    className="py-px pl-4"
                     dangerouslySetInnerHTML={{ __html: section.html }}
                   />
                 ) : (
-                  <span className="py-px pl-[16px] text-[#abb2bf]">
+                  <span className="py-px pl-4 text-[#abb2bf]">
                     {section.content}
                   </span>
                 )}
