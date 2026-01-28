@@ -429,6 +429,19 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  apps/latex-api:
+    dependencies:
+      hono:
+        specifier: ^4.6.0
+        version: 4.11.6
+    devDependencies:
+      '@types/bun':
+        specifier: latest
+        version: 1.3.7
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
   apps/open-prism:
     dependencies:
       '@ai-sdk/openai':
@@ -5719,6 +5732,9 @@ packages:
   '@types/babel__traverse@7.28.0':
     resolution: {integrity: sha512-8PvcXf70gTDZBgt9ptxJ8elBeBjcLOAcOtoO/mPJjtji1+CdGbHgm77om1GrsPxsiE+uXIpNSK64UYaIwQXd4Q==}
 
+  '@types/bun@1.3.7':
+    resolution: {integrity: sha512-lmNuMda+Z9b7tmhA0tohwy8ZWFSnmQm1UDWXtH5r9F7wZCfkeO3Jx7wKQ1EOiKq43yHts7ky6r8SDJQWRNupkA==}
+
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
 
@@ -6211,6 +6227,9 @@ packages:
 
   buffer-from@1.1.2:
     resolution: {integrity: sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ==}
+
+  bun-types@1.3.7:
+    resolution: {integrity: sha512-qyschsA03Qz+gou+apt6HNl6HnI+sJJLL4wLDke4iugsE6584CMupOtTY1n+2YC9nGVrEKUlTs99jjRLKgWnjQ==}
 
   bundle-require@5.1.0:
     resolution: {integrity: sha512-3WrrOuZiyaaZPWiEt4G3+IffISVC9HYlWueJEBWED4ZH4aIAC2PnkdnuRrR94M+w6yGWn4AglWtJtBI8YqvgoA==}
@@ -14174,6 +14193,10 @@ snapshots:
     dependencies:
       '@babel/types': 7.28.6
 
+  '@types/bun@1.3.7':
+    dependencies:
+      bun-types: 1.3.7
+
   '@types/chai@5.2.3':
     dependencies:
       '@types/deep-eql': 4.0.2
@@ -14709,6 +14732,10 @@ snapshots:
   buffer-equal-constant-time@1.0.1: {}
 
   buffer-from@1.1.2: {}
+
+  bun-types@1.3.7:
+    dependencies:
+      '@types/node': 25.0.10
 
   bundle-require@5.1.0(esbuild@0.27.2):
     dependencies:

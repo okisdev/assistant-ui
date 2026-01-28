@@ -33,7 +33,7 @@ export async function POST(req: Request) {
         (r.content.startsWith("/9j/") || r.content.startsWith("iVBOR"));
 
       if (isBase64Image) {
-        const cleanBase64 = r.content.replace(/\s/g, "");
+        const cleanBase64 = r.content?.replace(/\s/g, "");
         resource.file = cleanBase64;
       } else if (r.content) {
         resource.content = r.content;
@@ -47,7 +47,8 @@ export async function POST(req: Request) {
       return resource;
     });
 
-    const response = await fetch("https://latex.ytotech.com/builds/sync", {
+    const latexApiUrl = process.env.LATEX_API_URL || "http://localhost:3001";
+    const response = await fetch(`${latexApiUrl}/builds/sync`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
