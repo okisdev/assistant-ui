@@ -172,7 +172,7 @@
   },
   "overrides": [
     {
-      "includes": ["packages/ui/src/components/ui/**"],
+      "includes": ["**/components/ui/**"],
       "linter": {
         "rules": {
           "correctness": {

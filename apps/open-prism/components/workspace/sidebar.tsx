@@ -9,7 +9,7 @@ export function Sidebar() {
 
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
-      <div className="flex items-center gap-2 border-sidebar-border border-b px-3 py-2">
+      <div className="flex h-9 items-center gap-2 border-sidebar-border border-b px-3">
         <FolderIcon className="size-4 text-muted-foreground" />
         <span className="font-medium text-xs">Files</span>
       </div>

@@ -10,13 +10,9 @@ import {
   Heading2Icon,
   CodeIcon,
   FunctionSquareIcon,
-  PlayIcon,
-  LoaderIcon,
 } from "lucide-react";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
-import { Button } from "@/components/ui/button";
 import { useDocumentStore } from "@/stores/document-store";
-import { compileLatex } from "@/lib/latex-compiler";
 
 interface EditorToolbarProps {
   editorView: RefObject<EditorView | null>;
@@ -24,11 +20,6 @@ interface EditorToolbarProps {
 
 export function EditorToolbar({ editorView }: EditorToolbarProps) {
   const fileName = useDocumentStore((s) => s.fileName);
-  const content = useDocumentStore((s) => s.content);
-  const isCompiling = useDocumentStore((s) => s.isCompiling);
-  const setPdfData = useDocumentStore((s) => s.setPdfData);
-  const setCompileError = useDocumentStore((s) => s.setCompileError);
-  const setIsCompiling = useDocumentStore((s) => s.setIsCompiling);
 
   const insertText = (before: string, after: string = "") => {
     const view = editorView.current;
@@ -55,41 +46,11 @@ export function EditorToolbar({ editorView }: EditorToolbarProps) {
     insertText(wrapper, wrapper);
   };
 
-  const handleCompile = async () => {
-    if (isCompiling) return;
-
-    setIsCompiling(true);
-    try {
-      const data = await compileLatex(content);
-      setPdfData(data);
-    } catch (error) {
-      setCompileError(
-        error instanceof Error ? error.message : "Compilation failed",
-      );
-    } finally {
-      setIsCompiling(false);
-    }
-  };
-
   return (
-    <div className="flex items-center gap-1 border-border border-b bg-muted/30 px-2 py-1">
+    <div className="flex h-9 items-center gap-1 border-border border-b bg-muted/30 px-2">
       <span className="mr-2 font-medium text-muted-foreground text-sm">
         {fileName}
       </span>
-      <Button
-        size="sm"
-        variant="default"
-        className="mr-2 h-7 gap-1.5 px-3"
-        onClick={handleCompile}
-        disabled={isCompiling}
-      >
-        {isCompiling ? (
-          <LoaderIcon className="size-3.5 animate-spin" />
-        ) : (
-          <PlayIcon className="size-3.5" />
-        )}
-        {isCompiling ? "Compiling..." : "Compile"}
-      </Button>
       <div className="mx-2 h-4 w-px bg-border" />
       <TooltipIconButton
         tooltip="Bold (\\textbf)"
