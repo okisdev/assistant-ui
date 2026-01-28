@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import packageJson from "@/package.json";
 
 export function Sidebar() {
   const files = useDocumentStore((s) => s.files);
@@ -232,7 +233,7 @@ export function Sidebar() {
       </div>
 
       <div className="border-sidebar-border border-t px-3 py-2 text-muted-foreground text-xs">
-        Open-Prism v0.1
+        Open-Prism v{packageJson.version}
       </div>
 
       {/* Add File Dialog */}

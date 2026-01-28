@@ -1,8 +1,6 @@
 "use client";
 
-import { useRef, useCallback } from "react";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import type { ImperativePanelHandle } from "react-resizable-panels";
+import { useRef, useState, useCallback } from "react";
 import {
   ActionBarPrimitive,
   AuiIf,
@@ -19,7 +17,6 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   CopyIcon,
-  GripHorizontalIcon,
   RefreshCwIcon,
   SquareIcon,
 } from "lucide-react";
@@ -27,68 +24,81 @@ import type { FC } from "react";
 import remarkGfm from "remark-gfm";
 
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useDocumentStore } from "@/stores/document-store";
+
+const MIN_HEIGHT = 120;
+const DEFAULT_HEIGHT = 160;
 
 export function AIDrawer() {
-  const threadPanelRef = useRef<ImperativePanelHandle>(null);
-  const isThreadOpen = useDocumentStore((s) => s.isThreadOpen);
-  const setThreadOpen = useDocumentStore((s) => s.setThreadOpen);
+  const [height, setHeight] = useState(DEFAULT_HEIGHT);
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const expandThread = useCallback(() => {
-    if (!isThreadOpen) {
-      setThreadOpen(true);
-      threadPanelRef.current?.resize(60);
-    }
-  }, [isThreadOpen, setThreadOpen]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      setIsDragging(true);
 
-  const handlePanelResize = useCallback(
-    (size: number) => {
-      setThreadOpen(size > 5);
+      const startY = e.clientY;
+      const startHeight = height;
+
+      const handleMouseMove = (e: MouseEvent) => {
+        const parent = containerRef.current?.parentElement;
+        const maxHeight = parent ? parent.clientHeight * 0.5 : 400;
+        const delta = startY - e.clientY;
+        const newHeight = Math.min(
+          Math.max(startHeight + delta, MIN_HEIGHT),
+          maxHeight,
+        );
+        setHeight(newHeight);
+      };
+
+      const handleMouseUp = () => {
+        setIsDragging(false);
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
+
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
     },
-    [setThreadOpen],
+    [height],
   );
 
   return (
-    <ThreadPrimitive.Root className="aui-root flex h-full flex-col">
-      <PanelGroup direction="vertical">
-        {/* Thread Panel - collapsible */}
-        <Panel
-          ref={threadPanelRef}
-          defaultSize={0}
-          minSize={0}
-          maxSize={80}
-          collapsible
-          onResize={handlePanelResize}
-          className="overflow-hidden"
+    <div
+      ref={containerRef}
+      className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-4 pb-6"
+    >
+      <ThreadPrimitive.Root
+        className="aui-root pointer-events-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-2xl"
+        style={{ height }}
+        data-dragging={isDragging}
+      >
+        {/* Drag handle */}
+        <div
+          className="flex cursor-row-resize items-center justify-center p-2 hover:bg-muted/50"
+          onMouseDown={handleMouseDown}
         >
-          <ThreadMessages />
-        </Panel>
+          <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
+        </div>
 
-        <PanelResizeHandle className="group relative flex h-2 items-center justify-center border-border border-t bg-background transition-colors hover:bg-muted">
-          <GripHorizontalIcon className="size-4 text-muted-foreground transition-colors group-hover:text-foreground" />
-        </PanelResizeHandle>
+        {/* Thread messages */}
+        <ThreadMessages />
 
-        {/* Composer - always visible */}
-        <Panel defaultSize={100} minSize={15}>
-          <Composer onSend={expandThread} />
-        </Panel>
-      </PanelGroup>
-    </ThreadPrimitive.Root>
+        {/* Composer */}
+        <Composer />
+      </ThreadPrimitive.Root>
+    </div>
   );
 }
 
 const ThreadMessages: FC = () => {
   return (
     <ThreadPrimitive.Viewport
-      turnAnchor="top"
-      className="aui-thread-viewport relative flex h-full flex-col overflow-x-auto overflow-y-scroll scroll-smooth px-4 pt-4"
+      turnAnchor="end"
+      className="aui-thread-viewport relative min-h-0 flex-1 overflow-y-auto scroll-smooth px-4"
     >
-      <AuiIf condition={({ thread }) => thread.isEmpty}>
-        <ThreadWelcome />
-      </AuiIf>
-
       <ThreadPrimitive.Messages
         components={{
           UserMessage,
@@ -115,52 +125,37 @@ const ThreadScrollToBottom: FC = () => {
   );
 };
 
-const ThreadWelcome: FC = () => {
+const Composer: FC = () => {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-4 py-8">
-      <p className="text-center text-muted-foreground text-sm">
-        Ask me anything about LaTeX!
-      </p>
-    </div>
-  );
-};
-
-const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
-  return (
-    <div className="flex h-full flex-col border-border border-t bg-background p-3">
-      <ComposerPrimitive.Root className="relative flex w-full flex-1 flex-col">
-        <div className="flex w-full flex-1 flex-col rounded-xl border border-input bg-background px-1 pt-1 outline-none transition-shadow has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-2 has-[textarea:focus-visible]:ring-ring/20">
-          <ComposerPrimitive.Input
-            placeholder="Ask about LaTeX..."
-            className="max-h-24 min-h-10 w-full flex-1 resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-0"
-            rows={1}
-            autoFocus
-            aria-label="Message input"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                onSend?.();
-              }
-            }}
-          />
+    <ComposerPrimitive.Root className="shrink-0 border-border border-t p-3">
+      <div className="flex w-full flex-col rounded-2xl border border-input bg-muted/30 transition-colors focus-within:border-ring focus-within:bg-background">
+        <ComposerPrimitive.Input
+          placeholder="Ask about LaTeX..."
+          className="max-h-24 min-h-10 w-full resize-none bg-transparent px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
+          rows={1}
+          autoFocus
+          aria-label="Message input"
+        />
+        <div className="flex items-center justify-end px-2 pb-2">
           <ComposerAction />
         </div>
-      </ComposerPrimitive.Root>
-    </div>
+      </div>
+    </ComposerPrimitive.Root>
   );
 };
 
 const ComposerAction: FC = () => {
   return (
-    <div className="relative mx-2 mb-2 flex items-center justify-end">
+    <>
       <AuiIf condition={({ thread }) => !thread.isRunning}>
         <ComposerPrimitive.Send asChild>
           <TooltipIconButton
-            tooltip="Send message"
+            tooltip="Send"
             side="top"
             type="submit"
             variant="default"
             size="icon"
-            className="size-7 rounded-full"
+            className="size-8 rounded-full"
             aria-label="Send message"
           >
             <ArrowUpIcon className="size-4" />
@@ -169,18 +164,19 @@ const ComposerAction: FC = () => {
       </AuiIf>
       <AuiIf condition={({ thread }) => thread.isRunning}>
         <ComposerPrimitive.Cancel asChild>
-          <Button
-            type="button"
-            variant="default"
+          <TooltipIconButton
+            tooltip="Stop"
+            side="top"
+            variant="secondary"
             size="icon"
-            className="size-7 rounded-full"
+            className="size-8 rounded-full"
             aria-label="Stop generating"
           >
             <SquareIcon className="size-3 fill-current" />
-          </Button>
+          </TooltipIconButton>
         </ComposerPrimitive.Cancel>
       </AuiIf>
-    </div>
+    </>
   );
 };
 

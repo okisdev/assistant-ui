@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { EditorState, Prec } from "@codemirror/state";
 import {
   EditorView,
@@ -176,14 +175,17 @@ export function LatexEditor() {
     return (
       <div className="flex h-full flex-col bg-background">
         <EditorToolbar editorView={viewRef} />
-        <div className="flex flex-1 flex-col items-center justify-center bg-muted/30 p-8">
-          <ImageIcon className="mb-4 size-16 text-muted-foreground/50" />
-          <h2 className="mb-2 font-medium text-lg text-muted-foreground">
-            {activeFile?.name}
-          </h2>
-          <p className="text-center text-muted-foreground text-sm">
-            Image files cannot be edited. View them in the preview panel.
-          </p>
+        <div className="relative min-h-0 flex-1 overflow-hidden">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/30 p-8">
+            <ImageIcon className="mb-4 size-16 text-muted-foreground/50" />
+            <h2 className="mb-2 font-medium text-lg text-muted-foreground">
+              {activeFile?.name}
+            </h2>
+            <p className="text-center text-muted-foreground text-sm">
+              Image files cannot be edited. View them in the preview panel.
+            </p>
+          </div>
+          <AIDrawer />
         </div>
       </div>
     );
@@ -192,15 +194,10 @@ export function LatexEditor() {
   return (
     <div className="flex h-full flex-col bg-background">
       <EditorToolbar editorView={viewRef} />
-      <PanelGroup direction="vertical" className="flex-1">
-        <Panel defaultSize={70} minSize={30}>
-          <div ref={containerRef} className="h-full overflow-hidden" />
-        </Panel>
-        <PanelResizeHandle className="h-px bg-border transition-colors hover:bg-ring" />
-        <Panel defaultSize={30} minSize={15}>
-          <AIDrawer />
-        </Panel>
-      </PanelGroup>
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div ref={containerRef} className="absolute inset-0" />
+        <AIDrawer />
+      </div>
     </div>
   );
 }
