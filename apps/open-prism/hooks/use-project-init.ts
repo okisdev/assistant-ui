@@ -8,6 +8,17 @@ const DEFAULT_IMAGE_FILE = {
   path: "/hand-write.jpg",
 };
 
+async function loadImageAsDataUrl(path: string): Promise<string> {
+  const res = await fetch(path);
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 export function useProjectInit() {
   const files = useDocumentStore((s) => s.files);
   const addFile = useDocumentStore((s) => s.addFile);
@@ -17,27 +28,41 @@ export function useProjectInit() {
   useEffect(() => {
     if (initialized) return;
 
-    const hasImage = files.some(
+    const existingImage = files.find(
       (f) => f.type === "image" && f.name === DEFAULT_IMAGE_FILE.name,
     );
 
-    if (!hasImage) {
-      fetch(DEFAULT_IMAGE_FILE.path)
-        .then((res) => res.blob())
-        .then((blob) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            addFile({
-              name: DEFAULT_IMAGE_FILE.name,
-              type: "image",
-              dataUrl: reader.result as string,
-            });
-            setInitialized();
-          };
-          reader.readAsDataURL(blob);
+    const currentActiveId = useDocumentStore.getState().activeFileId;
+
+    if (!existingImage) {
+      // Add new image file
+      loadImageAsDataUrl(DEFAULT_IMAGE_FILE.path)
+        .then((dataUrl) => {
+          addFile({
+            name: DEFAULT_IMAGE_FILE.name,
+            type: "image",
+            dataUrl,
+          });
+          useDocumentStore.getState().setActiveFile(currentActiveId);
+          setInitialized();
         })
         .catch((err) => {
           console.error("Failed to load default image:", err);
+          setInitialized();
+        });
+    } else if (!existingImage.dataUrl) {
+      // Reload image data if missing (not persisted)
+      loadImageAsDataUrl(DEFAULT_IMAGE_FILE.path)
+        .then((dataUrl) => {
+          useDocumentStore.setState((state) => ({
+            files: state.files.map((f) =>
+              f.id === existingImage.id ? { ...f, dataUrl } : f,
+            ),
+          }));
+          setInitialized();
+        })
+        .catch((err) => {
+          console.error("Failed to reload image:", err);
           setInitialized();
         });
     } else {

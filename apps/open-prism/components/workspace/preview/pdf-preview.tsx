@@ -61,6 +61,7 @@ function gatherResources(files: ProjectFile[]): CompileResource[] {
     return {
       path: f.name,
       content: base64,
+      encoding: "base64",
     };
   });
 }
@@ -79,9 +80,11 @@ export function PdfPreview() {
   const [pageInput, setPageInput] = useState<string>("1");
   const [scale, setScale] = useState<number>(1.0);
   const hasInitialCompile = useRef(false);
+  const initialized = useDocumentStore((s) => s.initialized);
 
   useEffect(() => {
     if (hasInitialCompile.current) return;
+    if (!initialized) return;
     if (pdfData || isCompiling || compileError) return;
 
     hasInitialCompile.current = true;
@@ -103,6 +106,7 @@ export function PdfPreview() {
     };
     compile();
   }, [
+    initialized,
     pdfData,
     isCompiling,
     compileError,

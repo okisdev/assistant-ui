@@ -270,8 +270,24 @@ export const useDocumentStore = create<DocumentState>()(
     {
       name: "open-prism-document",
       partialize: (state) => ({
-        files: state.files,
+        // Don't persist image dataUrl to avoid localStorage size limits
+        files: state.files.map((f) =>
+          f.type === "image" ? { ...f, dataUrl: undefined } : f,
+        ),
+        activeFileId: state.activeFileId,
       }),
+      merge: (persisted, current) => {
+        const merged = { ...current, ...(persisted as object) };
+        const files = merged.files as ProjectFile[];
+        // Always default to document.tex on page load if it exists
+        const docTex = files.find((f) => f.name === "document.tex");
+        if (docTex) {
+          merged.activeFileId = docTex.id;
+        } else if (files.length > 0) {
+          merged.activeFileId = files[0].id;
+        }
+        return merged;
+      },
     },
   ),
 );

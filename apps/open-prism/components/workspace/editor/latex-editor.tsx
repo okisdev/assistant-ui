@@ -34,10 +34,11 @@ function gatherResources(files: ProjectFile[]): CompileResource[] {
       };
     }
     const dataUrl = f.dataUrl ?? "";
-    const base64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
+    let base64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
+    base64 = base64.replace(/\s/g, "");
     return {
       path: f.name,
-      content: base64,
+      file: base64,
     };
   });
 }

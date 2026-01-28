@@ -1,6 +1,7 @@
 export interface CompileResource {
   path: string;
-  content: string;
+  content?: string;
+  file?: string;
   main?: boolean;
 }
 
@@ -17,7 +18,10 @@ export async function compileLatex(
 
   if (!response.ok) {
     const data = await response.json();
-    throw new Error(data.error || "Compilation failed");
+    const message = data.details
+      ? `${data.error}\n\n${data.details}`
+      : data.error || "Compilation failed";
+    throw new Error(message);
   }
 
   const arrayBuffer = await response.arrayBuffer();

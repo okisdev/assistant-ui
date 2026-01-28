@@ -4,7 +4,8 @@ export const maxDuration = 60;
 
 interface CompileResource {
   path: string;
-  content: string;
+  content?: string;
+  file?: string;
   main?: boolean;
 }
 
@@ -21,11 +22,30 @@ export async function POST(req: Request) {
       );
     }
 
-    const apiResources = resources.map((r) => ({
-      path: r.path,
-      content: r.content,
-      main: r.main,
-    }));
+    const apiResources = resources.map((r) => {
+      const resource: Record<string, unknown> = {
+        path: r.path,
+      };
+
+      const isBase64Image =
+        r.content &&
+        !r.file &&
+        (r.content.startsWith("/9j/") || r.content.startsWith("iVBOR"));
+
+      if (isBase64Image) {
+        const cleanBase64 = r.content.replace(/\s/g, "");
+        resource.file = cleanBase64;
+      } else if (r.content) {
+        resource.content = r.content;
+      }
+
+      if (r.file) {
+        const cleanBase64 = r.file.replace(/\s/g, "");
+        resource.file = cleanBase64;
+      }
+      if (r.main) resource.main = r.main;
+      return resource;
+    });
 
     const response = await fetch("https://latex.ytotech.com/builds/sync", {
       method: "POST",
@@ -38,10 +58,26 @@ export async function POST(req: Request) {
       }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    const contentType = response.headers.get("content-type") ?? "";
+
+    if (!response.ok || contentType.includes("application/json")) {
+      const errorData = await response.json();
+      const logContent = errorData.log_files?.["__main_document__.log"] ?? "";
+      const errorLines = logContent
+        .split("\n")
+        .filter(
+          (line: string) =>
+            line.includes("Error") ||
+            line.includes("!") ||
+            line.includes("Missing"),
+        )
+        .slice(0, 10)
+        .join("\n");
       return NextResponse.json(
-        { error: `Compilation failed: ${errorText}` },
+        {
+          error: `Compilation failed: ${errorData.error || "Unknown error"}`,
+          details: errorLines || logContent.slice(-1000),
+        },
         { status: 500 },
       );
     }
