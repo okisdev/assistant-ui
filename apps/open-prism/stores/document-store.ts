@@ -105,6 +105,7 @@ interface DocumentState {
   activeFileId: string;
   cursorPosition: number;
   selectionRange: { start: number; end: number } | null;
+  jumpToPosition: number | null;
   isThreadOpen: boolean;
   pdfData: Uint8Array | null;
   compileError: string | null;
@@ -118,6 +119,8 @@ interface DocumentState {
   updateFileContent: (id: string, content: string) => void;
   setCursorPosition: (position: number) => void;
   setSelectionRange: (range: { start: number; end: number } | null) => void;
+  requestJumpToPosition: (position: number) => void;
+  clearJumpRequest: () => void;
   setThreadOpen: (open: boolean) => void;
   setPdfData: (data: Uint8Array | null) => void;
   setCompileError: (error: string | null) => void;
@@ -155,6 +158,7 @@ export const useDocumentStore = create<DocumentState>()(
       activeFileId: "default-tex",
       cursorPosition: 0,
       selectionRange: null,
+      jumpToPosition: null,
       isThreadOpen: false,
       pdfData: null,
       compileError: null,
@@ -165,6 +169,10 @@ export const useDocumentStore = create<DocumentState>()(
         set({ activeFileId: id, cursorPosition: 0, selectionRange: null }),
 
       setSelectionRange: (range) => set({ selectionRange: range }),
+
+      requestJumpToPosition: (position) => set({ jumpToPosition: position }),
+
+      clearJumpRequest: () => set({ jumpToPosition: null }),
 
       addFile: (file) => {
         const id = generateId();

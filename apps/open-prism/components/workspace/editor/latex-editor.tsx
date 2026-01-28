@@ -59,6 +59,8 @@ export function LatexEditor() {
   const setContent = useDocumentStore((s) => s.setContent);
   const setCursorPosition = useDocumentStore((s) => s.setCursorPosition);
   const setSelectionRange = useDocumentStore((s) => s.setSelectionRange);
+  const jumpToPosition = useDocumentStore((s) => s.jumpToPosition);
+  const clearJumpRequest = useDocumentStore((s) => s.clearJumpRequest);
   const isCompiling = useDocumentStore((s) => s.isCompiling);
   const setIsCompiling = useDocumentStore((s) => s.setIsCompiling);
   const setPdfData = useDocumentStore((s) => s.setPdfData);
@@ -187,6 +189,18 @@ export function LatexEditor() {
       });
     }
   }, [activeFileContent, isTexFile]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view || jumpToPosition === null) return;
+
+    view.dispatch({
+      selection: { anchor: jumpToPosition },
+      scrollIntoView: true,
+    });
+    view.focus();
+    clearJumpRequest();
+  }, [jumpToPosition, clearJumpRequest]);
 
   if (!isTexFile && activeFile) {
     return (

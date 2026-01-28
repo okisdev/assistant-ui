@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import {
   FileTextIcon,
   FolderIcon,
@@ -13,11 +13,49 @@ import {
   SunIcon,
   MoonIcon,
   MonitorIcon,
+  ListIcon,
+  HashIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useDocumentStore, type ProjectFile } from "@/stores/document-store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+
+interface TocItem {
+  level: number;
+  title: string;
+  line: number;
+}
+
+function parseTableOfContents(content: string): TocItem[] {
+  const lines = content.split("\n");
+  const toc: TocItem[] = [];
+
+  const sectionRegex =
+    /\\(section|subsection|subsubsection|chapter|part)\*?\s*\{([^}]*)\}/;
+
+  const levelMap: Record<string, number> = {
+    part: 0,
+    chapter: 1,
+    section: 2,
+    subsection: 3,
+    subsubsection: 4,
+  };
+
+  lines.forEach((line, index) => {
+    const match = line.match(sectionRegex);
+    if (match) {
+      const [, type, title] = match;
+      toc.push({
+        level: levelMap[type] ?? 2,
+        title: title.trim(),
+        line: index + 1,
+      });
+    }
+  });
+
+  return toc;
+}
 import {
   Dialog,
   DialogContent,
@@ -41,9 +79,27 @@ export function Sidebar() {
   const addFile = useDocumentStore((s) => s.addFile);
   const deleteFile = useDocumentStore((s) => s.deleteFile);
   const renameFile = useDocumentStore((s) => s.renameFile);
+  const content = useDocumentStore((s) => s.content);
+  const requestJumpToPosition = useDocumentStore(
+    (s) => s.requestJumpToPosition,
+  );
   const { theme, setTheme } = useTheme();
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+
+  const toc = useMemo(() => parseTableOfContents(content), [content]);
+
+  const handleTocClick = useCallback(
+    (line: number) => {
+      const lines = content.split("\n");
+      let position = 0;
+      for (let i = 0; i < line - 1 && i < lines.length; i++) {
+        position += lines[i].length + 1;
+      }
+      requestJumpToPosition(position);
+    },
+    [content, requestJumpToPosition],
+  );
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [renameFileId, setRenameFileId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -183,7 +239,7 @@ export function Sidebar() {
         onChange={(e) => handleFileUpload(e.target.files)}
       />
 
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="overflow-y-auto p-2">
         {isDragging && (
           <div className="mb-2 flex items-center justify-center rounded-md border-2 border-primary border-dashed p-4">
             <span className="text-muted-foreground text-xs">
@@ -236,6 +292,28 @@ export function Sidebar() {
           </div>
         ))}
       </div>
+
+      {toc.length > 0 && (
+        <>
+          <div className="flex h-9 items-center gap-2 border-sidebar-border border-t px-3">
+            <ListIcon className="size-4 text-muted-foreground" />
+            <span className="font-medium text-xs">Outline</span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2">
+            {toc.map((item, index) => (
+              <button
+                key={index}
+                className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-sm transition-colors hover:bg-sidebar-accent/50"
+                style={{ paddingLeft: `${(item.level - 1) * 12 + 8}px` }}
+                onClick={() => handleTocClick(item.line)}
+              >
+                <HashIcon className="size-3 shrink-0 text-muted-foreground" />
+                <span className="truncate">{item.title}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       <div className="flex items-center justify-between border-sidebar-border border-t px-3 py-2 text-muted-foreground text-xs">
         <span>Open-Prism v{packageJson.version}</span>
