@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type KeyboardEvent } from "react";
 import {
   FileTextIcon,
   AlertCircleIcon,
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useDocumentStore } from "@/stores/document-store";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -58,6 +59,7 @@ export function PdfPreview() {
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
+  const [pageInput, setPageInput] = useState<string>("1");
   const [scale, setScale] = useState<number>(1.0);
   const hasInitialCompile = useRef(false);
 
@@ -91,14 +93,46 @@ export function PdfPreview() {
     setCompileError,
   ]);
 
-  const goToPrevPage = () => setPageNumber((p) => Math.max(1, p - 1));
-  const goToNextPage = () => setPageNumber((p) => Math.min(numPages, p + 1));
+  const goToPrevPage = () => {
+    const newPage = Math.max(1, pageNumber - 1);
+    setPageNumber(newPage);
+    setPageInput(String(newPage));
+  };
+  const goToNextPage = () => {
+    const newPage = Math.min(numPages, pageNumber + 1);
+    setPageNumber(newPage);
+    setPageInput(String(newPage));
+  };
   const zoomIn = () => setScale((s) => Math.min(4, s + 0.1));
   const zoomOut = () => setScale((s) => Math.max(0.25, s - 0.1));
+
+  const handlePageInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      const parsed = Number.parseInt(pageInput, 10);
+      if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= numPages) {
+        setPageNumber(parsed);
+        setPageInput(String(parsed));
+      } else {
+        setPageInput(String(pageNumber));
+      }
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
+  const handlePageInputBlur = () => {
+    const parsed = Number.parseInt(pageInput, 10);
+    if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= numPages) {
+      setPageNumber(parsed);
+      setPageInput(String(parsed));
+    } else {
+      setPageInput(String(pageNumber));
+    }
+  };
 
   const handleLoadSuccess = (pages: number) => {
     setNumPages(pages);
     setPageNumber(1);
+    setPageInput("1");
   };
 
   const handleScaleChange = (newScale: number) => {
@@ -217,43 +251,59 @@ export function PdfPreview() {
         </div>
 
         {pdfData && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <Button
               variant="ghost"
               size="icon"
-              className="size-7"
+              className="size-6"
               onClick={goToPrevPage}
               disabled={pageNumber <= 1}
             >
-              <ChevronLeftIcon className="size-4" />
+              <ChevronLeftIcon className="size-3.5" />
             </Button>
-            <span className="min-w-16 text-center text-muted-foreground text-sm">
-              {pageNumber} / {numPages}
-            </span>
+            <Input
+              type="text"
+              inputMode="numeric"
+              value={pageInput}
+              onChange={(e) => setPageInput(e.target.value)}
+              onKeyDown={handlePageInputKeyDown}
+              onBlur={handlePageInputBlur}
+              className="h-6 w-8 px-1 text-center text-xs"
+            />
+            <span className="text-muted-foreground text-xs">/ {numPages}</span>
             <Button
               variant="ghost"
               size="icon"
-              className="size-7"
+              className="size-6"
               onClick={goToNextPage}
               disabled={pageNumber >= numPages}
             >
-              <ChevronRightIcon className="size-4" />
+              <ChevronRightIcon className="size-3.5" />
             </Button>
-            <div className="mx-1 h-4 w-px bg-border" />
+            <div className="mx-0.5 h-4 w-px bg-border" />
             <Button
               variant="ghost"
               size="icon"
-              className="size-7"
+              className="size-6"
               onClick={zoomOut}
               disabled={scale <= 0.25}
             >
-              <MinusIcon className="size-4" />
+              <MinusIcon className="size-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-6"
+              onClick={zoomIn}
+              disabled={scale >= 4}
+            >
+              <PlusIcon className="size-3.5" />
             </Button>
             <Select
               value={scale.toString()}
               onValueChange={(v) => setScale(Number(v))}
             >
-              <SelectTrigger size="sm" className="h-7 w-20 text-xs">
+              <SelectTrigger size="sm" className="h-6! w-auto text-xs">
                 <SelectValue>{Math.round(scale * 100)}%</SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -264,15 +314,6 @@ export function PdfPreview() {
                 ))}
               </SelectContent>
             </Select>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              onClick={zoomIn}
-              disabled={scale >= 4}
-            >
-              <PlusIcon className="size-4" />
-            </Button>
           </div>
         )}
       </div>

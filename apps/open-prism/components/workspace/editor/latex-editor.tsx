@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { EditorState } from "@codemirror/state";
+import { EditorState, Prec } from "@codemirror/state";
 import {
   EditorView,
   keymap,
@@ -10,11 +10,17 @@ import {
   highlightActiveLine,
   highlightActiveLineGutter,
 } from "@codemirror/view";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  insertNewlineAndIndent,
+} from "@codemirror/commands";
 import { syntaxHighlighting } from "@codemirror/language";
 import { oneDark, oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
 import { latex } from "codemirror-lang-latex";
 import { useDocumentStore } from "@/stores/document-store";
+import { compileLatex } from "@/lib/latex-compiler";
 import { EditorToolbar } from "./editor-toolbar";
 import { AIDrawer } from "./ai-drawer";
 
@@ -25,6 +31,28 @@ export function LatexEditor() {
   const content = useDocumentStore((s) => s.content);
   const setContent = useDocumentStore((s) => s.setContent);
   const setCursorPosition = useDocumentStore((s) => s.setCursorPosition);
+  const isCompiling = useDocumentStore((s) => s.isCompiling);
+  const setIsCompiling = useDocumentStore((s) => s.setIsCompiling);
+  const setPdfData = useDocumentStore((s) => s.setPdfData);
+  const setCompileError = useDocumentStore((s) => s.setCompileError);
+
+  const compileRef = useRef<() => void>(() => {});
+
+  compileRef.current = async () => {
+    if (isCompiling) return;
+    setIsCompiling(true);
+    try {
+      const currentContent = viewRef.current?.state.doc.toString() ?? content;
+      const data = await compileLatex(currentContent);
+      setPdfData(data);
+    } catch (error) {
+      setCompileError(
+        error instanceof Error ? error.message : "Compilation failed",
+      );
+    } finally {
+      setIsCompiling(false);
+    }
+  };
 
   if (initialContentRef.current === null) {
     initialContentRef.current = content;
@@ -42,9 +70,26 @@ export function LatexEditor() {
       }
     });
 
+    const compileKeymap = Prec.highest(
+      keymap.of([
+        {
+          key: "Enter",
+          run: () => {
+            compileRef.current();
+            return true;
+          },
+        },
+        {
+          key: "Shift-Enter",
+          run: insertNewlineAndIndent,
+        },
+      ]),
+    );
+
     const state = EditorState.create({
       doc: initialContentRef.current ?? "",
       extensions: [
+        compileKeymap,
         lineNumbers(),
         highlightActiveLine(),
         highlightActiveLineGutter(),
