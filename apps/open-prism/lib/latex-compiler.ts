@@ -1,10 +1,20 @@
-import { parse, HtmlGenerator } from "latex.js";
-
 export async function compileLatex(latex: string): Promise<string> {
-  const generator = new HtmlGenerator({ hyphenate: false });
+  const response = await fetch("/api/compile", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ latex }),
+  });
 
-  const doc = parse(latex, { generator }).htmlDocument();
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.error || "Compilation failed");
+  }
 
-  // Get the full HTML including styles
-  return doc.documentElement.outerHTML;
+  // Get the PDF blob and create an object URL
+  const pdfBlob = await response.blob();
+  const pdfUrl = URL.createObjectURL(pdfBlob);
+
+  return pdfUrl;
 }

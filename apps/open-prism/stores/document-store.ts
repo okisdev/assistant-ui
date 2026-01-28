@@ -2,8 +2,6 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 const DEFAULT_CONTENT = `\\documentclass{article}
-\\usepackage{amsmath}
-\\usepackage{amssymb}
 
 \\title{My Document}
 \\author{Author Name}
@@ -28,10 +26,9 @@ Start editing this document or ask the AI assistant for help with:
 \\section{Mathematics Example}
 
 Here's an example of the quadratic formula:
+$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$
 
-\\begin{equation}
-  x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}
-\\end{equation}
+And inline math like $E = mc^2$ works too.
 
 \\end{document}
 `;
@@ -41,14 +38,14 @@ interface DocumentState {
   content: string;
   cursorPosition: number;
   isThreadOpen: boolean;
-  compiledHtml: string | null;
+  pdfUrl: string | null;
   compileError: string | null;
   isCompiling: boolean;
   setFileName: (name: string) => void;
   setContent: (content: string) => void;
   setCursorPosition: (position: number) => void;
   setThreadOpen: (open: boolean) => void;
-  setCompiledHtml: (html: string | null) => void;
+  setPdfUrl: (url: string | null) => void;
   setCompileError: (error: string | null) => void;
   setIsCompiling: (isCompiling: boolean) => void;
   insertAtCursor: (text: string) => void;
@@ -62,7 +59,7 @@ export const useDocumentStore = create<DocumentState>()(
       content: DEFAULT_CONTENT,
       cursorPosition: 0,
       isThreadOpen: false,
-      compiledHtml: null,
+      pdfUrl: null,
       compileError: null,
       isCompiling: false,
 
@@ -70,11 +67,9 @@ export const useDocumentStore = create<DocumentState>()(
 
       setThreadOpen: (open) => set({ isThreadOpen: open }),
 
-      setCompiledHtml: (html) =>
-        set({ compiledHtml: html, compileError: null }),
+      setPdfUrl: (url) => set({ pdfUrl: url, compileError: null }),
 
-      setCompileError: (error) =>
-        set({ compileError: error, compiledHtml: null }),
+      setCompileError: (error) => set({ compileError: error, pdfUrl: null }),
 
       setIsCompiling: (isCompiling) => set({ isCompiling }),
 

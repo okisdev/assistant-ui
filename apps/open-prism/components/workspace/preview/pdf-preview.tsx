@@ -4,7 +4,7 @@ import { FileTextIcon, AlertCircleIcon, LoaderIcon } from "lucide-react";
 import { useDocumentStore } from "@/stores/document-store";
 
 export function PdfPreview() {
-  const compiledHtml = useDocumentStore((s) => s.compiledHtml);
+  const pdfUrl = useDocumentStore((s) => s.pdfUrl);
   const compileError = useDocumentStore((s) => s.compileError);
   const isCompiling = useDocumentStore((s) => s.isCompiling);
 
@@ -31,7 +31,7 @@ export function PdfPreview() {
     );
   }
 
-  if (!compiledHtml) {
+  if (!pdfUrl) {
     return (
       <div className="flex h-full flex-col items-center justify-center bg-muted/30 p-8">
         <FileTextIcon className="mb-4 size-16 text-muted-foreground/50" />
@@ -46,12 +46,11 @@ export function PdfPreview() {
   }
 
   return (
-    <div className="h-full overflow-auto bg-white">
+    <div className="h-full overflow-hidden bg-neutral-800">
       <iframe
-        srcDoc={compiledHtml}
+        src={pdfUrl}
         className="h-full w-full border-0"
-        title="LaTeX Preview"
-        sandbox="allow-same-origin"
+        title="PDF Preview"
       />
     </div>
   );
