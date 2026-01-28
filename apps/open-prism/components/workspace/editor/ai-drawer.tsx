@@ -20,6 +20,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   CopyIcon,
+  LoaderIcon,
   PlusIcon,
   RefreshCwIcon,
   SquareIcon,
@@ -117,10 +118,22 @@ const ThreadMessages: FC = () => {
             AssistantMessage,
           }}
         />
+        <ThreadLoading />
       </ThreadPrimitive.Viewport>
 
       <ThreadScrollToBottom />
     </div>
+  );
+};
+
+const ThreadLoading: FC = () => {
+  return (
+    <AuiIf condition={({ thread }) => thread.isRunning}>
+      <div className="flex items-center gap-1.5 px-1 py-1.5 text-muted-foreground">
+        <LoaderIcon className="size-3.5 animate-spin" />
+        <span className="text-sm">Thinking...</span>
+      </div>
+    </AuiIf>
   );
 };
 
@@ -196,10 +209,10 @@ const ComposerAction: FC = () => {
 const AssistantMessage: FC = () => {
   return (
     <MessagePrimitive.Root
-      className="relative w-full py-3"
+      className="group relative w-full py-1.5"
       data-role="assistant"
     >
-      <div className="px-2 text-foreground leading-relaxed">
+      <div className="px-1 text-foreground text-sm leading-relaxed">
         <MessagePrimitive.Parts
           components={{
             Text: MarkdownText,
@@ -207,7 +220,7 @@ const AssistantMessage: FC = () => {
         />
       </div>
 
-      <div className="mt-1 ml-2 flex">
+      <div className="ml-1 flex">
         <BranchPicker />
         <AssistantActionBar />
       </div>
@@ -224,15 +237,15 @@ const CodeBlock: FC<SyntaxHighlighterProps> = ({ language, code }) => {
   }, [insertAtCursor, code]);
 
   return (
-    <div className="group relative my-2">
-      <pre className="overflow-x-auto rounded-lg bg-muted p-3 text-sm">
+    <div className="group relative my-1">
+      <pre className="overflow-x-auto rounded bg-muted p-2 text-sm">
         <code>{code}</code>
       </pre>
       {isLatex && (
         <button
           type="button"
           onClick={handleInsert}
-          className="absolute top-2 right-2 flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-primary-foreground text-xs opacity-0 transition-opacity group-hover:opacity-100"
+          className="absolute top-1 right-1 flex items-center gap-0.5 rounded bg-primary px-1.5 py-0.5 text-primary-foreground text-xs opacity-0 transition-opacity group-hover:opacity-100"
         >
           <PlusIcon className="size-3" />
           Insert
@@ -259,8 +272,7 @@ const AssistantActionBar: FC = () => {
   return (
     <ActionBarPrimitive.Root
       hideWhenRunning
-      autohide="not-last"
-      className="-ml-1 flex gap-1 text-muted-foreground"
+      className="-ml-1 flex gap-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
     >
       <ActionBarPrimitive.Copy asChild>
         <TooltipIconButton tooltip="Copy">
@@ -284,13 +296,13 @@ const AssistantActionBar: FC = () => {
 const UserMessage: FC = () => {
   return (
     <MessagePrimitive.Root
-      className="flex w-full flex-col items-end py-3"
+      className="flex w-full flex-col items-end py-1.5"
       data-role="user"
     >
-      <div className="max-w-[85%] rounded-2xl bg-muted px-4 py-2.5 text-foreground">
+      <div className="max-w-[85%] rounded-xl bg-muted px-3 py-1.5 text-foreground text-sm">
         <MessagePrimitive.Parts />
       </div>
-      <BranchPicker className="mr-2 justify-end" />
+      <BranchPicker className="mr-1 justify-end" />
     </MessagePrimitive.Root>
   );
 };

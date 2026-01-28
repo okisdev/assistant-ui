@@ -10,7 +10,11 @@ import {
   Trash2Icon,
   PencilIcon,
   UploadIcon,
+  SunIcon,
+  MoonIcon,
+  MonitorIcon,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useDocumentStore, type ProjectFile } from "@/stores/document-store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -37,6 +41,7 @@ export function Sidebar() {
   const addFile = useDocumentStore((s) => s.addFile);
   const deleteFile = useDocumentStore((s) => s.deleteFile);
   const renameFile = useDocumentStore((s) => s.renameFile);
+  const { theme, setTheme } = useTheme();
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
@@ -232,8 +237,33 @@ export function Sidebar() {
         ))}
       </div>
 
-      <div className="border-sidebar-border border-t px-3 py-2 text-muted-foreground text-xs">
-        Open-Prism v{packageJson.version}
+      <div className="flex items-center justify-between border-sidebar-border border-t px-3 py-2 text-muted-foreground text-xs">
+        <span>Open-Prism v{packageJson.version}</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-6"
+          onClick={() => {
+            if (theme === "system") setTheme("light");
+            else if (theme === "light") setTheme("dark");
+            else setTheme("system");
+          }}
+          title={
+            theme === "system"
+              ? "System theme"
+              : theme === "light"
+                ? "Light mode"
+                : "Dark mode"
+          }
+        >
+          {theme === "system" ? (
+            <MonitorIcon className="size-3.5" />
+          ) : theme === "light" ? (
+            <SunIcon className="size-3.5" />
+          ) : (
+            <MoonIcon className="size-3.5" />
+          )}
+        </Button>
       </div>
 
       {/* Add File Dialog */}

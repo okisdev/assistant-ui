@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useEffect } from "react";
+import { useCallback, useMemo, useRef, useEffect, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -13,20 +13,20 @@ interface PdfViewerProps {
   scale: number;
   pageNumber: number;
   onError?: (error: string) => void;
-  onLoadSuccess?: (numPages: number, pageWidth: number) => void;
+  onLoadSuccess?: (numPages: number) => void;
   onScaleChange?: (scale: number) => void;
 }
 
 export function PdfViewer({
   data,
   scale,
-  pageNumber,
   onError,
   onLoadSuccess,
   onScaleChange,
 }: PdfViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const hasSetInitialScale = useRef(false);
+  const [numPages, setNumPages] = useState(0);
 
   const file = useMemo(() => {
     const pdfData =
@@ -37,7 +37,8 @@ export function PdfViewer({
 
   const handleLoadSuccess = useCallback(
     ({ numPages }: { numPages: number }) => {
-      onLoadSuccess?.(numPages, 612);
+      setNumPages(numPages);
+      onLoadSuccess?.(numPages);
     },
     [onLoadSuccess],
   );
@@ -80,7 +81,7 @@ export function PdfViewer({
 
   return (
     <div ref={containerRef} className="flex-1 overflow-auto">
-      <div className="flex min-h-full justify-center p-4">
+      <div className="flex flex-col items-center gap-4 p-4">
         <Document
           file={file}
           onLoadSuccess={handleLoadSuccess}
@@ -92,14 +93,17 @@ export function PdfViewer({
             </div>
           }
         >
-          <Page
-            pageNumber={pageNumber}
-            scale={scale}
-            renderTextLayer={true}
-            renderAnnotationLayer={true}
-            className="shadow-lg"
-            onLoadSuccess={handlePageLoadSuccess}
-          />
+          {Array.from({ length: numPages }, (_, i) => (
+            <Page
+              key={i + 1}
+              pageNumber={i + 1}
+              scale={scale}
+              renderTextLayer={true}
+              renderAnnotationLayer={true}
+              className="mb-4 shadow-lg"
+              onLoadSuccess={i === 0 ? handlePageLoadSuccess : undefined}
+            />
+          ))}
         </Document>
       </div>
     </div>
