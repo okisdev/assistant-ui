@@ -40,9 +40,11 @@ interface DocumentState {
   fileName: string;
   content: string;
   cursorPosition: number;
+  isThreadOpen: boolean;
   setFileName: (name: string) => void;
   setContent: (content: string) => void;
   setCursorPosition: (position: number) => void;
+  setThreadOpen: (open: boolean) => void;
   insertAtCursor: (text: string) => void;
   replaceSelection: (start: number, end: number, text: string) => void;
 }
@@ -53,8 +55,11 @@ export const useDocumentStore = create<DocumentState>()(
       fileName: "document.tex",
       content: DEFAULT_CONTENT,
       cursorPosition: 0,
+      isThreadOpen: false,
 
       setFileName: (name) => set({ fileName: name }),
+
+      setThreadOpen: (open) => set({ isThreadOpen: open }),
 
       setContent: (content) => set({ content }),
 

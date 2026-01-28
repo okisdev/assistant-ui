@@ -3,7 +3,7 @@
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Sidebar } from "./sidebar";
 import { LatexEditor } from "./editor/latex-editor";
-import { AssistantPanel } from "../assistant/assistant-panel";
+import { PdfPreview } from "./preview/pdf-preview";
 
 export function WorkspaceLayout() {
   return (
@@ -22,9 +22,9 @@ export function WorkspaceLayout() {
 
       <PanelResizeHandle className="w-px bg-border transition-colors hover:bg-ring" />
 
-      {/* AI Assistant Panel */}
+      {/* PDF Preview Panel */}
       <Panel defaultSize={30} minSize={20} maxSize={50}>
-        <AssistantPanel />
+        <PdfPreview />
       </Panel>
     </PanelGroup>
   );

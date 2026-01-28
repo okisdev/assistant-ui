@@ -10,8 +10,10 @@ import {
   Heading2Icon,
   CodeIcon,
   FunctionSquareIcon,
+  PlayIcon,
 } from "lucide-react";
 import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
+import { Button } from "@/components/ui/button";
 import { useDocumentStore } from "@/stores/document-store";
 
 interface EditorToolbarProps {
@@ -46,11 +48,25 @@ export function EditorToolbar({ editorView }: EditorToolbarProps) {
     insertText(wrapper, wrapper);
   };
 
+  const handleCompile = () => {
+    // TODO: Implement LaTeX compilation
+    console.log("Compile triggered");
+  };
+
   return (
     <div className="flex items-center gap-1 border-border border-b bg-muted/30 px-2 py-1">
       <span className="mr-2 font-medium text-muted-foreground text-sm">
         {fileName}
       </span>
+      <Button
+        size="sm"
+        variant="default"
+        className="mr-2 h-7 gap-1.5 px-3"
+        onClick={handleCompile}
+      >
+        <PlayIcon className="size-3.5" />
+        Compile
+      </Button>
       <div className="mx-2 h-4 w-px bg-border" />
       <TooltipIconButton
         tooltip="Bold (\\textbf)"

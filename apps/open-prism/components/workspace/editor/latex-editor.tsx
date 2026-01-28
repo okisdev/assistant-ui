@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { EditorState } from "@codemirror/state";
 import {
   EditorView,
@@ -10,9 +11,10 @@ import {
   highlightActiveLineGutter,
 } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import { markdown } from "@codemirror/lang-markdown";
+import { latex } from "codemirror-lang-latex";
 import { useDocumentStore } from "@/stores/document-store";
 import { EditorToolbar } from "./editor-toolbar";
+import { AIDrawer } from "./ai-drawer";
 
 export function LatexEditor() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,7 +49,7 @@ export function LatexEditor() {
         highlightActiveLineGutter(),
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
-        markdown(),
+        latex(),
         updateListener,
         EditorView.lineWrapping,
         EditorView.theme({
@@ -95,7 +97,15 @@ export function LatexEditor() {
   return (
     <div className="flex h-full flex-col bg-background">
       <EditorToolbar editorView={viewRef} />
-      <div ref={containerRef} className="flex-1 overflow-hidden" />
+      <PanelGroup direction="vertical" className="flex-1">
+        <Panel defaultSize={70} minSize={30}>
+          <div ref={containerRef} className="h-full overflow-hidden" />
+        </Panel>
+        <PanelResizeHandle className="h-px bg-border transition-colors hover:bg-ring" />
+        <Panel defaultSize={30} minSize={15}>
+          <AIDrawer />
+        </Panel>
+      </PanelGroup>
     </div>
   );
 }
