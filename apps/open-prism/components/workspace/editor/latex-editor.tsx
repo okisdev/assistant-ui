@@ -25,18 +25,74 @@ import { AIDrawer } from "./ai-drawer";
 import { ImagePreview } from "./image-preview";
 import { LatexTools } from "./latex-tools";
 
-interface SectionInfo {
-  level: number;
+interface StickyItem {
+  type: "section" | "begin";
+  name: string;
+  content: string;
+  html: string;
+  line: number;
+}
+
+interface ParsedLine {
+  type: "section" | "begin" | "end";
+  name: string;
   content: string;
   line: number;
 }
 
-function parseSections(content: string): SectionInfo[] {
+function parseLatexStructure(content: string): ParsedLine[] {
   const lines = content.split("\n");
-  const sections: SectionInfo[] = [];
+  const result: ParsedLine[] = [];
+
   const sectionRegex =
     /\\(part|chapter|section|subsection|subsubsection)\*?\s*\{[^}]*\}/;
-  const levelMap: Record<string, number> = {
+  const beginRegex = /\\begin\{([^}]+)\}/;
+  const endRegex = /\\end\{([^}]+)\}/;
+
+  lines.forEach((lineContent, index) => {
+    const sectionMatch = lineContent.match(sectionRegex);
+    if (sectionMatch) {
+      result.push({
+        type: "section",
+        name: sectionMatch[1],
+        content: lineContent,
+        line: index + 1,
+      });
+      return;
+    }
+
+    const beginMatch = lineContent.match(beginRegex);
+    if (beginMatch) {
+      result.push({
+        type: "begin",
+        name: beginMatch[1],
+        content: lineContent,
+        line: index + 1,
+      });
+      return;
+    }
+
+    const endMatch = lineContent.match(endRegex);
+    if (endMatch) {
+      result.push({
+        type: "end",
+        name: endMatch[1],
+        content: lineContent,
+        line: index + 1,
+      });
+    }
+  });
+
+  return result;
+}
+
+function getStickyLines(
+  parsedLines: ParsedLine[],
+  currentLine: number,
+): StickyItem[] {
+  const stack: StickyItem[] = [];
+
+  const sectionLevelMap: Record<string, number> = {
     part: 0,
     chapter: 1,
     section: 2,
@@ -44,33 +100,41 @@ function parseSections(content: string): SectionInfo[] {
     subsubsection: 4,
   };
 
-  lines.forEach((lineContent, index) => {
-    const match = lineContent.match(sectionRegex);
-    if (match) {
-      sections.push({
-        level: levelMap[match[1]] ?? 2,
-        content: lineContent,
-        line: index + 1,
+  for (const item of parsedLines) {
+    if (item.line > currentLine) break;
+
+    if (item.type === "section") {
+      const level = sectionLevelMap[item.name] ?? 2;
+      while (
+        stack.length > 0 &&
+        stack[stack.length - 1].type === "section" &&
+        sectionLevelMap[stack[stack.length - 1].name] >= level
+      ) {
+        stack.pop();
+      }
+      stack.push({
+        type: "section",
+        name: item.name,
+        content: item.content,
+        html: "",
+        line: item.line,
       });
+    } else if (item.type === "begin") {
+      stack.push({
+        type: "begin",
+        name: item.name,
+        content: item.content,
+        html: "",
+        line: item.line,
+      });
+    } else if (item.type === "end") {
+      for (let i = stack.length - 1; i >= 0; i--) {
+        if (stack[i].type === "begin" && stack[i].name === item.name) {
+          stack.splice(i, 1);
+          break;
+        }
+      }
     }
-  });
-
-  return sections;
-}
-
-function getStickyLines(
-  sections: SectionInfo[],
-  currentLine: number,
-): SectionInfo[] {
-  const stack: SectionInfo[] = [];
-
-  for (const section of sections) {
-    if (section.line > currentLine) break;
-
-    while (stack.length > 0 && stack[stack.length - 1].level >= section.level) {
-      stack.pop();
-    }
-    stack.push(section);
   }
 
   return stack;
@@ -124,16 +188,22 @@ export function LatexEditor() {
   const [imageScale, setImageScale] = useState(0.5);
   const [currentLine, setCurrentLine] = useState(1);
   const [gutterWidth, setGutterWidth] = useState(0);
+  const [lineHtmlCache, setLineHtmlCache] = useState<Record<number, string>>(
+    {},
+  );
 
-  const sections = useMemo(
-    () => parseSections(activeFileContent ?? ""),
+  const parsedLines = useMemo(
+    () => parseLatexStructure(activeFileContent ?? ""),
     [activeFileContent],
   );
 
-  const stickyLines = useMemo(
-    () => getStickyLines(sections, currentLine),
-    [sections, currentLine],
-  );
+  const stickyLines = useMemo(() => {
+    const items = getStickyLines(parsedLines, currentLine);
+    return items.map((item) => ({
+      ...item,
+      html: lineHtmlCache[item.line] || "",
+    }));
+  }, [parsedLines, currentLine, lineHtmlCache]);
 
   const compileRef = useRef<() => void>(() => {});
 
@@ -186,6 +256,17 @@ export function LatexEditor() {
         if (gutter) {
           setGutterWidth(gutter.getBoundingClientRect().width);
         }
+
+        const cmLines = view.dom.querySelectorAll(".cm-line");
+        const newCache: Record<number, string> = {};
+        cmLines.forEach((el) => {
+          const lineInfo = view.lineBlockAt(
+            view.posAtDOM(el as HTMLElement, 0),
+          );
+          const ln = view.state.doc.lineAt(lineInfo.from).number;
+          newCache[ln] = el.innerHTML;
+        });
+        setLineHtmlCache((prev) => ({ ...prev, ...newCache }));
       },
     });
 
@@ -337,9 +418,16 @@ export function LatexEditor() {
                 >
                   {section.line}
                 </span>
-                <span className="py-px pl-[16px] text-[#abb2bf]">
-                  {section.content}
-                </span>
+                {section.html ? (
+                  <span
+                    className="py-px pl-[16px]"
+                    dangerouslySetInnerHTML={{ __html: section.html }}
+                  />
+                ) : (
+                  <span className="py-px pl-[16px] text-[#abb2bf]">
+                    {section.content}
+                  </span>
+                )}
               </div>
             ))}
           </div>
