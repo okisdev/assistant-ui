@@ -127,6 +127,7 @@ interface DocumentState {
   setIsCompiling: (isCompiling: boolean) => void;
   insertAtCursor: (text: string) => void;
   replaceSelection: (start: number, end: number, text: string) => void;
+  findAndReplace: (find: string, replace: string) => boolean;
   setInitialized: () => void;
 
   // Legacy compatibility
@@ -248,6 +249,23 @@ export const useDocumentStore = create<DocumentState>()(
           ),
           cursorPosition: start + text.length,
         });
+      },
+
+      findAndReplace: (find, replace) => {
+        const state = get();
+        const activeFile = getActiveFile(state);
+        if (!activeFile || activeFile.type !== "tex") return false;
+
+        const content = activeFile.content ?? "";
+        if (!content.includes(find)) return false;
+
+        const newContent = content.replace(find, replace);
+        set({
+          files: state.files.map((f) =>
+            f.id === activeFile.id ? { ...f, content: newContent } : f,
+          ),
+        });
+        return true;
       },
 
       setInitialized: () => set({ initialized: true }),

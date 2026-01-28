@@ -239,7 +239,7 @@ export function Sidebar() {
         onChange={(e) => handleFileUpload(e.target.files)}
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
         {isDragging && (
           <div className="mb-2 flex items-center justify-center rounded-md border-2 border-primary border-dashed p-4">
             <span className="text-muted-foreground text-xs">
@@ -297,7 +297,7 @@ export function Sidebar() {
         <ListIcon className="size-4 text-muted-foreground" />
         <span className="font-medium text-xs">Outline</span>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
         {toc.length > 0 ? (
           toc.map((item, index) => (
             <button

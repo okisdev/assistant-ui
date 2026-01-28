@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { EditorState, Prec } from "@codemirror/state";
 import {
   EditorView,
@@ -24,6 +24,57 @@ import { EditorToolbar } from "./editor-toolbar";
 import { AIDrawer } from "./ai-drawer";
 import { ImagePreview } from "./image-preview";
 import { LatexTools } from "./latex-tools";
+
+interface SectionInfo {
+  level: number;
+  content: string;
+  line: number;
+}
+
+function parseSections(content: string): SectionInfo[] {
+  const lines = content.split("\n");
+  const sections: SectionInfo[] = [];
+  const sectionRegex =
+    /\\(part|chapter|section|subsection|subsubsection)\*?\s*\{[^}]*\}/;
+  const levelMap: Record<string, number> = {
+    part: 0,
+    chapter: 1,
+    section: 2,
+    subsection: 3,
+    subsubsection: 4,
+  };
+
+  lines.forEach((lineContent, index) => {
+    const match = lineContent.match(sectionRegex);
+    if (match) {
+      sections.push({
+        level: levelMap[match[1]] ?? 2,
+        content: lineContent,
+        line: index + 1,
+      });
+    }
+  });
+
+  return sections;
+}
+
+function getStickyLines(
+  sections: SectionInfo[],
+  currentLine: number,
+): SectionInfo[] {
+  const stack: SectionInfo[] = [];
+
+  for (const section of sections) {
+    if (section.line > currentLine) break;
+
+    while (stack.length > 0 && stack[stack.length - 1].level >= section.level) {
+      stack.pop();
+    }
+    stack.push(section);
+  }
+
+  return stack;
+}
 
 function gatherResources(files: ProjectFile[]): CompileResource[] {
   return files.map((f) => {
@@ -71,6 +122,18 @@ export function LatexEditor() {
   const activeFileContent = activeFile?.content;
 
   const [imageScale, setImageScale] = useState(0.5);
+  const [currentLine, setCurrentLine] = useState(1);
+  const [gutterWidth, setGutterWidth] = useState(0);
+
+  const sections = useMemo(
+    () => parseSections(activeFileContent ?? ""),
+    [activeFileContent],
+  );
+
+  const stickyLines = useMemo(
+    () => getStickyLines(sections, currentLine),
+    [sections, currentLine],
+  );
 
   const compileRef = useRef<() => void>(() => {});
 
@@ -112,6 +175,20 @@ export function LatexEditor() {
       }
     });
 
+    const scrollListener = EditorView.domEventHandlers({
+      scroll: (_, view) => {
+        const scrollTop = view.scrollDOM.scrollTop;
+        const lineBlock = view.lineBlockAtHeight(scrollTop);
+        const lineNumber = view.state.doc.lineAt(lineBlock.from).number;
+        setCurrentLine(lineNumber);
+
+        const gutter = view.dom.querySelector(".cm-gutters");
+        if (gutter) {
+          setGutterWidth(gutter.getBoundingClientRect().width);
+        }
+      },
+    });
+
     const compileKeymap = Prec.highest(
       keymap.of([
         {
@@ -141,6 +218,7 @@ export function LatexEditor() {
         oneDark,
         syntaxHighlighting(oneDarkHighlightStyle),
         updateListener,
+        scrollListener,
         EditorView.lineWrapping,
         EditorView.theme({
           "&": {
@@ -234,6 +312,38 @@ export function LatexEditor() {
     <div className="flex h-full flex-col bg-background">
       <EditorToolbar editorView={viewRef} />
       <div className="relative min-h-0 flex-1 overflow-hidden">
+        {stickyLines.length > 0 && (
+          <div className="absolute inset-x-0 top-0 z-10 border-border border-b bg-[#282c34] font-mono text-[14px] leading-[1.4] shadow-md">
+            {stickyLines.map((section) => (
+              <div
+                key={section.line}
+                className="flex cursor-pointer items-center hover:bg-white/5"
+                onClick={() => {
+                  const view = viewRef.current;
+                  if (!view) return;
+                  const line = view.state.doc.line(section.line);
+                  view.dispatch({
+                    selection: { anchor: line.from },
+                    effects: EditorView.scrollIntoView(line.from, {
+                      y: "start",
+                    }),
+                  });
+                  view.focus();
+                }}
+              >
+                <span
+                  className="shrink-0 bg-[#282c34] py-px text-right text-[#636d83]"
+                  style={{ width: gutterWidth ? gutterWidth - 8 : 32 }}
+                >
+                  {section.line}
+                </span>
+                <span className="py-px pl-[16px] text-[#abb2bf]">
+                  {section.content}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
         <div ref={containerRef} className="absolute inset-0" />
         <AIDrawer />
       </div>

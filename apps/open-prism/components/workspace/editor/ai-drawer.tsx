@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import {
   ActionBarPrimitive,
   AuiIf,
@@ -8,6 +8,7 @@ import {
   ComposerPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
+  useThreadRuntime,
 } from "@assistant-ui/react";
 import {
   MarkdownTextPrimitive,
@@ -38,11 +39,12 @@ import { cn } from "@/lib/utils";
 import { useDocumentStore } from "@/stores/document-store";
 import { useDocumentContext } from "@/hooks/use-document-context";
 
-const MIN_HEIGHT = 140;
+const MIN_HEIGHT = 150;
 const DEFAULT_HEIGHT = 180;
 
 export function AIDrawer() {
   useDocumentContext();
+  const threadRuntime = useThreadRuntime();
 
   const [isOpen, setIsOpen] = useState(false);
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
@@ -52,6 +54,22 @@ export function AIDrawer() {
   const hasDraggedRef = useRef(false);
   const heightRef = useRef(height);
   heightRef.current = height;
+
+  useEffect(() => {
+    return threadRuntime.subscribe(() => {
+      const state = threadRuntime.getState();
+      if (state.isRunning) {
+        setIsOpen(true);
+        const parent = containerRef.current?.parentElement;
+        const maxHeight = parent ? parent.clientHeight * 0.5 : 400;
+        setHeight(maxHeight);
+        heightRef.current = maxHeight;
+        if (panelRef.current) {
+          panelRef.current.style.height = `${maxHeight}px`;
+        }
+      }
+    });
+  }, [threadRuntime]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -140,7 +158,7 @@ export function AIDrawer() {
 
 const ThreadMessages: FC = () => {
   return (
-    <div className="relative min-h-0 flex-1">
+    <div className="relative min-h-0 flex-1 overflow-hidden">
       <ThreadPrimitive.Viewport
         turnAnchor="bottom"
         className="aui-thread-viewport absolute inset-0 overflow-y-auto scroll-smooth px-4"
@@ -190,8 +208,7 @@ const Composer: FC = () => {
       <div className="flex w-full flex-col rounded-2xl border border-input bg-muted/30 transition-colors focus-within:border-ring focus-within:bg-background">
         <ComposerPrimitive.Input
           placeholder="Ask about LaTeX..."
-          className="max-h-24 min-h-10 w-full resize-none bg-transparent px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
-          rows={1}
+          className="max-h-40 min-h-10 w-full resize-none bg-transparent px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
           autoFocus
           aria-label="Message input"
         />

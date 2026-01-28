@@ -3,10 +3,13 @@
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
 import { ThemeProvider } from "next-themes";
+import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import type { ReactNode } from "react";
 
 export function Providers({ children }: { children: ReactNode }) {
-  const runtime = useChatRuntime();
+  const runtime = useChatRuntime({
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+  });
 
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
