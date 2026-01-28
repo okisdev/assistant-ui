@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EditorState, Prec } from "@codemirror/state";
 import {
   EditorView,
@@ -18,11 +18,11 @@ import {
 import { syntaxHighlighting } from "@codemirror/language";
 import { oneDark, oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
 import { latex } from "codemirror-lang-latex";
-import { ImageIcon } from "lucide-react";
 import { useDocumentStore, type ProjectFile } from "@/stores/document-store";
 import { compileLatex, type CompileResource } from "@/lib/latex-compiler";
 import { EditorToolbar } from "./editor-toolbar";
 import { AIDrawer } from "./ai-drawer";
+import { ImagePreview } from "./image-preview";
 
 function gatherResources(files: ProjectFile[]): CompileResource[] {
   return files.map((f) => {
@@ -64,6 +64,8 @@ export function LatexEditor() {
   const activeFile = files.find((f) => f.id === activeFileId);
   const isTexFile = activeFile?.type === "tex";
   const activeFileContent = activeFile?.content;
+
+  const [imageScale, setImageScale] = useState(0.5);
 
   const compileRef = useRef<() => void>(() => {});
 
@@ -171,20 +173,17 @@ export function LatexEditor() {
     }
   }, [activeFileContent, isTexFile]);
 
-  if (!isTexFile) {
+  if (!isTexFile && activeFile) {
     return (
       <div className="flex h-full flex-col bg-background">
-        <EditorToolbar editorView={viewRef} />
+        <EditorToolbar
+          editorView={viewRef}
+          fileType="image"
+          imageScale={imageScale}
+          onImageScaleChange={setImageScale}
+        />
         <div className="relative min-h-0 flex-1 overflow-hidden">
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/30 p-8">
-            <ImageIcon className="mb-4 size-16 text-muted-foreground/50" />
-            <h2 className="mb-2 font-medium text-lg text-muted-foreground">
-              {activeFile?.name}
-            </h2>
-            <p className="text-center text-muted-foreground text-sm">
-              Image files cannot be edited. View them in the preview panel.
-            </p>
-          </div>
+          <ImagePreview file={activeFile} scale={imageScale} />
           <AIDrawer />
         </div>
       </div>

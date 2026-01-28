@@ -4,8 +4,8 @@ import { useEffect } from "react";
 import { useDocumentStore } from "@/stores/document-store";
 
 const DEFAULT_IMAGE_FILE = {
-  name: "Mathematics.png",
-  path: "/Mathematics.png",
+  name: "hand-write.jpg",
+  path: "/hand-write.jpg",
 };
 
 export function useProjectInit() {

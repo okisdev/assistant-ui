@@ -26,8 +26,8 @@ import remarkGfm from "remark-gfm";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { cn } from "@/lib/utils";
 
-const MIN_HEIGHT = 120;
-const DEFAULT_HEIGHT = 160;
+const MIN_HEIGHT = 140;
+const DEFAULT_HEIGHT = 180;
 
 export function AIDrawer() {
   const [height, setHeight] = useState(DEFAULT_HEIGHT);

@@ -59,7 +59,7 @@ Open-Prism integrates AI directly in the editor with access to your project, so 
 \\begin{minipage}[t]{0.49\\linewidth}
   \\vspace{0pt}
   \\centering
-  \\includegraphics[width=\\linewidth]{Mathematics.png}
+  \\includegraphics[width=\\linewidth]{hand-write.jpg}
 \\end{minipage}\\hfill
 \\begin{minipage}[t]{0.49\\linewidth}
   \\vspace{0pt}
@@ -271,8 +271,6 @@ export const useDocumentStore = create<DocumentState>()(
       name: "open-prism-document",
       partialize: (state) => ({
         files: state.files,
-        activeFileId: state.activeFileId,
-        cursorPosition: state.cursorPosition,
       }),
     },
   ),
