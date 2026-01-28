@@ -22,7 +22,7 @@ import {
 import type { FC } from "react";
 import remarkGfm from "remark-gfm";
 
-import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
+import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 

@@ -13,7 +13,7 @@ import {
   PlayIcon,
   LoaderIcon,
 } from "lucide-react";
-import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
+import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { Button } from "@/components/ui/button";
 import { useDocumentStore } from "@/stores/document-store";
 import { compileLatex } from "@/lib/latex-compiler";
