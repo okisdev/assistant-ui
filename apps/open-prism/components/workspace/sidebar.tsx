@@ -15,6 +15,7 @@ import {
   MonitorIcon,
   ListIcon,
   HashIcon,
+  GithubIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useDocumentStore, type ProjectFile } from "@/stores/document-store";
@@ -203,31 +204,45 @@ export function Sidebar() {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      <div className="flex h-12 items-center border-sidebar-border border-b px-3">
+        <div className="flex flex-col">
+          <span className="font-semibold text-sm">OpenPrism</span>
+          <span className="text-muted-foreground text-xs">
+            By{" "}
+            <a
+              href="https://www.assistant-ui.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-foreground"
+            >
+              assistant-ui
+            </a>
+          </span>
+        </div>
+      </div>
+
       <div className="flex h-9 items-center justify-between border-sidebar-border border-b px-3">
         <div className="flex items-center gap-2">
           <FolderIcon className="size-4 text-muted-foreground" />
           <span className="font-medium text-xs">Files</span>
         </div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-6"
-            onClick={handleUploadClick}
-            title="Upload file"
-          >
-            <UploadIcon className="size-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-6"
-            onClick={() => setAddDialogOpen(true)}
-            title="New file"
-          >
-            <PlusIcon className="size-3.5" />
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="size-6" title="Add">
+              <PlusIcon className="size-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setAddDialogOpen(true)}>
+              <FileTextIcon className="mr-2 size-4" />
+              New LaTeX File
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleUploadClick}>
+              <UploadIcon className="mr-2 size-4" />
+              Upload File
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <input
@@ -318,32 +333,44 @@ export function Sidebar() {
       </div>
 
       <div className="flex items-center justify-between border-sidebar-border border-t px-3 py-2 text-muted-foreground text-xs">
-        <span>Open-Prism v{packageJson.version}</span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-6"
-          onClick={() => {
-            if (theme === "system") setTheme("light");
-            else if (theme === "light") setTheme("dark");
-            else setTheme("system");
-          }}
-          title={
-            theme === "system"
-              ? "System theme"
-              : theme === "light"
-                ? "Light mode"
-                : "Dark mode"
-          }
-        >
-          {theme === "system" ? (
-            <MonitorIcon className="size-3.5" />
-          ) : theme === "light" ? (
-            <SunIcon className="size-3.5" />
-          ) : (
-            <MoonIcon className="size-3.5" />
-          )}
-        </Button>
+        <span>OpenPrism v{packageJson.version}</span>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="size-6" asChild>
+            <a
+              href="https://github.com/assistant-ui/open-prism"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="GitHub"
+            >
+              <GithubIcon className="size-3.5" />
+            </a>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6"
+            onClick={() => {
+              if (theme === "system") setTheme("light");
+              else if (theme === "light") setTheme("dark");
+              else setTheme("system");
+            }}
+            title={
+              theme === "system"
+                ? "System theme"
+                : theme === "light"
+                  ? "Light mode"
+                  : "Dark mode"
+            }
+          >
+            {theme === "system" ? (
+              <MonitorIcon className="size-3.5" />
+            ) : theme === "light" ? (
+              <SunIcon className="size-3.5" />
+            ) : (
+              <MoonIcon className="size-3.5" />
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Add File Dialog */}
