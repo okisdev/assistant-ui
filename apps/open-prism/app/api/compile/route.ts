@@ -2,16 +2,30 @@ import { NextResponse } from "next/server";
 
 export const maxDuration = 60;
 
+interface CompileResource {
+  path: string;
+  content: string;
+  main?: boolean;
+}
+
 export async function POST(req: Request) {
   try {
-    const { latex } = await req.json();
+    const { resources } = (await req.json()) as {
+      resources: CompileResource[];
+    };
 
-    if (!latex) {
+    if (!resources || resources.length === 0) {
       return NextResponse.json(
-        { error: "No LaTeX content provided" },
+        { error: "No resources provided" },
         { status: 400 },
       );
     }
+
+    const apiResources = resources.map((r) => ({
+      path: r.path,
+      content: r.content,
+      main: r.main,
+    }));
 
     const response = await fetch("https://latex.ytotech.com/builds/sync", {
       method: "POST",
@@ -20,12 +34,7 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         compiler: "pdflatex",
-        resources: [
-          {
-            main: true,
-            content: latex,
-          },
-        ],
+        resources: apiResources,
       }),
     });
 

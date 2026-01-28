@@ -11,8 +11,9 @@ import {
   RefreshCwIcon,
   MinusIcon,
   PlusIcon,
+  ImageIcon,
 } from "lucide-react";
-import { useDocumentStore } from "@/stores/document-store";
+import { useDocumentStore, type ProjectFile } from "@/stores/document-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { compileLatex } from "@/lib/latex-compiler";
+import { compileLatex, type CompileResource } from "@/lib/latex-compiler";
 
 const ZOOM_OPTIONS = [
   { value: "0.5", label: "50%" },
@@ -47,14 +48,108 @@ const PdfViewer = dynamic(
   },
 );
 
+function gatherResources(files: ProjectFile[]): CompileResource[] {
+  return files.map((f) => {
+    if (f.type === "tex") {
+      return {
+        path: f.name,
+        content: f.content ?? "",
+        main: f.name === "document.tex",
+      };
+    }
+    const dataUrl = f.dataUrl ?? "";
+    const base64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
+    return {
+      path: f.name,
+      content: base64,
+    };
+  });
+}
+
+function ImagePreview({ file }: { file: ProjectFile }) {
+  const [imageScale, setImageScale] = useState(1);
+
+  const zoomIn = () => setImageScale((s) => Math.min(4, s + 0.25));
+  const zoomOut = () => setImageScale((s) => Math.max(0.25, s - 0.25));
+
+  if (!file.dataUrl) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center bg-muted/30 p-8">
+        <ImageIcon className="mb-4 size-16 text-muted-foreground/50" />
+        <p className="text-muted-foreground text-sm">No image data available</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full flex-col bg-muted/50">
+      <div className="flex h-9 items-center justify-between border-border border-b bg-background px-2">
+        <span className="text-muted-foreground text-xs">{file.name}</span>
+        <div className="flex items-center gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6"
+            onClick={zoomOut}
+            disabled={imageScale <= 0.25}
+          >
+            <MinusIcon className="size-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6"
+            onClick={zoomIn}
+            disabled={imageScale >= 4}
+          >
+            <PlusIcon className="size-3.5" />
+          </Button>
+          <Select
+            value={imageScale.toString()}
+            onValueChange={(v) => setImageScale(Number(v))}
+          >
+            <SelectTrigger size="sm" className="h-6! w-auto text-xs">
+              <SelectValue>{Math.round(imageScale * 100)}%</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {ZOOM_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="flex-1 overflow-auto p-4">
+        <div className="flex min-h-full items-center justify-center">
+          <img
+            src={file.dataUrl}
+            alt={file.name}
+            style={{
+              transform: `scale(${imageScale})`,
+              transformOrigin: "center",
+            }}
+            className="max-w-none transition-transform"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PdfPreview() {
+  const files = useDocumentStore((s) => s.files);
+  const activeFileId = useDocumentStore((s) => s.activeFileId);
   const pdfData = useDocumentStore((s) => s.pdfData);
   const compileError = useDocumentStore((s) => s.compileError);
   const isCompiling = useDocumentStore((s) => s.isCompiling);
-  const content = useDocumentStore((s) => s.content);
   const setPdfData = useDocumentStore((s) => s.setPdfData);
   const setCompileError = useDocumentStore((s) => s.setCompileError);
   const setIsCompiling = useDocumentStore((s) => s.setIsCompiling);
+
+  const activeFile = files.find((f) => f.id === activeFileId);
+  const isImageFile = activeFile?.type === "image";
 
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [numPages, setNumPages] = useState<number>(0);
@@ -72,7 +167,9 @@ export function PdfPreview() {
     const compile = async () => {
       setIsCompiling(true);
       try {
-        const data = await compileLatex(content);
+        const currentFiles = useDocumentStore.getState().files;
+        const resources = gatherResources(currentFiles);
+        const data = await compileLatex(resources);
         setPdfData(data);
       } catch (error) {
         setCompileError(
@@ -87,7 +184,6 @@ export function PdfPreview() {
     pdfData,
     isCompiling,
     compileError,
-    content,
     setIsCompiling,
     setPdfData,
     setCompileError,
@@ -144,7 +240,9 @@ export function PdfPreview() {
     setIsCompiling(true);
     setPdfError(null);
     try {
-      const data = await compileLatex(content);
+      const currentFiles = useDocumentStore.getState().files;
+      const resources = gatherResources(currentFiles);
+      const data = await compileLatex(resources);
       setPdfData(data);
     } catch (error) {
       setCompileError(
@@ -154,6 +252,10 @@ export function PdfPreview() {
       setIsCompiling(false);
     }
   };
+
+  if (isImageFile && activeFile) {
+    return <ImagePreview file={activeFile} />;
+  }
 
   const renderContent = () => {
     if (compileError) {

@@ -4,8 +4,11 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Sidebar } from "./sidebar";
 import { LatexEditor } from "./editor/latex-editor";
 import { PdfPreview } from "./preview/pdf-preview";
+import { useProjectInit } from "@/hooks/use-project-init";
 
 export function WorkspaceLayout() {
+  useProjectInit();
+
   return (
     <PanelGroup direction="horizontal" className="h-full">
       <Panel defaultSize={15} minSize={10} maxSize={25}>

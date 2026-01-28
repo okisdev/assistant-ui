@@ -1,10 +1,18 @@
-export async function compileLatex(latex: string): Promise<Uint8Array> {
+export interface CompileResource {
+  path: string;
+  content: string;
+  main?: boolean;
+}
+
+export async function compileLatex(
+  resources: CompileResource[],
+): Promise<Uint8Array> {
   const response = await fetch("/api/compile", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ latex }),
+    body: JSON.stringify({ resources }),
   });
 
   if (!response.ok) {
