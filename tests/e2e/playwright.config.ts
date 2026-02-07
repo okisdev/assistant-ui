@@ -63,7 +63,8 @@ export default defineConfig({
       cwd: path.resolve(__dirname, "../.."),
     },
     {
-      command: "PORT=3003 pnpm --filter with-langgraph dev",
+      command:
+        "NEXT_PUBLIC_ASSISTANT_BASE_URL=http://localhost:3003/cloud PORT=3003 pnpm --filter with-langgraph dev",
       url: "http://localhost:3003",
       reuseExistingServer: !CI,
       timeout: 120_000,
