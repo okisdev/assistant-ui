@@ -28,6 +28,8 @@ next-env.d.ts
 coverage
 .stryker-tmp/
 reports/mutation/
+playwright-report/
+test-results/
 
 # next.js
 .next/

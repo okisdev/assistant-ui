@@ -2,6 +2,7 @@ packages:
   - packages/*
   - examples/*
   - apps/*
+  - tests/*
 
 ignoredBuiltDependencies:
   - '@modelcontextprotocol/ext-apps'
