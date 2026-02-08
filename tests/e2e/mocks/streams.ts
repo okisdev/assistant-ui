@@ -42,7 +42,7 @@ function encodeChunk(chunk: AISDKv6Chunk): string {
 }
 
 function encodeStream(chunks: AISDKv6Chunk[]): string {
-  return chunks.map(encodeChunk).join("") + "data: [DONE]\n\n";
+  return `${chunks.map(encodeChunk).join("")}data: [DONE]\n\n`;
 }
 
 let messageCounter = 0;
@@ -72,7 +72,7 @@ export function createTextStream(text: string): string {
     ...words.map((word, i) => ({
       type: "text-delta" as const,
       id: textId,
-      delta: i < words.length - 1 ? word + " " : word,
+      delta: i < words.length - 1 ? `${word} ` : word,
     })),
     { type: "text-end", id: textId },
     { type: "finish-step" },

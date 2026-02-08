@@ -43,7 +43,7 @@ jobs:
         run: pnpm install
 
       - name: Build packages
-        run: pnpm turbo build --filter=with-ai-sdk-v6... --filter=with-external-store... --filter=with-langgraph...
+        run: pnpm turbo build --filter=with-ai-sdk-v6... --filter=with-external-store... --filter=with-langgraph... --filter=with-assistant-transport... --filter=with-ag-ui...
 
       - name: Install Playwright browsers
         run: pnpm --filter @assistant-ui/e2e-tests exec playwright install chromium --with-deps

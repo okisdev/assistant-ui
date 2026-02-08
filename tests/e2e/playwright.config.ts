@@ -41,6 +41,22 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
       },
     },
+    {
+      name: "data-stream",
+      testMatch: "data-stream*.spec.ts",
+      use: {
+        baseURL: "http://localhost:3004",
+        ...devices["Desktop Chrome"],
+      },
+    },
+    {
+      name: "ag-ui",
+      testMatch: "ag-ui.spec.ts",
+      use: {
+        baseURL: "http://localhost:3005",
+        ...devices["Desktop Chrome"],
+      },
+    },
   ],
 
   webServer: [
@@ -66,6 +82,24 @@ export default defineConfig({
       command:
         "NEXT_PUBLIC_ASSISTANT_BASE_URL=http://localhost:3003/cloud PORT=3003 pnpm --filter with-langgraph dev",
       url: "http://localhost:3003",
+      reuseExistingServer: !CI,
+      timeout: 120_000,
+      stdout: "pipe",
+      stderr: "pipe",
+      cwd: path.resolve(__dirname, "../.."),
+    },
+    {
+      command: "PORT=3004 pnpm --filter with-assistant-transport dev",
+      url: "http://localhost:3004",
+      reuseExistingServer: !CI,
+      timeout: 120_000,
+      stdout: "pipe",
+      stderr: "pipe",
+      cwd: path.resolve(__dirname, "../.."),
+    },
+    {
+      command: "PORT=3005 pnpm --filter with-ag-ui dev",
+      url: "http://localhost:3005",
       reuseExistingServer: !CI,
       timeout: 120_000,
       stdout: "pipe",

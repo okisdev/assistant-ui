@@ -30,8 +30,6 @@ interface LangChainToolMessage {
   status: "success" | "error";
 }
 
-type LangChainMessage = LangChainAIMessage | LangChainToolMessage;
-
 function encodeLangGraphEvent(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
