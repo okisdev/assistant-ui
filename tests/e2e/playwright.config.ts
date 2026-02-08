@@ -43,7 +43,7 @@ export default defineConfig({
     },
     {
       name: "data-stream",
-      testMatch: "data-stream*.spec.ts",
+      testMatch: "data-stream.spec.ts",
       use: {
         baseURL: "http://localhost:3004",
         ...devices["Desktop Chrome"],

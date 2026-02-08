@@ -24,12 +24,11 @@ test.describe("AG-UI Integration", () => {
     await chat.sendMessage("Hello");
     await chat.waitForAssistantMessage("Hello from AG-UI!");
 
-    const userMsgs = await chat.getUserMessages();
-    const assistantMsgs = await chat.getAssistantMessages();
-    expect(userMsgs).toHaveLength(1);
-    expect(assistantMsgs).toHaveLength(1);
-    expect(userMsgs[0]).toContain("Hello");
-    expect(assistantMsgs[0]).toContain("Hello from AG-UI!");
+    await chat.assertMessageCount(1, 1);
+    await expect(chat.getUserMessages().nth(0)).toContainText("Hello");
+    await expect(chat.getAssistantMessages().nth(0)).toContainText(
+      "Hello from AG-UI!",
+    );
   });
 
   test("should handle streaming text", async ({ chat }) => {
@@ -43,8 +42,9 @@ test.describe("AG-UI Integration", () => {
     await chat.sendMessage("Tell me a sentence");
     await chat.waitForAssistantMessage("The quick brown fox");
 
-    const msgs = await chat.getAssistantMessages();
-    expect(msgs[0]).toContain("The quick brown fox jumps over the lazy dog");
+    await expect(chat.getAssistantMessages().nth(0)).toContainText(
+      "The quick brown fox jumps over the lazy dog",
+    );
   });
 
   test("should handle multiple message exchanges", async ({ chat }) => {
@@ -62,7 +62,7 @@ test.describe("AG-UI Integration", () => {
     await chat.sendMessage("Second");
     await chat.waitForAssistantMessage("Second response");
 
-    await chat.assertMessageCount({ user: 2, assistant: 2 });
+    await chat.assertMessageCount(2, 2);
   });
 
   test("should display tool call with follow-up text", async ({ chat }) => {
@@ -86,10 +86,6 @@ test.describe("AG-UI Integration", () => {
 
     await chat.sendMessage("Test message");
     await chat.waitForAssistantMessage("Hello from AG-UI!");
-
-    const composerValue = await chat.page
-      .locator(".aui-composer-input")
-      .inputValue();
-    expect(composerValue).toBe("");
+    await chat.assertComposerEmpty();
   });
 });

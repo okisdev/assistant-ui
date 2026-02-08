@@ -5,7 +5,12 @@
  *   data: {json_event}\n\n
  *
  * Each event has a "type" field (e.g. "TEXT_MESSAGE_CONTENT").
+ *
+ * NOTE: RUN_STARTED and RUN_FINISHED events require a `threadId` field
+ * per the @ag-ui/core EventSchemas validation.
  */
+
+const MOCK_THREAD_ID = "thread_mock";
 
 let runCounter = 0;
 let agMsgCounter = 0;
@@ -25,14 +30,22 @@ export function createAgUiTextStream(text: string): string {
   const messageId = `msg_${++agMsgCounter}`;
   const words = text.split(" ");
 
-  let out = sseEvent({ type: "RUN_STARTED", runId });
+  let out = sseEvent({
+    type: "RUN_STARTED",
+    threadId: MOCK_THREAD_ID,
+    runId,
+  });
   out += sseEvent({ type: "TEXT_MESSAGE_START", messageId });
   for (let i = 0; i < words.length; i++) {
     const delta = i < words.length - 1 ? `${words[i]} ` : words[i]!;
     out += sseEvent({ type: "TEXT_MESSAGE_CONTENT", messageId, delta });
   }
   out += sseEvent({ type: "TEXT_MESSAGE_END", messageId });
-  out += sseEvent({ type: "RUN_FINISHED", runId });
+  out += sseEvent({
+    type: "RUN_FINISHED",
+    threadId: MOCK_THREAD_ID,
+    runId,
+  });
   return out;
 }
 
@@ -48,7 +61,11 @@ export function createAgUiToolCallStream(
   const toolCallId = `tc_${agMsgCounter}`;
   const followUpMsgId = `msg_${++agMsgCounter}`;
 
-  let out = sseEvent({ type: "RUN_STARTED", runId });
+  let out = sseEvent({
+    type: "RUN_STARTED",
+    threadId: MOCK_THREAD_ID,
+    runId,
+  });
   // Tool call
   out += sseEvent({
     type: "TOOL_CALL_START",
@@ -61,25 +78,41 @@ export function createAgUiToolCallStream(
     delta: JSON.stringify(args),
   });
   out += sseEvent({ type: "TOOL_CALL_END", toolCallId });
-  out += sseEvent({ type: "TOOL_CALL_RESULT", toolCallId, content: result });
+  out += sseEvent({
+    type: "TOOL_CALL_RESULT",
+    toolCallId,
+    messageId,
+    content: result,
+  });
   // Follow-up text
   out += sseEvent({ type: "TEXT_MESSAGE_START", messageId: followUpMsgId });
-  for (const word of followUpText.split(" ")) {
+  const followUpWords = followUpText.split(" ");
+  for (let i = 0; i < followUpWords.length; i++) {
+    const delta =
+      i < followUpWords.length - 1 ? `${followUpWords[i]} ` : followUpWords[i]!;
     out += sseEvent({
       type: "TEXT_MESSAGE_CONTENT",
       messageId: followUpMsgId,
-      delta: word === followUpText.split(" ").at(-1) ? word : `${word} `,
+      delta,
     });
   }
   out += sseEvent({ type: "TEXT_MESSAGE_END", messageId: followUpMsgId });
-  out += sseEvent({ type: "RUN_FINISHED", runId });
+  out += sseEvent({
+    type: "RUN_FINISHED",
+    threadId: MOCK_THREAD_ID,
+    runId,
+  });
   return out;
 }
 
 /** Build an error stream */
 export function createAgUiErrorStream(errorMessage: string): string {
   const runId = `run_${++runCounter}`;
-  let out = sseEvent({ type: "RUN_STARTED", runId });
+  let out = sseEvent({
+    type: "RUN_STARTED",
+    threadId: MOCK_THREAD_ID,
+    runId,
+  });
   out += sseEvent({ type: "RUN_ERROR", message: errorMessage });
   return out;
 }

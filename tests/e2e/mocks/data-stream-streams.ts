@@ -7,7 +7,16 @@
  * Type codes:
  *   0 = TextDelta, f = StartStep, e = FinishStep, d = FinishMessage
  *   b = StartToolCall, c = ToolCallArgsTextDelta, a = ToolCallResult
- *   3 = Error
+ *   3 = Error, aui-state = UpdateStateOperations
+ *
+ * IMPORTANT: useAssistantTransportRuntime skips ALL chunks unless
+ * unstable_state changes (via aui-state operations). The converter
+ * reads state.messages (LangChain format) to produce thread messages.
+ * Without aui-state, the assistant response is never rendered.
+ *
+ * The stream builders return DataStreamResult with both the encoded body
+ * and the LangChain messages they represent. The handler accumulates
+ * messages and prepends the aui-state line with the full history.
  */
 
 const USAGE = { promptTokens: 10, completionTokens: 5 };
@@ -22,18 +31,41 @@ function line(type: string, value: unknown): string {
   return `${type}:${JSON.stringify(value)}\n`;
 }
 
+/** Build aui-state line that sets messages array */
+export function stateUpdateLine(messages: unknown[]): string {
+  return line("aui-state", [
+    { type: "set", path: ["messages"], value: messages },
+  ]);
+}
+
+export interface DataStreamResult {
+  /** The DataStream-encoded body (without aui-state) */
+  body: string;
+  /** LangChain messages this response represents (added to state by handler) */
+  langChainMessages: unknown[];
+}
+
 /** Build a simple text response in DataStream format */
-export function createDataStreamTextStream(text: string): string {
+export function createDataStreamTextStream(text: string): DataStreamResult {
   const msgId = `msg_${++msgCounter}`;
   const words = text.split(" ");
-  let out = line("f", { messageId: msgId }); // StartStep
+
+  let body = line("f", { messageId: msgId }); // StartStep
   for (let i = 0; i < words.length; i++) {
     const delta = i < words.length - 1 ? `${words[i]} ` : words[i]!;
-    out += line("0", delta); // TextDelta
+    body += line("0", delta); // TextDelta
   }
-  out += line("e", { finishReason: "stop", usage: USAGE, isContinued: false }); // FinishStep
-  out += line("d", { finishReason: "stop", usage: USAGE }); // FinishMessage
-  return out;
+  body += line("e", {
+    finishReason: "stop",
+    usage: USAGE,
+    isContinued: false,
+  }); // FinishStep
+  body += line("d", { finishReason: "stop", usage: USAGE }); // FinishMessage
+
+  return {
+    body,
+    langChainMessages: [{ type: "ai", content: [{ type: "text", text }] }],
+  };
 }
 
 /** Build a tool call + follow-up text in DataStream format */
@@ -42,26 +74,53 @@ export function createDataStreamToolCallStream(
   args: Record<string, unknown>,
   result: unknown,
   followUpText: string,
-): string {
+): DataStreamResult {
   const msgId = `msg_${++msgCounter}`;
   const toolCallId = `tc_${msgCounter}`;
-  let out = line("f", { messageId: msgId });
-  out += line("b", { toolCallId, toolName }); // StartToolCall
-  out += line("c", { toolCallId, argsTextDelta: JSON.stringify(args) }); // ToolCallArgsTextDelta
-  out += line("a", { toolCallId, result: JSON.stringify(result) }); // ToolCallResult
+
+  let body = line("f", { messageId: msgId });
+  body += line("b", { toolCallId, toolName }); // StartToolCall
+  body += line("c", { toolCallId, argsTextDelta: JSON.stringify(args) }); // ToolCallArgsTextDelta
+  body += line("a", { toolCallId, result: JSON.stringify(result) }); // ToolCallResult
   // Follow-up text
-  for (const word of followUpText.split(" ")) {
-    out += line(
-      "0",
-      word === followUpText.split(" ").at(-1) ? word : `${word} `,
-    );
+  const followUpWords = followUpText.split(" ");
+  for (let i = 0; i < followUpWords.length; i++) {
+    const delta =
+      i < followUpWords.length - 1 ? `${followUpWords[i]} ` : followUpWords[i]!;
+    body += line("0", delta);
   }
-  out += line("e", { finishReason: "stop", usage: USAGE, isContinued: false });
-  out += line("d", { finishReason: "stop", usage: USAGE });
-  return out;
+  body += line("e", {
+    finishReason: "stop",
+    usage: USAGE,
+    isContinued: false,
+  });
+  body += line("d", { finishReason: "stop", usage: USAGE });
+
+  return {
+    body,
+    langChainMessages: [
+      {
+        type: "ai",
+        content: [],
+        tool_calls: [{ name: toolName, args, id: toolCallId }],
+      },
+      {
+        type: "tool",
+        content: JSON.stringify(result),
+        tool_call_id: toolCallId,
+        name: toolName,
+      },
+      { type: "ai", content: [{ type: "text", text: followUpText }] },
+    ],
+  };
 }
 
 /** Build an error stream */
-export function createDataStreamErrorStream(errorMessage: string): string {
-  return line("3", errorMessage);
+export function createDataStreamErrorStream(
+  errorMessage: string,
+): DataStreamResult {
+  return {
+    body: line("3", errorMessage),
+    langChainMessages: [],
+  };
 }
