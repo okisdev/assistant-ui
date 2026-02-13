@@ -3,6 +3,8 @@ export type {
   ExternalStoreMessageConverter,
   ExternalStoreThreadListAdapter,
   ExternalStoreThreadData,
+  MessageTree,
+  MessageTreeItem,
 } from "./ExternalStoreAdapter";
 export type { ThreadMessageLike } from "./ThreadMessageLike";
 export { useExternalStoreRuntime } from "./useExternalStoreRuntime";

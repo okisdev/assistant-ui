@@ -57,12 +57,24 @@ type ExternalStoreMessageConverterAdapter<T> = {
   convertMessage: ExternalStoreMessageConverter<T>;
 };
 
+export type MessageTreeItem<T> = {
+  readonly message: T;
+  readonly parentId: string | null;
+};
+
+export type MessageTree<T> = {
+  readonly messages: readonly MessageTreeItem<T>[];
+  readonly headId?: string | null;
+};
+
 type ExternalStoreAdapterBase<T> = {
   isDisabled?: boolean | undefined;
   isRunning?: boolean | undefined;
   isLoading?: boolean | undefined;
   messages?: readonly T[];
+  /** @deprecated Use `messageTree` with `convertMessage` instead. */
   messageRepository?: ExportedMessageRepository;
+  messageTree?: MessageTree<T>;
   suggestions?: readonly ThreadSuggestion[] | undefined;
   state?: ReadonlyJSONValue | undefined;
   extras?: unknown;

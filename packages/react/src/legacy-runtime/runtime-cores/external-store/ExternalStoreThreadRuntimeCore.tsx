@@ -84,6 +84,7 @@ export class ExternalStoreThreadRuntimeCore
   public extras: unknown = undefined;
 
   private _converter = new ThreadMessageConverter();
+  private _treeMessageIds: Set<string> | null = null;
 
   private _store!: ExternalStoreAdapter<any>;
 
@@ -144,6 +145,116 @@ export class ExternalStoreThreadRuntimeCore
       this.repository.import(store.messageRepository);
 
       messages = this.repository.getMessages();
+    } else if (store.messageTree) {
+      // messageTree path: supports branching with user's own message type T
+      if (
+        oldStore &&
+        oldStore.isRunning === store.isRunning &&
+        oldStore.messageTree === store.messageTree
+      ) {
+        this._notifySubscribers();
+        return;
+      }
+
+      if (oldStore && oldStore.convertMessage !== store.convertMessage) {
+        this._converter = new ThreadMessageConverter();
+      }
+
+      const treeItems = store.messageTree.messages;
+      const sourceMessages = treeItems.map((item) => item.message);
+
+      const convertedMessages = !store.convertMessage
+        ? sourceMessages
+        : this._converter.convertMessages(sourceMessages, (cache, m, idx) => {
+            if (!store.convertMessage) return m;
+
+            const autoStatus = getAutoStatus(
+              false,
+              false,
+              false,
+              false,
+              undefined,
+            );
+
+            if (
+              cache &&
+              (cache.role !== "assistant" ||
+                !isAutoStatus(cache.status) ||
+                cache.status === autoStatus)
+            )
+              return cache;
+
+            const messageLike = store.convertMessage(m, idx);
+            const newMessage = fromThreadMessageLike(
+              messageLike,
+              idx.toString(),
+              autoStatus,
+            );
+            (newMessage as any)[symbolInnerMessage] = m;
+            return newMessage;
+          });
+
+      // Incremental tree update
+      const newIds = new Set<string>();
+      for (let i = 0; i < convertedMessages.length; i++) {
+        const message = convertedMessages[i]!;
+        const parentId = treeItems[i]!.parentId;
+        newIds.add(message.id);
+        this.repository.addOrUpdateMessage(parentId, message);
+      }
+
+      // Delete messages removed from tree
+      if (this._treeMessageIds) {
+        for (const oldId of this._treeMessageIds) {
+          if (!newIds.has(oldId)) {
+            this.repository.deleteMessage(oldId);
+          }
+        }
+      }
+      this._treeMessageIds = newIds;
+
+      // ensureInitialized + run events
+      if (convertedMessages.length > 0) this.ensureInitialized();
+
+      if ((oldStore?.isRunning ?? false) !== (store.isRunning ?? false)) {
+        if (store.isRunning) {
+          this._notifyEventSubscribers("runStart");
+        } else {
+          this._notifyEventSubscribers("runEnd");
+        }
+      }
+
+      // Handle optimistic message
+      if (this._assistantOptimisticId) {
+        this.repository.deleteMessage(this._assistantOptimisticId);
+        this._assistantOptimisticId = null;
+      }
+
+      const headId =
+        store.messageTree.headId !== undefined
+          ? store.messageTree.headId
+          : (convertedMessages.at(-1)?.id ?? null);
+      const branchMessages = headId ? this.repository.getMessages(headId) : [];
+
+      if (hasUpcomingMessage(isRunning, branchMessages)) {
+        this._assistantOptimisticId = this.repository.appendOptimisticMessage(
+          branchMessages.at(-1)?.id ?? null,
+          {
+            role: "assistant",
+            content: [],
+          },
+        );
+      }
+
+      // Use switchToBranch (non-destructive) instead of resetHead
+      const finalHeadId = this._assistantOptimisticId ?? headId;
+      if (finalHeadId) {
+        this.repository.switchToBranch(finalHeadId);
+      }
+
+      this._messages = this.repository.getMessages();
+      this._notifySubscribers();
+      return;
     } else if (store.messages) {
       // Handle messages array
 
@@ -200,7 +311,7 @@ export class ExternalStoreThreadRuntimeCore
       }
     } else {
       throw new Error(
-        "ExternalStoreAdapter must provide either 'messages' or 'messageRepository'",
+        "ExternalStoreAdapter must provide either 'messages', 'messageTree', or 'messageRepository'",
       );
     }
 

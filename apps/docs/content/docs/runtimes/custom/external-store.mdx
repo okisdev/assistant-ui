@@ -335,6 +335,42 @@ const runtime = useExternalStoreRuntime({
   - `onCancel` → Cancel button during generation
 </Callout>
 
+### Branching with `messageTree`
+
+If your backend stores message history as a tree (e.g., each message has a `parentId`), use `messageTree` instead of `messages` to enable branch switching in the UI:
+
+```tsx
+type MyMessage = {
+  id: string;
+  parentId: string | null;
+  role: "user" | "assistant";
+  text: string;
+};
+
+const convertMessage = (message: MyMessage): ThreadMessageLike => ({
+  id: message.id,
+  role: message.role,
+  content: [{ type: "text", text: message.text }],
+});
+
+const runtime = useExternalStoreRuntime({
+  messageTree: {
+    messages: myMessages.map((m) => ({
+      message: m,
+      parentId: m.parentId,
+    })),
+    headId: activeLeafId, // controls which branch is displayed
+  },
+  convertMessage,
+  setMessages, // required for branch switching UI
+  onNew,
+});
+```
+
+<Callout type="info">
+  `messageTree` reuses `convertMessage` so you don't need to manually construct `ThreadMessage` objects. Unlike the deprecated `messageRepository` prop, you pass your own message type and let the runtime handle conversion.
+</Callout>
+
 ### Streaming Responses
 
 Implement real-time streaming with progressive updates:
@@ -1364,8 +1400,13 @@ The main interface for connecting your state to assistant-ui.
     {
       name: "messages",
       type: "readonly T[]",
-      description: "Array of messages from your state",
+      description: "Linear array of messages from your state. Provide either `messages` or `messageTree`.",
       required: true,
+    },
+    {
+      name: "messageTree",
+      type: "MessageTree<T>",
+      description: "Tree of messages with parent-child relationships for branching support. Provide either `messages` or `messageTree`. Use with `convertMessage` to convert your message format.",
     },
     {
       name: "onNew",
@@ -1611,6 +1652,49 @@ Enable multi-thread support with custom thread management.
   The thread list adapter enables multi-thread support. Without it, the runtime
   only manages the current conversation.
 </Callout>
+
+### `MessageTree<T>`
+
+A tree structure for messages with branching support.
+
+<ParametersTable
+  type="MessageTree<T>"
+  parameters={[
+    {
+      name: "messages",
+      type: "readonly MessageTreeItem<T>[]",
+      description: "All messages in the tree, each with a parentId reference",
+      required: true,
+    },
+    {
+      name: "headId",
+      type: "string | null",
+      description: "ID of the leaf message for the active branch. Defaults to the last message in the array.",
+    },
+  ]}
+/>
+
+### `MessageTreeItem<T>`
+
+A single item in a message tree.
+
+<ParametersTable
+  type="MessageTreeItem<T>"
+  parameters={[
+    {
+      name: "message",
+      type: "T",
+      description: "The message object",
+      required: true,
+    },
+    {
+      name: "parentId",
+      type: "string | null",
+      description: "ID of the parent message, or null for root messages",
+      required: true,
+    },
+  ]}
+/>
 
 ### Related Runtime APIs
 
