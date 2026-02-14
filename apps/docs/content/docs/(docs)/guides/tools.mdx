@@ -467,18 +467,22 @@ export async function POST(req: Request) {
 
 ### MCP (Model Context Protocol) Tools
 
-Integration with MCP servers using AI SDK's experimental MCP support:
+Integration with MCP servers using [`@ai-sdk/mcp`](https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools). See the full [MCP integration guide](/docs/guides/mcp) for detailed setup instructions.
 
 ```tsx
-import { experimental_createMCPClient, streamText } from "ai";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { createMCPClient } from "@ai-sdk/mcp";
+import { streamText, convertToModelMessages } from "ai";
+import type { UIMessage } from "ai";
+import { openai } from "@ai-sdk/openai";
 
 export async function POST(req: Request) {
-  const client = await experimental_createMCPClient({
-    transport: new StdioClientTransport({
-      command: "npx",
-      args: ["@modelcontextprotocol/server-github"],
-    }),
+  const { messages }: { messages: UIMessage[] } = await req.json();
+
+  const client = await createMCPClient({
+    transport: {
+      type: "http",
+      url: "http://localhost:8080/mcp",
+    },
   });
 
   try {
@@ -487,7 +491,7 @@ export async function POST(req: Request) {
     const result = streamText({
       model: openai("gpt-4o"),
       tools,
-      messages: convertToModelMessages(messages),
+      messages: await convertToModelMessages(messages),
     });
 
     return result.toUIMessageStreamResponse();

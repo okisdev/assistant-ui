@@ -1,0 +1,240 @@
+---
+title: MCP Integration
+description: Connect your assistant to MCP (Model Context Protocol) servers for extensible tool access.
+---
+
+Integrate [MCP](https://modelcontextprotocol.io/) servers with assistant-ui using the AI SDK's `@ai-sdk/mcp` package. MCP tools are executed on the backend and rendered in the frontend using assistant-ui's existing tool UI pipeline.
+
+<Callout type="warn">
+  `createMCPClient` from `@ai-sdk/mcp` is an experimental API and may change in
+  future releases.
+</Callout>
+
+## Architecture
+
+```
+Browser (assistant-ui)  ←→  API Route (AI SDK + MCP Client)  ←→  MCP Server
+```
+
+The MCP client runs on your backend (API route). It connects to one or more MCP servers, retrieves their tools, and passes them to `streamText`. assistant-ui renders tool calls and results in the frontend.
+
+## Quick Start
+
+<Steps>
+  <Step>
+
+### Install dependencies
+
+```bash
+npm i @ai-sdk/mcp @ai-sdk/openai ai @assistant-ui/react @assistant-ui/react-ai-sdk
+```
+
+  </Step>
+  <Step>
+
+### Create the API route
+
+```tsx title="app/api/chat/route.ts"
+import { createMCPClient } from "@ai-sdk/mcp";
+import { openai } from "@ai-sdk/openai";
+import {
+  streamText,
+  convertToModelMessages,
+  stepCountIs,
+} from "ai";
+import type { UIMessage } from "ai";
+
+export const maxDuration = 30;
+
+export async function POST(req: Request) {
+  const { messages }: { messages: UIMessage[] } = await req.json();
+
+  const client = await createMCPClient({
+    transport: {
+      type: "http",
+      url: process.env.MCP_SERVER_URL ?? "http://localhost:8080/mcp",
+    },
+  });
+
+  try {
+    const tools = await client.tools();
+
+    const result = streamText({
+      model: openai("gpt-4o"),
+      tools,
+      messages: await convertToModelMessages(messages),
+      stopWhen: stepCountIs(10),
+    });
+
+    return result.toUIMessageStreamResponse();
+  } finally {
+    await client.close();
+  }
+}
+```
+
+  </Step>
+  <Step>
+
+### Set up the frontend
+
+MCP tools execute entirely on the backend, so the assistant needs to automatically send follow-up messages when tool calls complete. Use `sendAutomaticallyWhen` to enable this:
+
+```tsx title="app/page.tsx"
+"use client";
+
+import { Thread } from "@/components/assistant-ui/thread";
+import { AssistantRuntimeProvider } from "@assistant-ui/react";
+import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
+import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
+
+export default function Home() {
+  const runtime = useChatRuntime({
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+  });
+
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      <div className="h-full">
+        <Thread />
+      </div>
+    </AssistantRuntimeProvider>
+  );
+}
+```
+
+  </Step>
+</Steps>
+
+## Transport Options
+
+### Streamable HTTP (Recommended)
+
+```tsx
+const client = await createMCPClient({
+  transport: {
+    type: "http",
+    url: "https://your-mcp-server.com/mcp",
+  },
+});
+```
+
+### SSE (Legacy)
+
+```tsx
+const client = await createMCPClient({
+  transport: {
+    type: "sse",
+    url: "https://your-mcp-server.com/sse",
+  },
+});
+```
+
+### Stdio
+
+For local MCP servers that run as subprocesses:
+
+```tsx
+import { Experimental_StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
+
+const client = await createMCPClient({
+  transport: new Experimental_StdioMCPTransport({
+    command: "npx",
+    args: ["@modelcontextprotocol/server-github"],
+  }),
+});
+```
+
+## Custom Tool UI
+
+MCP tools are executed on the backend, but you can add custom UI for them using the `Tools()` API with render-only definitions (no `execute`):
+
+```tsx title="app/page.tsx"
+"use client";
+
+import { AssistantRuntimeProvider, useAui, Tools, type Toolkit } from "@assistant-ui/react";
+import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
+import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
+import { z } from "zod";
+
+const mcpToolkit: Toolkit = {
+  get_weather: {
+    description: "Get current weather",
+    parameters: z.object({
+      location: z.string(),
+    }),
+    // No execute — handled by the MCP server on the backend
+    render: ({ args, result }) => {
+      if (!result) return <div>Fetching weather for {args.location}...</div>;
+      return (
+        <div className="rounded-lg border p-3">
+          <h3 className="font-medium">{args.location}</h3>
+          <p>{typeof result === "string" ? result : JSON.stringify(result)}</p>
+        </div>
+      );
+    },
+  },
+};
+
+export default function Home() {
+  const runtime = useChatRuntime({
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+  });
+
+  const aui = useAui({
+    tools: Tools({ toolkit: mcpToolkit }),
+  });
+
+  return (
+    <AssistantRuntimeProvider aui={aui} runtime={runtime}>
+      <div className="h-full">
+        <Thread />
+      </div>
+    </AssistantRuntimeProvider>
+  );
+}
+```
+
+<Callout type="tip">
+  If you haven't provided a custom UI for a tool, assistant-ui offers a
+  [`ToolFallback`](/docs/ui/tool-fallback) component that renders a default UI
+  for tool executions.
+</Callout>
+
+## Multiple MCP Servers
+
+You can connect to multiple MCP servers and merge their tools:
+
+```tsx title="app/api/chat/route.ts"
+const weatherClient = await createMCPClient({
+  transport: { type: "http", url: "http://localhost:8080/mcp" },
+});
+
+const githubClient = await createMCPClient({
+  transport: { type: "http", url: "http://localhost:8081/mcp" },
+});
+
+try {
+  const weatherTools = await weatherClient.tools();
+  const githubTools = await githubClient.tools();
+
+  const result = streamText({
+    model: openai("gpt-4o"),
+    tools: { ...weatherTools, ...githubTools },
+    messages: await convertToModelMessages(messages),
+  });
+
+  return result.toUIMessageStreamResponse();
+} finally {
+  await weatherClient.close();
+  await githubClient.close();
+}
+```
+
+## Starter Template
+
+Bootstrap a new project with MCP integration:
+
+```bash
+npx assistant-ui@latest create -t mcp
+```
