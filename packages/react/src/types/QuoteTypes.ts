@@ -1,4 +1,1 @@
-export type QuoteInfo = {
-  readonly text: string;
-  readonly messageId: string;
-};
+export type { QuoteInfo } from "@assistant-ui/core";

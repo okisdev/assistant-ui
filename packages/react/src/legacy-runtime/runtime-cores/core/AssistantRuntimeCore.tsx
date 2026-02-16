@@ -1,4 +1,4 @@
-import { ComponentType } from "react";
+import type { AnyComponent } from "@assistant-ui/core";
 import type { ModelContextProvider } from "../../../model-context/ModelContextTypes";
 import type { Unsubscribe } from "../../../types/Unsubscribe";
 import { ThreadListRuntimeCore } from "./ThreadListRuntimeCore";
@@ -15,5 +15,5 @@ export type AssistantRuntimeCore = {
    * Note: This field is expected to never change.
    * To update the component, use a zustand store.
    */
-  readonly RenderComponent?: ComponentType | undefined;
+  readonly RenderComponent?: AnyComponent | undefined;
 };

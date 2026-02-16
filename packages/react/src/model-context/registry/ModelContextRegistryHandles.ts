@@ -1,6 +1,7 @@
 import type { AssistantToolProps } from "../../model-context/useAssistantTool";
 import type { AssistantInstructionsConfig } from "../../model-context/useAssistantInstructions";
 
+// Re-export with React-specific AssistantToolProps type
 export interface ModelContextRegistryToolHandle<
   TArgs extends Record<string, unknown> = any,
   TResult = any,

@@ -1,4 +1,4 @@
-import { ComponentType, PropsWithChildren } from "react";
+import type { AnyComponent } from "@assistant-ui/core";
 import { AssistantRuntime } from "../../runtime";
 import { AssistantStream } from "assistant-stream";
 import { ThreadMessage } from "../../../types";
@@ -33,7 +33,7 @@ export type RemoteThreadListAdapter = {
   ): Promise<AssistantStream>;
   fetch(threadId: string): Promise<RemoteThreadMetadata>;
 
-  unstable_Provider?: ComponentType<PropsWithChildren>;
+  unstable_Provider?: AnyComponent | undefined;
 };
 
 export type RemoteThreadListOptions = {
