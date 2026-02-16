@@ -1,32 +1,8 @@
-import type { ThreadHistoryAdapter } from "../adapters/thread-history/ThreadHistoryAdapter";
-import type { AttachmentAdapter } from "../adapters/attachment/AttachmentAdapter";
-import type { ThreadMessageLike } from "../external-store";
-import type { FeedbackAdapter } from "../adapters/feedback/FeedbackAdapter";
-import type {
-  SpeechSynthesisAdapter,
-  DictationAdapter,
-} from "../adapters/speech/SpeechAdapterTypes";
-import type { ChatModelAdapter } from "./ChatModelAdapter";
+export type { LocalRuntimeOptionsBase } from "@assistant-ui/core";
+
+import type { LocalRuntimeOptionsBase } from "@assistant-ui/core";
 import type { AssistantCloud } from "assistant-cloud";
-import type { SuggestionAdapter } from "../adapters";
-
-export type LocalRuntimeOptionsBase = {
-  maxSteps?: number | undefined;
-  adapters: {
-    chatModel: ChatModelAdapter;
-    history?: ThreadHistoryAdapter | undefined;
-    attachments?: AttachmentAdapter | undefined;
-    speech?: SpeechSynthesisAdapter | undefined;
-    dictation?: DictationAdapter | undefined;
-    feedback?: FeedbackAdapter | undefined;
-    suggestion?: SuggestionAdapter | undefined;
-  };
-
-  /**
-   * Names of tools that are allowed to interrupt the run in order to wait for human/external approval.
-   */
-  unstable_humanToolNames?: string[] | undefined;
-};
+import type { ThreadMessageLike } from "../external-store";
 
 // TODO align LocalRuntimeOptions with LocalRuntimeOptionsBase
 export type LocalRuntimeOptions = Omit<LocalRuntimeOptionsBase, "adapters"> & {

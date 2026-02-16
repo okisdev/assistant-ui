@@ -15,6 +15,7 @@ export type {
   ThreadRuntimeCore,
   ThreadSuggestion,
   SubmitFeedbackOptions,
+  SubmittedFeedback,
   RuntimeCapabilities,
   SpeechState,
   ThreadRuntimeEventType,

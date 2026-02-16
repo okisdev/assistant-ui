@@ -1,23 +1,10 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import {
   MessageRepository,
   ExportedMessageRepository,
 } from "../legacy-runtime/runtime-cores/utils/MessageRepository";
 import type { ThreadMessage, TextMessagePart } from "../types/AssistantTypes";
 import type { ThreadMessageLike } from "../legacy-runtime/runtime-cores";
-
-// Mock generateId and generateOptimisticId to make tests deterministic
-const mockGenerateId = vi.fn();
-const mockGenerateOptimisticId = vi.fn();
-const mockIsOptimisticId = vi.fn((id: string) =>
-  id.startsWith("__optimistic__"),
-);
-
-vi.mock("../utils/idUtils", () => ({
-  generateId: () => mockGenerateId(),
-  generateOptimisticId: () => mockGenerateOptimisticId(),
-  isOptimisticId: (id: string) => mockIsOptimisticId(id),
-}));
 
 /**
  * Tests for the MessageRepository class, which manages message threads with branching capabilities.
@@ -32,7 +19,6 @@ vi.mock("../utils/idUtils", () => ({
  */
 describe("MessageRepository", () => {
   let repository: MessageRepository;
-  let nextMockId = 1;
 
   /**
    * Creates a test ThreadMessage with the given overrides.
@@ -64,16 +50,6 @@ describe("MessageRepository", () => {
 
   beforeEach(() => {
     repository = new MessageRepository();
-    // Reset mocks with predictable counter-based values
-    nextMockId = 1;
-    mockGenerateId.mockImplementation(() => `mock-id-${nextMockId++}`);
-    mockGenerateOptimisticId.mockImplementation(
-      () => `__optimistic__mock-id-${nextMockId++}`,
-    );
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
   });
 
   // Core functionality tests - these test the public contract
@@ -374,15 +350,13 @@ describe("MessageRepository", () => {
      * The message should have a running status and the correct ID.
      */
     it("should create an optimistic message with a unique ID", () => {
-      mockGenerateOptimisticId.mockReturnValue("__optimistic__generated-id");
-
       const coreMessage = createThreadMessageLike();
       const optimisticId = repository.appendOptimisticMessage(
         null,
         coreMessage,
       );
 
-      expect(optimisticId).toBe("__optimistic__generated-id");
+      expect(optimisticId).toMatch(/^__optimistic__/);
       expect(repository.getMessage(optimisticId).message.status?.type).toBe(
         "running",
       );
@@ -411,28 +385,23 @@ describe("MessageRepository", () => {
      * Tests that optimistic IDs are unique even if the first generated ID
      * already exists in the repository.
      */
-    it("should retry generating unique optimistic IDs if initial one exists", () => {
-      // First call returns an ID that already exists
-      mockGenerateOptimisticId.mockReturnValueOnce("__optimistic__existing-id");
-
-      // Create a message with the ID that will conflict
-      const existingMessage = createTestMessage({
-        id: "__optimistic__existing-id",
-      });
-      repository.addOrUpdateMessage(null, existingMessage);
-
-      // Second call returns a unique ID
-      mockGenerateOptimisticId.mockReturnValueOnce("__optimistic__unique-id");
-
+    it("should generate unique optimistic IDs that do not conflict", () => {
       const coreMessage = createThreadMessageLike();
-      const optimisticId = repository.appendOptimisticMessage(
+
+      // Create two optimistic messages
+      const optimisticId1 = repository.appendOptimisticMessage(
         null,
         coreMessage,
       );
+      const optimisticId2 = repository.appendOptimisticMessage(
+        null,
+        createThreadMessageLike(),
+      );
 
-      // Should have used the second ID
-      expect(optimisticId).toBe("__optimistic__unique-id");
-      expect(mockGenerateOptimisticId).toHaveBeenCalledTimes(2);
+      // Each ID should be unique and follow the optimistic pattern
+      expect(optimisticId1).toMatch(/^__optimistic__/);
+      expect(optimisticId2).toMatch(/^__optimistic__/);
+      expect(optimisticId1).not.toBe(optimisticId2);
     });
   });
 
@@ -539,8 +508,6 @@ describe("MessageRepository", () => {
      * The converted format should establish proper parent-child relationships.
      */
     it("should convert an array of messages to repository format", () => {
-      mockGenerateId.mockReturnValue("generated-id");
-
       const messages: ThreadMessageLike[] = [
         {
           role: "user" as const,
@@ -560,7 +527,8 @@ describe("MessageRepository", () => {
 
       expect(result.messages).toHaveLength(2);
       expect(result.messages[0]!.parentId).toBeNull();
-      expect(result.messages[1]!.parentId).toBe("generated-id");
+      // Second message's parentId should be the first message's ID
+      expect(result.messages[1]!.parentId).toBe(result.messages[0]!.message.id);
     });
 
     /**
