@@ -12,8 +12,14 @@ export function MyRuntimeProvider({
 }>) {
   const runtime = useLangGraphRuntime({
     stream: async function* (messages, { initialize }) {
-      const { externalId } = await initialize();
-      if (!externalId) throw new Error("Thread not found");
+      let { externalId } = await initialize();
+      if (!externalId) {
+        // Fallback: when no cloud backend is configured,
+        // InMemoryThreadListAdapter returns externalId: undefined.
+        // Create the thread directly.
+        const { thread_id } = await createThread();
+        externalId = thread_id;
+      }
 
       const generator = sendMessage({
         threadId: externalId,
