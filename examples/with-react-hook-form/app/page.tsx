@@ -71,7 +71,7 @@ export default function Home() {
     <AuiProvider value={aui}>
       <AssistantSidebar>
         <div className="h-full overflow-y-scroll">
-          <main className="container py-8">
+          <main className="container p-3">
             <h1 className="mb-2 font-semibold text-2xl">
               Simon&apos;s Hackathon
             </h1>
