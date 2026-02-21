@@ -4,12 +4,13 @@ description: AssistantSidebar copilot which fills forms for the user
 ---
 
 
+import { FormDemo } from "@/components/examples/form-demo";
+import { FormDemoRuntimeProvider } from "@/contexts/FormDemoRuntimeProvider";
+
 <div className="not-prose h-[600px]">
-  <iframe
-    title="Form Filling Co-Pilot demo"
-    className="h-full w-full border-none"
-    src="https://assistant-ui-form-demo.vercel.app/"
-  />
+  <FormDemoRuntimeProvider>
+    <FormDemo />
+  </FormDemoRuntimeProvider>
 </div>
 
 ## Overview

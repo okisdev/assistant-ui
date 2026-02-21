@@ -121,6 +121,9 @@ importers:
       '@assistant-ui/react-devtools':
         specifier: workspace:*
         version: link:../../packages/react-devtools
+      '@assistant-ui/react-hook-form':
+        specifier: workspace:*
+        version: link:../../packages/react-hook-form
       '@assistant-ui/react-langgraph':
         specifier: workspace:*
         version: link:../../packages/react-langgraph
