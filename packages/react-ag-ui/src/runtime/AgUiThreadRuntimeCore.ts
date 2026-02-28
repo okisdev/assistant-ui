@@ -511,23 +511,23 @@ export class AgUiThreadRuntimeCore {
   private importMessagesSnapshot(rawMessages: readonly unknown[]) {
     try {
       const normalized = fromAgUiMessages(rawMessages);
-      const converted = normalized.flatMap((message) => {
+      const converted: ThreadMessage[] = [];
+      for (const message of normalized) {
         try {
-          return [
+          converted.push(
             INTERNAL.fromThreadMessageLike(
               message as any,
               INTERNAL.generateId(),
               FALLBACK_USER_STATUS,
             ),
-          ];
+          );
         } catch (error) {
           this.logger.error?.(
             "[agui] failed to import message from snapshot",
             error,
           );
-          return [];
         }
-      });
+      }
       this.applyExternalMessages(converted);
     } catch (error) {
       this.logger.error?.("[agui] failed to import messages snapshot", error);

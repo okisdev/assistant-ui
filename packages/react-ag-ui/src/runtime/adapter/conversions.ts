@@ -43,19 +43,6 @@ type ToolCallPart = {
   isError?: boolean;
 };
 
-type ToolCallLocation = {
-  messageIndex: number;
-  partIndex: number;
-};
-
-type ToolResultPayload = {
-  id: string;
-  toolCallId: string;
-  toolName: string;
-  result: unknown;
-  isError: boolean | undefined;
-};
-
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
@@ -67,27 +54,12 @@ const getString = (record: Record<string, unknown>, key: string) => {
 const getToolCallId = (record: Record<string, unknown>) =>
   getString(record, "toolCallId") ?? getString(record, "tool_call_id");
 
-function parseJSONObject(
-  value: string | undefined,
-): Record<string, unknown> | undefined {
-  if (typeof value !== "string" || value.length === 0) return undefined;
+function parseJSONText(value: string): unknown {
+  if (!value) return value;
   try {
-    const parsed = JSON.parse(value);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return parsed as Record<string, unknown>;
-    }
+    return JSON.parse(value);
   } catch {
-    // noop
-  }
-  return undefined;
-}
-
-function parseResultContent(content: string): unknown {
-  if (!content) return content;
-  try {
-    return JSON.parse(content);
-  } catch {
-    return content;
+    return value;
   }
 }
 
@@ -134,64 +106,58 @@ function extractText(content: unknown): string {
     .join("\n");
 }
 
-function normalizeAssistantToolCall(value: unknown): ToolCallPart | null {
+function toToolCallPart(value: unknown): ToolCallPart | null {
   if (!isObject(value)) return null;
-  const rawFunction = isObject(value["function"])
-    ? (value["function"] as Record<string, unknown>)
-    : undefined;
-  const toolCallId = getString(value, "id") ?? getString(value, "toolCallId");
+  const rawFunction = isObject(value["function"]) ? value["function"] : null;
+  const toolCallId = getString(value, "toolCallId") ?? getString(value, "id");
   const toolName =
     getString(value, "toolName") ??
     getString(value, "name") ??
-    getString(rawFunction ?? {}, "name") ??
+    (rawFunction ? getString(rawFunction, "name") : undefined) ??
     "tool";
   const argsText =
     getString(value, "argsText") ??
     getString(value, "arguments") ??
-    getString(rawFunction ?? {}, "arguments");
-  const explicitArgs = value["args"];
-  const argsFromText = parseJSONObject(argsText);
-  const args =
-    argsFromText ??
-    (explicitArgs &&
-    typeof explicitArgs === "object" &&
-    !Array.isArray(explicitArgs)
-      ? (explicitArgs as Record<string, unknown>)
-      : undefined);
+    (rawFunction ? getString(rawFunction, "arguments") : undefined);
 
-  return {
+  const parsedArgs =
+    typeof argsText === "string" ? parseJSONText(argsText) : undefined;
+  const args =
+    isObject(parsedArgs) && !Array.isArray(parsedArgs)
+      ? (parsedArgs as Record<string, unknown>)
+      : isObject(value["args"]) && !Array.isArray(value["args"])
+        ? (value["args"] as Record<string, unknown>)
+        : undefined;
+
+  const part: ToolCallPart = {
     type: "tool-call",
-    ...(toolCallId ? { toolCallId } : {}),
+    ...(toolCallId !== undefined ? { toolCallId } : {}),
     toolName,
     argsText: argsText ?? JSON.stringify(args ?? {}),
-    ...(args ? { args } : {}),
+    ...(args !== undefined ? { args } : {}),
   };
+
+  if (value["type"] === "tool-call") {
+    const result = value["result"];
+    const isError = value["isError"];
+    if (result !== undefined) part.result = result;
+    if (typeof isError === "boolean") part.isError = isError;
+  }
+
+  return part;
 }
 
-function normalizeToolPartFromContent(value: unknown): ToolCallPart | null {
-  if (!isObject(value) || value["type"] !== "tool-call") return null;
-  const normalized = normalizeAssistantToolCall(value);
-  if (!normalized) return null;
-  const result = value["result"];
-  const isErrorValue = value["isError"];
-  return {
-    ...normalized,
-    ...(result !== undefined ? { result } : {}),
-    ...(typeof isErrorValue === "boolean" ? { isError: isErrorValue } : {}),
-  };
-}
-
-function extractToolCallsFromAssistantMessage(
+function extractAssistantToolCalls(
   message: Record<string, unknown>,
 ): ToolCallPart[] {
-  const toolCallParts: ToolCallPart[] = [];
+  const parts: ToolCallPart[] = [];
   const seenToolCallIds = new Set<string>();
   const pushPart = (part: ToolCallPart | null) => {
     if (!part) return;
     const id = part.toolCallId ?? generateId();
     if (seenToolCallIds.has(id)) return;
     seenToolCallIds.add(id);
-    toolCallParts.push({
+    parts.push({
       ...part,
       toolCallId: id,
     });
@@ -200,7 +166,9 @@ function extractToolCallsFromAssistantMessage(
   const content = message["content"];
   if (Array.isArray(content)) {
     for (const part of content) {
-      pushPart(normalizeToolPartFromContent(part));
+      if (isObject(part) && part["type"] === "tool-call") {
+        pushPart(toToolCallPart(part));
+      }
     }
   }
 
@@ -210,133 +178,17 @@ function extractToolCallsFromAssistantMessage(
       ? message["tool_calls"]
       : [];
   for (const call of toolCalls) {
-    pushPart(normalizeAssistantToolCall(call));
+    pushPart(toToolCallPart(call));
   }
 
-  return toolCallParts;
+  return parts;
 }
 
-function attachToolCallLocations(
-  message: ThreadMessageLike,
-  messageIndex: number,
-  locations: Map<string, ToolCallLocation>,
-) {
-  if (!Array.isArray(message.content)) return;
-  for (let partIndex = 0; partIndex < message.content.length; partIndex++) {
-    const part = message.content[partIndex];
-    if (!isObject(part) || part["type"] !== "tool-call") continue;
-    const toolCallId = getString(part, "toolCallId");
-    if (!toolCallId) continue;
-    locations.set(toolCallId, { messageIndex, partIndex });
-  }
-}
-
-function extractToolResultMessageResult(
-  message: Record<string, unknown>,
-): unknown {
-  const explicitResult = message["result"];
-  if (explicitResult !== undefined) return explicitResult;
-  const content = message["content"];
-  if (typeof content === "string") return parseResultContent(content);
-  return content;
-}
-
-function resolveToolMessagePayload(
-  message: Record<string, unknown>,
-): ToolResultPayload {
-  const rawToolCallId = getToolCallId(message);
-  const toolCallId = rawToolCallId ?? `tool-${generateId()}`;
-  const hasErrorFlag =
-    typeof message["error"] === "string" ||
-    message["isError"] === true ||
-    message["status"] === "error";
-  const explicitFalse = message["isError"] === false;
-  const isError = hasErrorFlag ? true : explicitFalse ? false : undefined;
-
-  return {
-    id: getString(message, "id") ?? toolCallId,
-    toolCallId,
-    toolName:
-      getString(message, "name") ?? getString(message, "toolName") ?? "tool",
-    result: extractToolResultMessageResult(message),
-    isError,
-  };
-}
-
-function setToolCallResultOnMessage(
-  message: ThreadMessageLike,
-  partIndex: number,
-  result: unknown,
-  isError: boolean | undefined,
-): ThreadMessageLike | null {
-  if (!Array.isArray(message.content)) return null;
-
-  const part = message.content[partIndex];
-  if (!isObject(part) || part["type"] !== "tool-call") return null;
-
-  const updatedPart: ToolCallPart = {
-    ...(part as ToolCallPart),
-    result,
-    ...(isError !== undefined ? { isError } : {}),
-  };
-  const updatedContent = message.content.map((contentPart, idx) =>
-    idx === partIndex ? updatedPart : contentPart,
-  );
-
-  return {
-    ...message,
-    content: updatedContent,
-  };
-}
-
-function applyToolResultToExistingMessage(
-  converted: ThreadMessageLike[],
-  locations: Map<string, ToolCallLocation>,
-  payload: ToolResultPayload,
-): boolean {
-  const location = locations.get(payload.toolCallId);
-  if (!location) return false;
-
-  const targetMessage = converted[location.messageIndex];
-  if (!targetMessage) return false;
-
-  const updatedMessage = setToolCallResultOnMessage(
-    targetMessage,
-    location.partIndex,
-    payload.result,
-    payload.isError,
-  );
-  if (!updatedMessage) return false;
-
-  converted[location.messageIndex] = updatedMessage;
-  return true;
-}
-
-function createSyntheticToolResultMessage(
-  payload: ToolResultPayload,
-): ThreadMessageLike {
-  return {
-    id: `${payload.id}:assistant`,
-    role: "assistant",
-    content: [
-      {
-        type: "tool-call",
-        toolCallId: payload.toolCallId,
-        toolName: payload.toolName,
-        args: {},
-        argsText: "{}",
-        result: payload.result,
-        ...(payload.isError !== undefined ? { isError: payload.isError } : {}),
-      },
-    ],
-  };
-}
-
-function normalizeAssistantSnapshotMessage(
+function toAssistantSnapshotMessage(
   rawMessage: Record<string, unknown>,
 ): ThreadMessageLike {
   const text = extractText(rawMessage["content"]);
-  const toolCallParts = extractToolCallsFromAssistantMessage(rawMessage);
+  const toolCallParts = extractAssistantToolCalls(rawMessage);
   const assistantContent = [
     ...(text.length > 0 ? [{ type: "text" as const, text }] : []),
     ...toolCallParts,
@@ -350,7 +202,7 @@ function normalizeAssistantSnapshotMessage(
   };
 }
 
-function normalizeUserOrSystemSnapshotMessage(
+function toUserOrSystemSnapshotMessage(
   role: "user" | "system",
   rawMessage: Record<string, unknown>,
 ): ThreadMessageLike {
@@ -367,7 +219,6 @@ export function fromAgUiMessages(
   messages: readonly unknown[],
 ): ThreadMessageLike[] {
   const converted: ThreadMessageLike[] = [];
-  const toolCallLocations = new Map<string, ToolCallLocation>();
 
   for (const rawMessage of messages) {
     if (!isObject(rawMessage)) continue;
@@ -375,32 +226,93 @@ export function fromAgUiMessages(
     if (!role) continue;
 
     if (role === "tool") {
-      const payload = resolveToolMessagePayload(rawMessage);
-      if (
-        applyToolResultToExistingMessage(converted, toolCallLocations, payload)
+      const toolCallId = getToolCallId(rawMessage) ?? `tool-${generateId()}`;
+      const result =
+        rawMessage["result"] !== undefined
+          ? rawMessage["result"]
+          : typeof rawMessage["content"] === "string"
+            ? parseJSONText(rawMessage["content"])
+            : rawMessage["content"];
+      const isError =
+        typeof rawMessage["error"] === "string" ||
+        rawMessage["isError"] === true ||
+        rawMessage["status"] === "error"
+          ? true
+          : rawMessage["isError"] === false
+            ? false
+            : undefined;
+
+      let updated = false;
+      for (
+        let messageIndex = converted.length - 1;
+        messageIndex >= 0 && !updated;
+        messageIndex--
       ) {
+        const message = converted[messageIndex];
+        if (
+          !message ||
+          message.role !== "assistant" ||
+          !Array.isArray(message.content)
+        )
+          continue;
+
+        for (
+          let partIndex = message.content.length - 1;
+          partIndex >= 0;
+          partIndex--
+        ) {
+          const part = message.content[partIndex];
+          if (!isObject(part) || part["type"] !== "tool-call") continue;
+          if (getString(part, "toolCallId") !== toolCallId) continue;
+
+          const updatedPart: ToolCallPart = {
+            ...(part as ToolCallPart),
+            result,
+            ...(isError !== undefined ? { isError } : {}),
+          };
+          const updatedContent = message.content.map((contentPart, index) =>
+            index === partIndex ? updatedPart : contentPart,
+          );
+          converted[messageIndex] = { ...message, content: updatedContent };
+          updated = true;
+          break;
+        }
+      }
+
+      if (updated) {
         continue;
       }
 
-      const syntheticMessage = createSyntheticToolResultMessage(payload);
-      converted.push(syntheticMessage);
-      attachToolCallLocations(
-        syntheticMessage,
-        converted.length - 1,
-        toolCallLocations,
-      );
+      const id = getString(rawMessage, "id") ?? toolCallId;
+      const toolName =
+        getString(rawMessage, "name") ??
+        getString(rawMessage, "toolName") ??
+        "tool";
+      converted.push({
+        id: `${id}:assistant`,
+        role: "assistant",
+        content: [
+          {
+            type: "tool-call",
+            toolCallId,
+            toolName,
+            args: {},
+            argsText: "{}",
+            result,
+            ...(isError !== undefined ? { isError } : {}),
+          },
+        ],
+      });
       continue;
     }
 
     if (role === "assistant") {
-      const message = normalizeAssistantSnapshotMessage(rawMessage);
-      converted.push(message);
-      attachToolCallLocations(message, converted.length - 1, toolCallLocations);
+      converted.push(toAssistantSnapshotMessage(rawMessage));
       continue;
     }
 
     if (role === "user" || role === "system") {
-      converted.push(normalizeUserOrSystemSnapshotMessage(role, rawMessage));
+      converted.push(toUserOrSystemSnapshotMessage(role, rawMessage));
     }
   }
 
