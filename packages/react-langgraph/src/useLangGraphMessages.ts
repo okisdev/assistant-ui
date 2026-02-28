@@ -57,10 +57,6 @@ const DEFAULT_APPEND_MESSAGE = <TMessage>(
   curr: TMessage,
 ) => curr;
 
-const isAbortError = (error: unknown): boolean => {
-  return error instanceof Error && error.name === "AbortError";
-};
-
 export const useLangGraphMessages = <TMessage extends { id?: string }>({
   stream,
   appendMessage = DEFAULT_APPEND_MESSAGE,
@@ -229,7 +225,10 @@ export const useLangGraphMessages = <TMessage extends { id?: string }>({
           }
         }
       } catch (error) {
-        if (!isAbortError(error)) {
+        if (
+          !abortController.signal.aborted &&
+          !(error instanceof Error && error.name === "AbortError")
+        ) {
           throw error;
         }
       } finally {
