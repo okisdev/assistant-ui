@@ -57,6 +57,10 @@ const DEFAULT_APPEND_MESSAGE = <TMessage>(
   curr: TMessage,
 ) => curr;
 
+const isAbortError = (error: unknown): boolean => {
+  return error instanceof Error && error.name === "AbortError";
+};
+
 export const useLangGraphMessages = <TMessage extends { id?: string }>({
   stream,
   appendMessage = DEFAULT_APPEND_MESSAGE,
@@ -117,107 +121,120 @@ export const useLangGraphMessages = <TMessage extends { id?: string }>({
 
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
-      const response = await stream(newMessagesWithId, {
-        ...config,
-        abortSignal: abortController.signal,
-        initialize: async () => {
-          return await aui.threadListItem().initialize();
-        },
-      });
+      try {
+        const response = await stream(newMessagesWithId, {
+          ...config,
+          abortSignal: abortController.signal,
+          initialize: async () => {
+            return await aui.threadListItem().initialize();
+          },
+        });
 
-      let hasTupleMessageEvents = false;
-      for await (const chunk of response) {
-        switch (chunk.event) {
-          case LangGraphKnownEventTypes.MessagesPartial:
-          case LangGraphKnownEventTypes.MessagesComplete:
-            setMessagesImmediate(accumulator.addMessages(chunk.data));
-            break;
-          case LangGraphKnownEventTypes.Updates:
-            onUpdates?.(chunk.data);
-            if (Array.isArray(chunk.data.messages) && !hasTupleMessageEvents) {
-              setMessagesImmediate(
-                accumulator.replaceMessages(chunk.data.messages),
-              );
-            }
-            setInterrupt(chunk.data.__interrupt__?.[0]);
-            break;
-          case LangGraphKnownEventTypes.Values:
-            onValues?.(chunk.data);
-            break;
-          case LangGraphKnownEventTypes.Messages: {
-            hasTupleMessageEvents = true;
-            const [tupleMessage, tupleMetadata] = (
-              chunk as LangChainMessageTupleEvent
-            ).data;
-            const normalizedTupleMessage =
-              normalizeLangGraphTupleMessage(tupleMessage);
-            if (!normalizedTupleMessage) {
-              console.warn(
-                "Received invalid messages tuple format:",
-                tupleMessage,
-              );
+        let hasTupleMessageEvents = false;
+        for await (const chunk of response) {
+          switch (chunk.event) {
+            case LangGraphKnownEventTypes.MessagesPartial:
+            case LangGraphKnownEventTypes.MessagesComplete:
+              setMessagesImmediate(accumulator.addMessages(chunk.data));
+              break;
+            case LangGraphKnownEventTypes.Updates:
+              onUpdates?.(chunk.data);
+              if (
+                Array.isArray(chunk.data.messages) &&
+                !hasTupleMessageEvents
+              ) {
+                setMessagesImmediate(
+                  accumulator.replaceMessages(chunk.data.messages),
+                );
+              }
+              setInterrupt(chunk.data.__interrupt__?.[0]);
+              break;
+            case LangGraphKnownEventTypes.Values:
+              onValues?.(chunk.data);
+              break;
+            case LangGraphKnownEventTypes.Messages: {
+              hasTupleMessageEvents = true;
+              const [tupleMessage, tupleMetadata] = (
+                chunk as LangChainMessageTupleEvent
+              ).data;
+              const normalizedTupleMessage =
+                normalizeLangGraphTupleMessage(tupleMessage);
+              if (!normalizedTupleMessage) {
+                console.warn(
+                  "Received invalid messages tuple format:",
+                  tupleMessage,
+                );
+                break;
+              }
+
+              if (normalizedTupleMessage.kind === "chunk") {
+                onMessageChunk?.(
+                  normalizedTupleMessage.message,
+                  tupleMetadata ?? {},
+                );
+              }
+
+              const normalizedMessage =
+                normalizedTupleMessage.message as unknown as TMessage;
+              const updatedMessages = tupleMetadata
+                ? accumulator.addMessageWithMetadata(
+                    normalizedMessage,
+                    tupleMetadata,
+                  )
+                : accumulator.addMessages([normalizedMessage]);
+
+              setMessagesImmediate(updatedMessages);
+              setMessageMetadata(new Map(accumulator.getMetadataMap()));
               break;
             }
-
-            if (normalizedTupleMessage.kind === "chunk") {
-              onMessageChunk?.(
-                normalizedTupleMessage.message,
-                tupleMetadata ?? {},
+            case LangGraphKnownEventTypes.Metadata:
+              onMetadata?.(chunk.data);
+              break;
+            case LangGraphKnownEventTypes.Info:
+              onInfo?.(chunk.data);
+              break;
+            case LangGraphKnownEventTypes.Error: {
+              onError?.(chunk.data);
+              // Update the last AI message with error status
+              // Assumes last AI message is the one the error relates to
+              const messages = accumulator.getMessages();
+              const lastAiMessage = messages.findLast(
+                (m): m is TMessage & { type: string; id: string } =>
+                  m != null && "type" in m && m.type === "ai" && m.id != null,
               );
+              if (lastAiMessage) {
+                const errorMessage = {
+                  ...lastAiMessage,
+                  status: {
+                    type: "incomplete" as const,
+                    reason: "error" as const,
+                    error: chunk.data,
+                  },
+                };
+                setMessagesImmediate(accumulator.addMessages([errorMessage]));
+              }
+              break;
             }
-
-            const normalizedMessage =
-              normalizedTupleMessage.message as unknown as TMessage;
-            const updatedMessages = tupleMetadata
-              ? accumulator.addMessageWithMetadata(
-                  normalizedMessage,
-                  tupleMetadata,
-                )
-              : accumulator.addMessages([normalizedMessage]);
-
-            setMessagesImmediate(updatedMessages);
-            setMessageMetadata(new Map(accumulator.getMetadataMap()));
-            break;
+            default:
+              if (onCustomEvent) {
+                onCustomEvent(chunk.event, chunk.data);
+              } else {
+                console.warn(
+                  "Unhandled event received:",
+                  chunk.event,
+                  chunk.data,
+                );
+              }
+              break;
           }
-          case LangGraphKnownEventTypes.Metadata:
-            onMetadata?.(chunk.data);
-            break;
-          case LangGraphKnownEventTypes.Info:
-            onInfo?.(chunk.data);
-            break;
-          case LangGraphKnownEventTypes.Error: {
-            onError?.(chunk.data);
-            // Update the last AI message with error status
-            // Assumes last AI message is the one the error relates to
-            const messages = accumulator.getMessages();
-            const lastAiMessage = messages.findLast(
-              (m): m is TMessage & { type: string; id: string } =>
-                m != null && "type" in m && m.type === "ai" && m.id != null,
-            );
-            if (lastAiMessage) {
-              const errorMessage = {
-                ...lastAiMessage,
-                status: {
-                  type: "incomplete" as const,
-                  reason: "error" as const,
-                  error: chunk.data,
-                },
-              };
-              setMessagesImmediate(accumulator.addMessages([errorMessage]));
-            }
-            break;
-          }
-          default:
-            if (onCustomEvent) {
-              onCustomEvent(chunk.event, chunk.data);
-            } else {
-              console.warn(
-                "Unhandled event received:",
-                chunk.event,
-                chunk.data,
-              );
-            }
-            break;
+        }
+      } catch (error) {
+        if (!isAbortError(error)) {
+          throw error;
+        }
+      } finally {
+        if (abortControllerRef.current === abortController) {
+          abortControllerRef.current = null;
         }
       }
     },

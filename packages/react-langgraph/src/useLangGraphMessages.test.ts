@@ -1135,6 +1135,85 @@ describe("useLangGraphMessages", {}, () => {
     });
   });
 
+  it("swallows AbortError when stream is cancelled", async () => {
+    const streamSpy = vi.fn().mockImplementation(async (_messages, config) => {
+      async function* streamResponse() {
+        await new Promise<void>((_resolve, reject) => {
+          const onAbort = () => {
+            const abortError = new Error("The operation was aborted.");
+            abortError.name = "AbortError";
+            reject(abortError);
+          };
+
+          if (config.abortSignal.aborted) {
+            onAbort();
+            return;
+          }
+
+          config.abortSignal.addEventListener("abort", onAbort, {
+            once: true,
+          });
+        });
+      }
+
+      return streamResponse();
+    });
+
+    const { result } = renderHook(() =>
+      useLangGraphMessages({
+        stream: streamSpy,
+        appendMessage: appendLangChainChunk,
+      }),
+    );
+
+    let sendMessagePromise!: Promise<void>;
+    act(() => {
+      sendMessagePromise = result.current.sendMessage(
+        [{ type: "human", content: "cancel me" }],
+        {},
+      );
+    });
+
+    await waitFor(() => {
+      expect(streamSpy).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      result.current.cancel();
+    });
+
+    await expect(sendMessagePromise).resolves.toBeUndefined();
+  });
+
+  it("rethrows non-AbortError stream failures", async () => {
+    const streamError = new Error("stream failed");
+    const streamSpy = vi.fn().mockImplementation(async () => {
+      async function* streamResponse() {
+        yield metadataEvent;
+        throw streamError;
+      }
+
+      return streamResponse();
+    });
+
+    const { result } = renderHook(() =>
+      useLangGraphMessages({
+        stream: streamSpy,
+        appendMessage: appendLangChainChunk,
+      }),
+    );
+
+    let sendMessagePromise!: Promise<void>;
+    act(() => {
+      sendMessagePromise = result.current.sendMessage(
+        [{ type: "human", content: "trigger error" }],
+        {},
+      );
+    });
+
+    await expect(sendMessagePromise).rejects.toBe(streamError);
+  });
+
   it("normalizes python tool_call_chunks args_json in messages tuple streams", async () => {
     const mockStreamCallback = mockStreamCallbackFactory([
       metadataEvent,
