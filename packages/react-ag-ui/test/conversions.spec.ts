@@ -3,6 +3,7 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
 import {
+  fromAgUiMessages,
   toAgUiMessages,
   toAgUiTools,
 } from "../src/runtime/adapter/conversions";
@@ -99,6 +100,75 @@ describe("adapter conversions", () => {
       role: "tool",
       toolCallId: "call-42",
       content: '{"ok":true}',
+    });
+  });
+
+  it("merges tool role snapshot messages back into assistant tool-call parts", () => {
+    const result = fromAgUiMessages([
+      {
+        id: "msg-1",
+        role: "user",
+        content: "What's the weather?",
+      },
+      {
+        id: "msg-2",
+        role: "assistant",
+        content: "",
+        tool_calls: [
+          {
+            id: "call-1",
+            type: "function",
+            function: {
+              name: "get_weather",
+              arguments: '{"city":"Paris"}',
+            },
+          },
+        ],
+      },
+      {
+        id: "msg-3",
+        role: "tool",
+        tool_call_id: "call-1",
+        content: '{"temperature":"22C"}',
+      },
+    ] as any);
+
+    expect(result).toHaveLength(2);
+    const assistantMessage = result[1] as any;
+    expect(assistantMessage.role).toBe("assistant");
+    const toolPart = assistantMessage.content.find(
+      (part: { type: string }) => part.type === "tool-call",
+    );
+    expect(toolPart).toMatchObject({
+      toolCallId: "call-1",
+      toolName: "get_weather",
+      argsText: '{"city":"Paris"}',
+      result: { temperature: "22C" },
+    });
+  });
+
+  it("creates a synthetic assistant tool-call when snapshot has an orphan tool message", () => {
+    const result = fromAgUiMessages([
+      {
+        id: "tool-only",
+        role: "tool",
+        tool_call_id: "call-9",
+        name: "lookup",
+        content: '{"ok":true}',
+      },
+    ] as any);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      role: "assistant",
+      id: "tool-only:assistant",
+    });
+    const toolPart = (result[0] as any).content[0];
+    expect(toolPart).toMatchObject({
+      type: "tool-call",
+      toolCallId: "call-9",
+      toolName: "lookup",
+      result: { ok: true },
     });
   });
 

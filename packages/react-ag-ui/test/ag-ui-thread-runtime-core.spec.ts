@@ -73,6 +73,68 @@ describe("AGUIThreadRuntimeCore", () => {
     expect(core.isRunning()).toBe(false);
   });
 
+  it("imports tool role messages from snapshots as assistant tool-call results", async () => {
+    const agent = {
+      runAgent: vi.fn(async (_input, subscriber) => {
+        subscriber.onMessagesSnapshotEvent?.({
+          event: {
+            type: "MESSAGES_SNAPSHOT",
+            messages: [
+              {
+                id: "msg-1",
+                role: "user",
+                content: "What's the weather?",
+              },
+              {
+                id: "msg-2",
+                role: "assistant",
+                content: "",
+                toolCalls: [
+                  {
+                    id: "call-1",
+                    type: "function",
+                    function: {
+                      name: "get_weather",
+                      arguments: '{"city":"Paris"}',
+                    },
+                  },
+                ],
+              },
+              {
+                id: "msg-3",
+                role: "tool",
+                toolCallId: "call-1",
+                content: '{"temperature":"22C"}',
+              },
+            ],
+          },
+        });
+        subscriber.onRunFinalized?.();
+      }),
+    } as unknown as HttpAgent;
+
+    const core = createCore(agent);
+    await core.append(createAppendMessage());
+
+    const messages = core.getMessages();
+    expect(messages).toHaveLength(2);
+    expect(messages[0]).toMatchObject({
+      id: "msg-1",
+      role: "user",
+    });
+    const assistant = messages[1] as ThreadAssistantMessage;
+    expect(assistant.id).toBe("msg-2");
+    const toolPart = assistant.content.find(
+      (part) => part.type === "tool-call",
+    ) as any;
+    expect(toolPart).toBeTruthy();
+    expect(toolPart).toMatchObject({
+      toolCallId: "call-1",
+      toolName: "get_weather",
+      result: { temperature: "22C" },
+    });
+  });
+
   it("marks runs as cancelled when aborting", async () => {
     const agent = {
       runAgent: vi.fn((_input, _subscriber, { signal }) => {
