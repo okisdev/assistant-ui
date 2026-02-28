@@ -77,6 +77,8 @@ const joinExternalMessages = (
       const toolCallIdx = assistantMessage.content.findIndex(
         (c) => c.type === "tool-call" && c.toolCallId === output.toolCallId,
       );
+      // Ignore orphaned tool results so one bad tool message does not
+      // prevent rendering the rest of the conversation.
       if (toolCallIdx !== -1) {
         const toolCall = assistantMessage.content[
           toolCallIdx
@@ -100,10 +102,6 @@ const joinExternalMessages = (
           isError: output.isError,
           messages: output.messages,
         };
-      } else {
-        throw new Error(
-          `Tool call ${output.toolCallId} ${output.toolName} not found in assistant message`,
-        );
       }
     } else {
       const role = output.role;

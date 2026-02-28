@@ -777,6 +777,81 @@ describe("useLangGraphMessages", {}, () => {
     });
   });
 
+  it("does not replace tuple-accumulated messages with updates snapshots", async () => {
+    const initialHumanMessage = {
+      id: "user-1",
+      type: "human" as const,
+      content: "Search now",
+    };
+
+    const mockStreamCallback = mockStreamCallbackFactory([
+      metadataEvent,
+      {
+        event: "messages",
+        data: [
+          {
+            id: "run-1",
+            content: "Looking that up...",
+            type: "AIMessageChunk",
+            tool_call_chunks: [],
+          },
+          { run_attempt: 1 },
+        ],
+      },
+      {
+        event: "messages",
+        data: [
+          {
+            id: "tool-msg-1",
+            type: "tool",
+            content: '{"success":true}',
+            name: "cached_search_web",
+            tool_call_id: "tool-1",
+            status: "success",
+          },
+          { run_attempt: 1 },
+        ],
+      },
+      {
+        event: "updates",
+        data: {
+          messages: [
+            initialHumanMessage,
+            {
+              id: "run-1",
+              type: "ai" as const,
+              content: "Looking that up...",
+            },
+          ],
+        },
+      },
+    ]);
+
+    const { result } = renderHook(() =>
+      useLangGraphMessages({
+        stream: mockStreamCallback,
+        appendMessage: appendLangChainChunk,
+      }),
+    );
+
+    act(() => {
+      result.current.sendMessage([initialHumanMessage], {});
+    });
+
+    await waitFor(() => {
+      expect(result.current.messages).toHaveLength(3);
+      const toolMessage = result.current.messages[2]!;
+      expect(toolMessage.type).toBe("tool");
+      if (toolMessage.type !== "tool") {
+        throw new Error("Expected tool message");
+      }
+
+      expect(toolMessage.id).toBe("tool-msg-1");
+      expect(toolMessage.tool_call_id).toBe("tool-1");
+      expect(toolMessage.content).toBe('{"success":true}');
+    });
+  });
+
   it("fires onMessageChunk callback with chunk and metadata", async () => {
     const chunksCaptured: Array<{
       chunk: LangChainMessageChunk;

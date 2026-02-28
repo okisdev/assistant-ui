@@ -125,6 +125,7 @@ export const useLangGraphMessages = <TMessage extends { id?: string }>({
         },
       });
 
+      let hasTupleMessageEvents = false;
       for await (const chunk of response) {
         switch (chunk.event) {
           case LangGraphKnownEventTypes.MessagesPartial:
@@ -133,7 +134,7 @@ export const useLangGraphMessages = <TMessage extends { id?: string }>({
             break;
           case LangGraphKnownEventTypes.Updates:
             onUpdates?.(chunk.data);
-            if (Array.isArray(chunk.data.messages)) {
+            if (Array.isArray(chunk.data.messages) && !hasTupleMessageEvents) {
               setMessagesImmediate(
                 accumulator.replaceMessages(chunk.data.messages),
               );
@@ -144,6 +145,7 @@ export const useLangGraphMessages = <TMessage extends { id?: string }>({
             onValues?.(chunk.data);
             break;
           case LangGraphKnownEventTypes.Messages: {
+            hasTupleMessageEvents = true;
             const [tupleMessage, tupleMetadata] = (
               chunk as LangChainMessageTupleEvent
             ).data;

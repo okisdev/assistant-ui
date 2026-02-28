@@ -158,6 +158,40 @@ describe("convertExternalMessages", () => {
       expect(toolCallParts).toHaveLength(1);
       expect((toolCallParts[0] as any).result).toEqual({ data: "result" });
     });
+
+    it("should ignore orphaned tool results without throwing", () => {
+      const messages = [
+        {
+          id: "msg1",
+          role: "assistant" as const,
+          content: "First response",
+        },
+        {
+          role: "tool" as const,
+          toolCallId: "missing-tool-call",
+          toolName: "search",
+          result: { data: "orphan result" },
+        },
+        {
+          id: "msg2",
+          role: "assistant" as const,
+          content: "Second response",
+        },
+      ];
+
+      const callback: useExternalMessageConverter.Callback<
+        (typeof messages)[number]
+      > = (msg) => msg;
+
+      const result = convertExternalMessages(messages, callback, false, {});
+      expect(result).toHaveLength(1);
+      expect(result[0]!.role).toBe("assistant");
+
+      const textParts = result[0]!.content.filter((p) => p.type === "text");
+      expect(textParts).toHaveLength(2);
+      expect((textParts[0] as any).text).toBe("First response");
+      expect((textParts[1] as any).text).toBe("Second response");
+    });
   });
 
   describe("synthetic error message", () => {
