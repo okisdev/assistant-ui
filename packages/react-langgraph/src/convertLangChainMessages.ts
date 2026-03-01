@@ -12,6 +12,79 @@ import {
   ReadonlyJSONObject,
 } from "assistant-stream/utils";
 
+type LangGraphMessageConverterMetadata =
+  useExternalMessageConverter.Metadata & {
+    toolArgsKeyOrderCache?: Map<string, Map<string, string[]>>;
+  };
+
+const hasOwn = (value: object, key: string) =>
+  Object.prototype.hasOwnProperty.call(value, key);
+
+const stabilizeToolArgsValue = (
+  value: unknown,
+  path: string,
+  keyOrderByPath: Map<string, string[]>,
+): unknown => {
+  if (Array.isArray(value)) {
+    return value.map((item, idx) =>
+      stabilizeToolArgsValue(item, `${path}[${idx}]`, keyOrderByPath),
+    );
+  }
+
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const currentKeys = Object.keys(record);
+    const previousOrder = keyOrderByPath.get(path) ?? [];
+    const previousOrderSet = new Set(previousOrder);
+    const nextOrder = [
+      ...previousOrder.filter((key) => hasOwn(record, key)),
+      ...currentKeys.filter((key) => !previousOrderSet.has(key)),
+    ];
+    keyOrderByPath.set(path, nextOrder);
+
+    return Object.fromEntries(
+      nextOrder.map((key) => [
+        key,
+        stabilizeToolArgsValue(record[key], `${path}.${key}`, keyOrderByPath),
+      ]),
+    );
+  }
+
+  return value;
+};
+
+const getToolArgsKeyOrder = (
+  keyOrderCache: Map<string, Map<string, string[]>> | undefined,
+  cacheKey: string,
+): Map<string, string[]> => {
+  const keyOrderByPath = keyOrderCache?.get(cacheKey) ?? new Map();
+  keyOrderCache?.set(cacheKey, keyOrderByPath);
+  return keyOrderByPath;
+};
+
+const trackToolArgsKeyOrder = (
+  keyOrderCache: Map<string, Map<string, string[]>> | undefined,
+  cacheKey: string,
+  args: ReadonlyJSONObject,
+) => {
+  const keyOrderByPath = getToolArgsKeyOrder(keyOrderCache, cacheKey);
+  stabilizeToolArgsValue(args, "$", keyOrderByPath);
+};
+
+const stableStringifyToolArgs = (
+  keyOrderCache: Map<string, Map<string, string[]>> | undefined,
+  cacheKey: string,
+  args: ReadonlyJSONObject,
+): string => {
+  const keyOrderByPath = getToolArgsKeyOrder(keyOrderCache, cacheKey);
+  const stableArgs = stabilizeToolArgsValue(
+    args,
+    "$",
+    keyOrderByPath,
+  ) as ReadonlyJSONObject;
+  return JSON.stringify(stableArgs);
+};
+
 const getCustomMetadata = (
   additionalKwargs: Record<string, unknown> | undefined,
 ): Record<string, unknown> =>
@@ -29,7 +102,11 @@ const warnForUnknownMessagePartType = (type: string) => {
   console.warn(`Unknown message part type: ${type}`);
 };
 
-const contentToParts = (content: LangChainMessage["content"]) => {
+const contentToParts = (
+  content: LangChainMessage["content"],
+  metadata: LangGraphMessageConverterMetadata,
+  messageId: string | undefined,
+) => {
   if (typeof content === "string")
     return [{ type: "text" as const, text: content }];
   return content
@@ -77,12 +154,20 @@ const contentToParts = (content: LangChainMessage["content"]) => {
             return null;
 
           case "computer_call":
+            const args = part.action as ReadonlyJSONObject;
+            const argsKeyOrderCacheKey = `${messageId ?? "unknown"}:${
+              part.call_id
+            }:computer`;
             return {
               type: "tool-call",
               toolCallId: part.call_id,
               toolName: "computer_call",
-              args: part.action as ReadonlyJSONObject,
-              argsText: JSON.stringify(part.action),
+              args,
+              argsText: stableStringifyToolArgs(
+                metadata.toolArgsKeyOrderCache,
+                argsKeyOrderCacheKey,
+                args,
+              ),
             };
 
           default:
@@ -100,7 +185,7 @@ const contentToParts = (content: LangChainMessage["content"]) => {
 
 export const convertLangChainMessages: useExternalMessageConverter.Callback<
   LangChainMessage
-> = (message) => {
+> = (message, metadata: LangGraphMessageConverterMetadata = {}) => {
   switch (message.type) {
     case "system":
       return {
@@ -113,7 +198,7 @@ export const convertLangChainMessages: useExternalMessageConverter.Callback<
       return {
         role: "user",
         id: message.id,
-        content: contentToParts(message.content),
+        content: contentToParts(message.content, metadata, message.id),
         metadata: { custom: getCustomMetadata(message.additional_kwargs) },
       };
     case "ai":
@@ -122,20 +207,45 @@ export const convertLangChainMessages: useExternalMessageConverter.Callback<
           const matchingToolCallChunk = message.tool_call_chunks?.find(
             (c) => c.id === chunk.id,
           );
+          const argsKeyOrderCacheKey = `${message.id ?? "unknown"}:${chunk.id}`;
+          const fallbackArgsText = stableStringifyToolArgs(
+            metadata.toolArgsKeyOrderCache,
+            argsKeyOrderCacheKey,
+            chunk.args,
+          );
           const argsText =
             chunk.partial_json ??
             matchingToolCallChunk?.args ??
             matchingToolCallChunk?.args_json ??
-            JSON.stringify(chunk.args);
+            fallbackArgsText;
+          const parsedPartialArgs = argsText
+            ? parsePartialJsonObject(argsText)
+            : undefined;
+          const parsedArgs = argsText
+            ? ((parsedPartialArgs ?? {}) as ReadonlyJSONObject)
+            : chunk.args;
+          const argsForKeyOrderTracking = (parsedPartialArgs ??
+            chunk.args) as ReadonlyJSONObject;
+          trackToolArgsKeyOrder(
+            metadata.toolArgsKeyOrderCache,
+            argsKeyOrderCacheKey,
+            argsForKeyOrderTracking,
+          );
+
+          if (
+            chunk.partial_json === undefined &&
+            matchingToolCallChunk?.args === undefined &&
+            matchingToolCallChunk?.args_json === undefined
+          ) {
+            metadata.toolArgsKeyOrderCache?.delete(argsKeyOrderCacheKey);
+          }
 
           return {
             type: "tool-call",
             toolCallId: chunk.id,
             toolName: chunk.name,
-            args: argsText
-              ? (parsePartialJsonObject(argsText) ?? {})
-              : chunk.args,
-            argsText: argsText ?? JSON.stringify(chunk.args),
+            args: parsedArgs,
+            argsText,
           };
         }) ?? [];
 
@@ -153,7 +263,10 @@ export const convertLangChainMessages: useExternalMessageConverter.Callback<
       return {
         role: "assistant",
         id: message.id,
-        content: [...contentToParts(allContent), ...toolCallParts],
+        content: [
+          ...contentToParts(allContent, metadata, message.id),
+          ...toolCallParts,
+        ],
         metadata: { custom: getCustomMetadata(message.additional_kwargs) },
         ...(message.status && { status: message.status }),
       };

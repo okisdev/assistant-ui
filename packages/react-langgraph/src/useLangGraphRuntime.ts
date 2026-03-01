@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   LangChainMessage,
   LangChainToolCall,
@@ -272,10 +272,21 @@ const useLangGraphRuntimeImpl = ({
   const [toolStatuses, setToolStatuses] = useState<
     Record<string, ToolExecutionStatus>
   >({});
+  const toolArgsKeyOrderCacheRef = useRef<Map<string, Map<string, string[]>>>(
+    new Map(),
+  );
   const hasExecutingTools = Object.values(toolStatuses).some(
     (s) => s?.type === "executing",
   );
   const effectiveIsRunning = isRunning || hasExecutingTools;
+
+  const converterMetadata = useMemo(
+    () =>
+      ({
+        toolArgsKeyOrderCache: toolArgsKeyOrderCacheRef.current,
+      }) as unknown as useExternalMessageConverter.Metadata,
+    [],
+  );
 
   const handleSendMessage = async (
     messages: LangChainMessage[],
@@ -293,6 +304,7 @@ const useLangGraphRuntimeImpl = ({
     callback: convertLangChainMessages,
     messages,
     isRunning: effectiveIsRunning,
+    metadata: converterMetadata,
   });
 
   const threadMessagesRef = useRef(threadMessages);

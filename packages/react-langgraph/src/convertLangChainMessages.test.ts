@@ -127,4 +127,153 @@ describe("convertLangChainMessages metadata", () => {
       argsText: '{"url":"https://example.com"}',
     });
   });
+
+  it("keeps key order from partial_json when final snapshot falls back to args", () => {
+    const metadata = {
+      toolArgsKeyOrderCache: new Map<string, Map<string, string[]>>(),
+    };
+
+    const streamingResult = convertLangChainMessages(
+      {
+        type: "ai",
+        id: "ai-1",
+        content: "",
+        tool_calls: [
+          {
+            id: "tool-1",
+            name: "fetch_page_content",
+            args: {
+              type: "high_stock_model",
+              limit: 5,
+              filters: { region: "us", sector: "tech" },
+            },
+            partial_json:
+              '{"type":"high_stock_model","limit":5,' +
+              '"filters":{"region":"us","sector":"tech"}',
+          },
+        ],
+      },
+      metadata,
+    );
+
+    if (!("content" in streamingResult)) {
+      throw new Error("Expected assistant message content");
+    }
+
+    const streamingToolCallPart = streamingResult.content.find(
+      (part) => part.type === "tool-call",
+    );
+
+    expect(streamingToolCallPart).toMatchObject({
+      argsText:
+        '{"type":"high_stock_model","limit":5,' +
+        '"filters":{"region":"us","sector":"tech"}',
+    });
+
+    const finalResult = convertLangChainMessages(
+      {
+        type: "ai",
+        id: "ai-1",
+        content: "",
+        tool_calls: [
+          {
+            id: "tool-1",
+            name: "fetch_page_content",
+            args: {
+              filters: { sector: "tech", region: "us" },
+              limit: 5,
+              type: "high_stock_model",
+            },
+          },
+        ],
+      },
+      metadata,
+    );
+
+    if (!("content" in finalResult)) {
+      throw new Error("Expected assistant message content");
+    }
+
+    const finalToolCallPart = finalResult.content.find(
+      (part) => part.type === "tool-call",
+    );
+
+    expect(finalToolCallPart).toMatchObject({
+      argsText:
+        '{"type":"high_stock_model","limit":5,' +
+        '"filters":{"region":"us","sector":"tech"}}',
+    });
+  });
+
+  it("stabilizes computer_call args key order across snapshots", () => {
+    const metadata = {
+      toolArgsKeyOrderCache: new Map<string, Map<string, string[]>>(),
+    };
+
+    const firstResult = convertLangChainMessages(
+      {
+        type: "ai",
+        id: "ai-1",
+        content: [
+          {
+            type: "computer_call",
+            call_id: "call-1",
+            id: "computer-1",
+            action: {
+              kind: "click",
+              target: { x: 10, y: 20 },
+            },
+            pending_safety_checks: [],
+            index: 0,
+          },
+        ],
+      },
+      metadata,
+    );
+
+    if (!("content" in firstResult)) {
+      throw new Error("Expected assistant message content");
+    }
+
+    const firstToolCallPart = firstResult.content.find(
+      (part) => part.type === "tool-call",
+    );
+
+    expect(firstToolCallPart).toMatchObject({
+      argsText: '{"kind":"click","target":{"x":10,"y":20}}',
+    });
+
+    const secondResult = convertLangChainMessages(
+      {
+        type: "ai",
+        id: "ai-1",
+        content: [
+          {
+            type: "computer_call",
+            call_id: "call-1",
+            id: "computer-1",
+            action: {
+              target: { y: 20, x: 10 },
+              kind: "click",
+            },
+            pending_safety_checks: [],
+            index: 0,
+          },
+        ],
+      },
+      metadata,
+    );
+
+    if (!("content" in secondResult)) {
+      throw new Error("Expected assistant message content");
+    }
+
+    const secondToolCallPart = secondResult.content.find(
+      (part) => part.type === "tool-call",
+    );
+
+    expect(secondToolCallPart).toMatchObject({
+      argsText: '{"kind":"click","target":{"x":10,"y":20}}',
+    });
+  });
 });
