@@ -125,7 +125,7 @@ const resolveToolCallArgs = ({
     (parsedPartialArgs ?? chunk.args) as ReadonlyJSONObject,
   );
 
-  if (!providedArgsText) {
+  if (providedArgsText == null) {
     toolArgsKeyOrderCache?.delete(cacheKey);
   }
 
