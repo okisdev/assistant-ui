@@ -4,7 +4,11 @@ import {
   ThreadAssistantMessage,
   useExternalMessageConverter,
 } from "@assistant-ui/react";
-import { LangChainMessage } from "./types";
+import {
+  LangChainMessage,
+  LangChainToolCall,
+  LangChainToolCallChunk,
+} from "./types";
 import { ToolCallMessagePart } from "@assistant-ui/react";
 import { ThreadUserMessage } from "@assistant-ui/react";
 import {
@@ -85,6 +89,49 @@ const stableStringifyToolArgs = (
   return JSON.stringify(stableArgs);
 };
 
+const getToolArgsCacheKey = (
+  messageId: string | undefined,
+  kind: "tool" | "computer",
+  toolCallId: string,
+) => `${messageId ?? "unknown"}:${kind}:${toolCallId}`;
+
+const resolveToolCallArgs = ({
+  chunk,
+  matchingToolCallChunk,
+  messageId,
+  toolArgsKeyOrderCache,
+}: {
+  chunk: LangChainToolCall;
+  matchingToolCallChunk: LangChainToolCallChunk | undefined;
+  messageId: string | undefined;
+  toolArgsKeyOrderCache: Map<string, Map<string, string[]>> | undefined;
+}): Pick<ToolCallMessagePart, "args" | "argsText"> => {
+  const cacheKey = getToolArgsCacheKey(messageId, "tool", chunk.id);
+  const providedArgsText =
+    chunk.partial_json ??
+    matchingToolCallChunk?.args ??
+    matchingToolCallChunk?.args_json;
+  const argsText =
+    providedArgsText ??
+    stableStringifyToolArgs(toolArgsKeyOrderCache, cacheKey, chunk.args);
+
+  const parsedPartialArgs = argsText ? parsePartialJsonObject(argsText) : null;
+  const args = (
+    argsText ? (parsedPartialArgs ?? {}) : chunk.args
+  ) as ReadonlyJSONObject;
+  trackToolArgsKeyOrder(
+    toolArgsKeyOrderCache,
+    cacheKey,
+    (parsedPartialArgs ?? chunk.args) as ReadonlyJSONObject,
+  );
+
+  if (!providedArgsText) {
+    toolArgsKeyOrderCache?.delete(cacheKey);
+  }
+
+  return { args, argsText };
+};
+
 const getCustomMetadata = (
   additionalKwargs: Record<string, unknown> | undefined,
 ): Record<string, unknown> =>
@@ -155,9 +202,6 @@ const contentToParts = (
 
           case "computer_call":
             const args = part.action as ReadonlyJSONObject;
-            const argsKeyOrderCacheKey = `${messageId ?? "unknown"}:${
-              part.call_id
-            }:computer`;
             return {
               type: "tool-call",
               toolCallId: part.call_id,
@@ -165,7 +209,7 @@ const contentToParts = (
               args,
               argsText: stableStringifyToolArgs(
                 metadata.toolArgsKeyOrderCache,
-                argsKeyOrderCacheKey,
+                getToolArgsCacheKey(messageId, "computer", part.call_id),
                 args,
               ),
             };
@@ -207,44 +251,18 @@ export const convertLangChainMessages: useExternalMessageConverter.Callback<
           const matchingToolCallChunk = message.tool_call_chunks?.find(
             (c) => c.id === chunk.id,
           );
-          const argsKeyOrderCacheKey = `${message.id ?? "unknown"}:${chunk.id}`;
-          const fallbackArgsText = stableStringifyToolArgs(
-            metadata.toolArgsKeyOrderCache,
-            argsKeyOrderCacheKey,
-            chunk.args,
-          );
-          const argsText =
-            chunk.partial_json ??
-            matchingToolCallChunk?.args ??
-            matchingToolCallChunk?.args_json ??
-            fallbackArgsText;
-          const parsedPartialArgs = argsText
-            ? parsePartialJsonObject(argsText)
-            : undefined;
-          const parsedArgs = argsText
-            ? ((parsedPartialArgs ?? {}) as ReadonlyJSONObject)
-            : chunk.args;
-          const argsForKeyOrderTracking = (parsedPartialArgs ??
-            chunk.args) as ReadonlyJSONObject;
-          trackToolArgsKeyOrder(
-            metadata.toolArgsKeyOrderCache,
-            argsKeyOrderCacheKey,
-            argsForKeyOrderTracking,
-          );
-
-          if (
-            chunk.partial_json === undefined &&
-            matchingToolCallChunk?.args === undefined &&
-            matchingToolCallChunk?.args_json === undefined
-          ) {
-            metadata.toolArgsKeyOrderCache?.delete(argsKeyOrderCacheKey);
-          }
+          const { args, argsText } = resolveToolCallArgs({
+            chunk,
+            matchingToolCallChunk,
+            messageId: message.id,
+            toolArgsKeyOrderCache: metadata.toolArgsKeyOrderCache,
+          });
 
           return {
             type: "tool-call",
             toolCallId: chunk.id,
             toolName: chunk.name,
-            args: parsedArgs,
+            args,
             argsText,
           };
         }) ?? [];

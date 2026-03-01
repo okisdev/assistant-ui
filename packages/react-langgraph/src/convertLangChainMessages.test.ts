@@ -143,9 +143,9 @@ describe("convertLangChainMessages metadata", () => {
             id: "tool-1",
             name: "fetch_page_content",
             args: {
-              type: "high_stock_model",
-              limit: 5,
               filters: { region: "us", sector: "tech" },
+              limit: 5,
+              type: "high_stock_model",
             },
             partial_json:
               '{"type":"high_stock_model","limit":5,' +
