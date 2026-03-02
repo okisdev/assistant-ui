@@ -62,6 +62,13 @@ type Mutable<T> = {
   -readonly [P in keyof T]: T[P];
 };
 
+const mergeInnerMessages = (existing: object, incoming: object) => ({
+  [symbolInnerMessage]: [
+    ...((existing as any)[symbolInnerMessage] ?? []),
+    ...((incoming as any)[symbolInnerMessage] ?? []),
+  ],
+});
+
 const joinExternalMessages = (
   messages: readonly useExternalMessageConverter.Message[],
 ): ThreadMessageLike => {
@@ -178,6 +185,24 @@ const joinExternalMessages = (
 
           // Add content parts, merging reasoning parts with same parentId
           for (const part of content) {
+            if (part.type === "tool-call") {
+              const existingIdx = assistantMessage.content.findIndex(
+                (c) =>
+                  c.type === "tool-call" && c.toolCallId === part.toolCallId,
+              );
+              if (existingIdx !== -1) {
+                const existing = assistantMessage.content[
+                  existingIdx
+                ] as typeof part;
+                assistantMessage.content[existingIdx] = {
+                  ...existing,
+                  ...part,
+                  ...mergeInnerMessages(existing, part),
+                };
+                continue;
+              }
+            }
+
             if (
               part.type === "reasoning" &&
               "parentId" in part &&
@@ -196,12 +221,7 @@ const joinExternalMessages = (
                 assistantMessage.content[existingIdx] = {
                   ...existing,
                   text: `${existing.text}\n\n${part.text}`,
-                  ...{
-                    [symbolInnerMessage]: [
-                      ...((existing as any)[symbolInnerMessage] ?? []),
-                      ...((part as any)[symbolInnerMessage] ?? []),
-                    ],
-                  },
+                  ...mergeInnerMessages(existing, part),
                 };
                 continue;
               }

@@ -194,4 +194,57 @@ describe("AISDKMessageConverter", () => {
       '{"type":"high_stock_model","limit":5,"filters":{"region":"us","sector":"tech"}}',
     );
   });
+
+  it("merges duplicate toolCallId across assistant snapshots", () => {
+    const metadata = {
+      toolArgsKeyOrderCache: new Map<string, Map<string, string[]>>(),
+    };
+
+    const converted = AISDKMessageConverter.toThreadMessages(
+      [
+        {
+          id: "a1",
+          role: "assistant",
+          parts: [
+            {
+              type: "tool-stocks",
+              toolCallId: "tc-order-1",
+              state: "input-streaming",
+              input: {
+                type: "high_stock_model",
+                limit: 5,
+              },
+            },
+          ],
+        } as any,
+        {
+          id: "a2",
+          role: "assistant",
+          parts: [
+            {
+              type: "tool-stocks",
+              toolCallId: "tc-order-1",
+              state: "input-available",
+              input: {
+                limit: 5,
+                type: "high_stock_model",
+              },
+            },
+          ],
+        } as any,
+      ],
+      false,
+      metadata,
+    );
+
+    const toolCalls = converted[0]?.content.filter(
+      (part): part is any => part.type === "tool-call",
+    );
+    expect(toolCalls).toHaveLength(1);
+    expect(toolCalls?.[0]?.toolCallId).toBe("tc-order-1");
+    expect(JSON.parse(toolCalls?.[0]?.argsText ?? "{}")).toEqual({
+      type: "high_stock_model",
+      limit: 5,
+    });
+  });
 });
